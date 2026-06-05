@@ -1,0 +1,263 @@
+[
+  {
+    "id": "JU",
+    "nombre": "Jujuy",
+    "direccion": "Av. Jujuy 1653",
+    "localidad": "C.A.B.A (CP 1247), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6294136,
+    "lon": -58.401125
+  },
+  {
+    "id": "TH",
+    "nombre": "Thames",
+    "direccion": "Col. Panamericana Oeste 1938 y Thames,",
+    "localidad": "Boulogne (CP 1609), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5062,
+    "lon": -58.496
+  },
+  {
+    "id": "CO",
+    "nombre": "Constituyentes",
+    "direccion": "Av. de los Constituyentes 6005",
+    "localidad": "C.A.B.A (CP 1431), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5719801,
+    "lon": -58.5053157
+  },
+  {
+    "id": "YR",
+    "nombre": "Yrigoyen",
+    "direccion": "Col. Panamericana Este 969 e Yrigoyen,",
+    "localidad": "Martinez (CP 1640), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.4966569,
+    "lon": -58.5157097
+  },
+  {
+    "id": "SF",
+    "nombre": "Santa Fe",
+    "direccion": "Av. Santa Fe 4702, esq. Juan B. Justo",
+    "localidad": "C.A.B.A (CP 1425), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5894,
+    "lon": -58.4256
+  },
+  {
+    "id": "PL",
+    "nombre": "Parque Leloir",
+    "direccion": "Col. Acceso Oeste 9229",
+    "localidad": "Parque Leloir, (CP 1713) Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.635,
+    "lon": -58.715
+  },
+  {
+    "id": "PI",
+    "nombre": "Pilar",
+    "direccion": "Av. 12 de Octubre entre Pres. Derqui y Chacabuco (Local 2)",
+    "localidad": "La Lonja, Pilar, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.455,
+    "lon": -58.91
+  },
+  {
+    "id": "LO",
+    "nombre": "Lomas de Zamora",
+    "direccion": "Av. Hipólito Yrigoyen 8067",
+    "localidad": "Banfield, Lomas de Zamora, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.7492915,
+    "lon": -58.4003756
+  },
+  {
+    "id": "AV",
+    "nombre": "Avellaneda",
+    "direccion": "Autopista Bs. As.- La Plata, KM 9, local 2",
+    "localidad": "Avellaneda, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6620421,
+    "lon": -58.3766549
+  },
+  {
+    "id": "CB",
+    "nombre": "Cordoba",
+    "direccion": "Av. Córdoba 3815, esq. Medrano",
+    "localidad": "C.A.B.A (CP 1188), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.604,
+    "lon": -58.4217
+  },
+  {
+    "id": "QU",
+    "nombre": "Quilmes",
+    "direccion": "Av. Calchaqui 1000",
+    "localidad": "Quilmes, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.737196,
+    "lon": -58.293649
+  },
+  {
+    "id": "BE",
+    "nombre": "Benavidez",
+    "direccion": "Panamericana Colectora Este y Guido Spano",
+    "localidad": "Benavidez, Buenos Aires",
+    "provincia": "",
+    "lat": -34.416,
+    "lon": -58.705
+  },
+  {
+    "id": "CG",
+    "nombre": "Congreso",
+    "direccion": "Av. Belgrano 2090",
+    "localidad": "C.A.B.A (CP 1094), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6142016,
+    "lon": -58.3959038
+  },
+  {
+    "id": "VE",
+    "nombre": "Versalles",
+    "direccion": "Av. Juan B. Justo 9510 - Versalles",
+    "localidad": "C.A.B.A (CP 1408), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6345018,
+    "lon": -58.5269992
+  },
+  {
+    "id": "SM",
+    "nombre": "San Miguel",
+    "direccion": "Av. Doctor Ricardo Balbín 553",
+    "localidad": "San Miguel (CP 1663), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5372155,
+    "lon": -58.706487
+  },
+  {
+    "id": "MO",
+    "nombre": "Moreno",
+    "direccion": "Colectora Sur Acceso Oeste 6165, Moreno",
+    "localidad": "Moreno (CP 1744), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6505069,
+    "lon": -58.7896203
+  },
+  {
+    "id": "GP",
+    "nombre": "General Pacheco",
+    "direccion": "Av. Constituyentes 17 Ruta Nacional 9",
+    "localidad": "General Pacheco, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.4528,
+    "lon": -58.6317
+  },
+  {
+    "id": "SJ",
+    "nombre": "San Justo",
+    "direccion": "Av. Brig. Gral. Juan Manuel de Rosas 3881",
+    "localidad": "San Justo (CP 1754), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.677,
+    "lon": -58.56
+  },
+  {
+    "id": "LP",
+    "nombre": "La Plata",
+    "direccion": "Camino Parque Centenario (esq. Calle 503) 2899",
+    "localidad": "La Plata (CP 1900), Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.8862655,
+    "lon": -58.0018137
+  },
+  {
+    "id": "SA",
+    "nombre": "Salta",
+    "direccion": "Av. Paraguay 2259 - CP4400",
+    "localidad": "Salta Capital, Salta, Argentina",
+    "provincia": "",
+    "lat": -24.782,
+    "lon": -65.423
+  },
+  {
+    "id": "FL",
+    "nombre": "Flores",
+    "direccion": "Av. Rivadavia 7200",
+    "localidad": "CABA -(CP 1406) Flores, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.6301215,
+    "lon": -58.4667654
+  },
+  {
+    "id": "LA",
+    "nombre": "Lanus",
+    "direccion": "Av. Hipólito Yrigoyen 4799",
+    "localidad": "GBA SUR - Lanús, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.706,
+    "lon": -58.392
+  },
+  {
+    "id": "SV",
+    "nombre": "Sucursal Virtual",
+    "direccion": "Gdor. Marcelino Ugarte 3636",
+    "localidad": "Vicente Lopez, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5248773,
+    "lon": -58.5129644
+  },
+  {
+    "id": "CD",
+    "nombre": "Centro de Distribucion",
+    "direccion": "Av. Juan Domingo Peron 4000",
+    "localidad": "General Pacheco, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.4544975,
+    "lon": -58.6220567
+  },
+  {
+    "id": "ND",
+    "nombre": "Nordelta",
+    "direccion": "Av. Santa Maria de las Conchas  5500",
+    "localidad": "Rincon de Milberg, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.4232368,
+    "lon": -58.5906534
+  },
+  {
+    "id": "SN",
+    "nombre": "San Martin",
+    "direccion": "San Lorenzo 3773, San Martin, local 1006",
+    "localidad": "San Martin, Buenos Aires, Argentina",
+    "provincia": "",
+    "lat": -34.5627,
+    "lon": -58.557
+  },
+  {
+    "id": "RO",
+    "nombre": "Rosario",
+    "direccion": "Portal Rosario Shopping Nansen 343",
+    "localidad": "Santa Fe, Rosario, Argentina",
+    "provincia": "",
+    "lat": -32.9104694,
+    "lon": -60.6833066
+  },
+  {
+    "id": "CP",
+    "nombre": "Cordoba Provincia",
+    "direccion": "Av. Rafael Nuñez 3972 - CP X3972 - Tablada Park",
+    "localidad": "Ciudad de Cordoba, Cordoba, Argentina",
+    "provincia": "",
+    "lat": -31.4201,
+    "lon": -64.1888
+  },
+  {
+    "id": "CA",
+    "nombre": "Canning",
+    "direccion": "Av. Mariano Castex 499, Canning,",
+    "localidad": "Partido de Ezeiza, provincia de Buenos Aires",
+    "provincia": "",
+    "lat": -34.855,
+    "lon": -58.505
+  }
+]

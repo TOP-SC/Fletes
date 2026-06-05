@@ -1,0 +1,9 @@
+{
+  "include": ["streamlit_app.py"],
+  "exclude": [],
+  "extraPaths": ["../backend"],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "off",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": false
+}

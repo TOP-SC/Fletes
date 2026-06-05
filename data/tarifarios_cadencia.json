@@ -1,0 +1,27 @@
+{
+  "CLICPAQ": {
+    "frecuencia": "trimestral",
+    "meses_objetivo": [1, 4, 7, 10],
+    "notas": "CEDOL trimestral — hoja clicpaq del Excel Mantello"
+  },
+  "FRANSOF": {
+    "frecuencia": "mensual",
+    "dia_objetivo": 1,
+    "notas": "Actualización mensual Santa Fe — hoja fransof"
+  },
+  "ALFARO": {
+    "frecuencia": "trimestral",
+    "meses_objetivo": [1, 4, 7, 10],
+    "notas": "NOA — hoja alfaro"
+  },
+  "LBO": {
+    "frecuencia": "trimestral",
+    "meses_objetivo": [1, 4, 7, 10],
+    "notas": "Córdoba — hoja LBO CP"
+  },
+  "FLETES_SUC": {
+    "frecuencia": "trimestral",
+    "meses_objetivo": [1, 4, 7, 10],
+    "notas": "CABA/GBA sucursales — hoja fletes sucursales"
+  }
+}

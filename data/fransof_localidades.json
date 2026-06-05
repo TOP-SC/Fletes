@@ -1,0 +1,299 @@
+{
+  "proveedor": "FRANSOF",
+  "notas": "Cobertura FRANSOF por localidad (principalmente Santa Fe). Fuente: localidades fransof.xlsx + hoja fransof del tarifario.",
+  "localidades": [
+    {
+      "nombre": "GRANADERO BAIGORRIA",
+      "provincia": "Santa Fe",
+      "zona": 1,
+      "alias": [
+        "GDRO BAIGORRIA",
+        "GDRO.BAIGORRIA"
+      ]
+    },
+    {
+      "nombre": "ROSARIO",
+      "provincia": "Santa Fe",
+      "zona": 1,
+      "alias": []
+    },
+    {
+      "nombre": "VILLA GOBERNADOR GALVEZ",
+      "provincia": "Santa Fe",
+      "zona": 1,
+      "alias": [
+        "VILLA GDOR GALVEZ",
+        "VILLA GDOR. GALVEZ"
+      ]
+    },
+    {
+      "nombre": "CAPITAN BERMUDEZ",
+      "provincia": "Santa Fe",
+      "zona": 2,
+      "alias": []
+    },
+    {
+      "nombre": "FRAY LUIS BELTRAN",
+      "provincia": "Santa Fe",
+      "zona": 2,
+      "alias": []
+    },
+    {
+      "nombre": "PUERTO GENERAL SAN MARTIN",
+      "provincia": "Santa Fe",
+      "zona": 2,
+      "alias": []
+    },
+    {
+      "nombre": "SAN LORENZO",
+      "provincia": "Santa Fe",
+      "zona": 2,
+      "alias": []
+    },
+    {
+      "nombre": "PEREZ",
+      "provincia": "Santa Fe",
+      "zona": 3,
+      "alias": []
+    },
+    {
+      "nombre": "PUEBLO ESTHER",
+      "provincia": "Santa Fe",
+      "zona": 3,
+      "alias": []
+    },
+    {
+      "nombre": "SOLDINI",
+      "provincia": "Santa Fe",
+      "zona": 3,
+      "alias": []
+    },
+    {
+      "nombre": "BELLA ITALIA",
+      "provincia": "Santa Fe",
+      "zona": 4,
+      "alias": []
+    },
+    {
+      "nombre": "ESPERANZA",
+      "provincia": "Santa Fe",
+      "zona": 4,
+      "alias": []
+    },
+    {
+      "nombre": "FRANCK",
+      "provincia": "Santa Fe",
+      "zona": 4,
+      "alias": [
+        "FRANK"
+      ]
+    },
+    {
+      "nombre": "FRONTERA",
+      "provincia": "Santa Fe",
+      "zona": 4,
+      "alias": []
+    },
+    {
+      "nombre": "RAFAELA",
+      "provincia": "Santa Fe",
+      "zona": 4,
+      "alias": []
+    },
+    {
+      "nombre": "SAN FRANCISCO",
+      "provincia": "Córdoba",
+      "zona": 4,
+      "alias": []
+    },
+    {
+      "nombre": "FUNES",
+      "provincia": "Santa Fe",
+      "zona": 5,
+      "alias": []
+    },
+    {
+      "nombre": "IBARLUCEA",
+      "provincia": "Santa Fe",
+      "zona": 5,
+      "alias": []
+    },
+    {
+      "nombre": "ROLDAN",
+      "provincia": "Santa Fe",
+      "zona": 5,
+      "alias": []
+    },
+    {
+      "nombre": "AROCENA",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "CORONDA",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "DESVIO ARIJON",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": [
+        "DESVIO ARIJON",
+        "DESVÍO ARIJON"
+      ]
+    },
+    {
+      "nombre": "RECREO",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "SANTA FE",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "SANTO TOME",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "SAUCE VIEJO",
+      "provincia": "Santa Fe",
+      "zona": 6,
+      "alias": []
+    },
+    {
+      "nombre": "PARANA",
+      "provincia": "Entre Ríos",
+      "zona": 7,
+      "alias": []
+    },
+    {
+      "nombre": "ARROYO SECO",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "BARRANCAS",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "CANADA DE GOMEZ",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "CARCARANA",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "CASILDA",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "CRESPO",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "DIAMANTE",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "FIGHIERA",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "FRANK",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "MONJE",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "NAN",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "ORO VERDE",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "RAMALLO",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "RICARDONE",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "SAN FABIAN",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "SAN NICOLAS",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "TIMBUES",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "VICTORIA",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "VILLA CONSTITUCION",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    },
+    {
+      "nombre": "VILLA RAMALLO",
+      "provincia": "Santa Fe",
+      "zona": null,
+      "alias": []
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+# Control de Fletes
+
+Automatización del control logístico SommierCenter / Wamaro.
+
+## Stack
+
+- **Backend**: FastAPI + SQLAlchemy + SQLite (`data/fletes.db`)
+- **Frontend**: Streamlit
+
+## Arranque rápido
+
+**Doble clic** en `Iniciar_Fletes.bat` (instala dependencias la primera vez con `pip install -r requirements.txt`).
+
+Abre el navegador en http://localhost:8501 y levanta API + interfaz automáticamente.
+
+### Arranque manual (opcional)
+
+```powershell
+pip install -r requirements.txt
+.\scripts\run_api.ps1    # terminal 1
+.\scripts\run_ui.ps1     # terminal 2
+```
+
+## Mundo 1 — Flujo (orden)
+
+| Paso | Fuente | Acción en la app |
+|------|--------|------------------|
+| 1 | Tango `Exportacion.xlsx` | Importar (acumula, no pisa) |
+| 2 | Mail Clickpack (diario) | Import prefactura (`data/plantilla_clickpack.xlsx`) |
+| 3 | — | Ejecutar **macheo** (remito normalizado, conjuntos colchón+somier) |
+| — | Tarifario CEDOL | Import en **Tarifarios** → recalcular costos |
+| 4 | Grilla postventa | Import + aplicar reglas (+25% gestión, $0 no paga, etc.) |
+| 5 | Liquidación quincenal | Import + conciliar desvíos |
+
+**Pipeline completo**: botón en UI que encadena reglas + macheo + postventa.
+
+### Tarifarios
+
+Copiá los Excel en **`data/tarifarios/`** (instrucciones en `data/tarifarios/README.md`).
+
+En la app: **Configuración → Tarifarios → Importar todos los Excel de data/tarifarios**.
+
+Los importes con ceros de más (`240000.000000000`) se normalizan a **240000** ($240.000).
+
+### Plantillas (`data/`)
+
+- `plantilla_tarifario.xlsx` — ejemplo de estructura
+- `plantilla_clickpack.xlsx` — reporte proveedor
+- `plantilla_postventa.xlsx` — grillas postventa
+- `plantilla_liquidacion.xlsx` — liquidación 1–15 / 16–fin
+
+### Reglas automáticas
+
+- Excluye AMBA/GBA y retiro en sucursal (gris)
+- Alerta Clickpack / crossdocking (amarillo)
+- Entrega en cliente en interior sin Clickpack (naranja — error vendedor)
+- Macheo: diferencia prefactura vs suma costos tarifarios (+ $30 seguro c/u)
+- Postventa: gestión retiro +25%, rotura/expreso $0, etc.
+
+## Mundos — avance (jun 2026)
+
+| Mundo | Dev | Operación | Nota |
+|-------|-----|-----------|------|
+| **1 Interior** | 94% | 80% | Cross solo transp. 82. Falta prefactura + macheo en uso |
+| **2 Fletes AMBA/GBA** | 55% | 40% | Sin cross. Falta Gama/Blast + datos Tango sucursal |
+| **3 Duplicados interior** | 15% | 5% | No AMBA/Fletes. Pendiente spec |
+| **Global** | **~70%** | **~58%** | ~30% dev restante (Fases 6–7) |
+
+## Mundos siguientes
+
+- **Mundo 2**: fletes CABA/GBA (FLETES_SUC, km) — sin cross-dock
+- **Mundo 3**: duplicados / edge cases cross **solo interior**
+
+## API
+
+- Docs: http://127.0.0.1:8000/docs
+- Prefijo: `/api/v1/mundo1/...`

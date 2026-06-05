@@ -1,0 +1,7 @@
+{
+  "include": ["backend"],
+  "exclude": ["frontend"],
+  "extraPaths": ["backend"],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic"
+}

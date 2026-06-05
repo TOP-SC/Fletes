@@ -1,0 +1,9 @@
+{
+  "python.analysis.extraPaths": ["${workspaceFolder}/backend"],
+  "basedpyright.analysis.extraPaths": ["${workspaceFolder}/backend"],
+  "basedpyright.analysis.ignore": ["frontend/streamlit_app.py"],
+  "python.analysis.ignore": ["frontend/streamlit_app.py"],
+  "basedpyright.analysis.diagnosticSeverityOverrides": {
+    "reportMissingModuleSource": "none"
+  }
+}
