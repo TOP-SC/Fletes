@@ -356,11 +356,14 @@ def resumen_fleteros(
         fecha_desde, fecha_hasta = periodo_mes_solo(anio, mes)
 
     envios = [e for e in db.scalars(select(Envio)).all() if es_envio_mundo2(e)]
+    from app.services.fletes_km_service import preparar_contexto_km
+
     tarifario_ctx = TarifarioContext(db)
+    dist = preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=0)
     casos_fletes = {
         c.get("_caso_id") or c.get("REMITOS"): c
         for c in construir_fletes(
-            envios, tarifario_ctx=tarifario_ctx, db=db
+            envios, tarifario_ctx=tarifario_ctx, db=db, distancias=dist
         )
     }
     mapa_remito_caso: dict[str, dict] = {}
@@ -439,8 +442,13 @@ def listar_detalle_internos(
 
     mapa_f = mapa_fletero_por_remito(db)
     envios = [e for e in db.scalars(select(Envio)).all() if es_envio_mundo2(e)]
+    from app.services.fletes_km_service import preparar_contexto_km
+
     tarifario_ctx = TarifarioContext(db)
-    casos = construir_fletes(envios, tarifario_ctx=tarifario_ctx, db=db, mapa_fletero=mapa_f)
+    dist = preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=0)
+    casos = construir_fletes(
+        envios, tarifario_ctx=tarifario_ctx, db=db, distancias=dist, mapa_fletero=mapa_f
+    )
 
     q = (
         select(FleteSolicitud, Fletero)

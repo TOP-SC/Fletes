@@ -12,6 +12,7 @@ from app.services.costo_conceptos import debe_calcular_costo_proveedor
 from app.services.remito_maestro import estado_remito_envio, remito_oficial_envio
 from app.transporte_reglas import (
     COD_CROSSDOCKING,
+    COD_ENTREGA_CLIENTE,
     COD_EXPRESO_CLICPAQ,
     normalizar_transporte_cod,
     resolver_circuito_logistico,
@@ -24,13 +25,34 @@ class AlertaGrilla(TypedDict):
     motivo: str
 
 
+def _requiere_remito_cd(envio: Envio) -> bool:
+    """
+    Remito oficial R/RAR del CD: obligatorio en red CLICPAQ (51, 82, 40 interior).
+    No aplica en 40 AMBA/GBA (flete sucursal local) ni en retiros/excluidos.
+    """
+    if envio.excluir_planilla:
+        return False
+    cod = normalizar_transporte_cod(envio.transporte_cod, envio.transporte_nombre)
+    if cod in (COD_EXPRESO_CLICPAQ, COD_CROSSDOCKING):
+        return True
+    if cod == COD_ENTREGA_CLIENTE:
+        circuito = resolver_circuito_logistico(
+            envio.transporte_cod,
+            envio.transporte_nombre,
+            provincia=envio.provincia,
+            localidad=envio.localidad,
+            cp=envio.cp,
+        )
+        return circuito["modo"] == "red_clicpaq"
+    return False
+
+
 def _falta_remito_operativo(envio: Envio) -> bool:
-    if envio.excluir_planilla or remito_oficial_envio(envio):
+    if remito_oficial_envio(envio):
         return False
     if not (envio.fecha_entrega or envio.fecha_entrega_d):
         return False
-    cod = normalizar_transporte_cod(envio.transporte_cod, envio.transporte_nombre)
-    if cod not in (COD_EXPRESO_CLICPAQ, COD_CROSSDOCKING):
+    if not _requiere_remito_cd(envio):
         return False
     return estado_remito_envio(envio) in ("sin_remito", "solo_transito")
 
@@ -106,7 +128,7 @@ def alertas_maestro_grilla(
         out.append(
             {
                 "codigo": "remito",
-                "columnas": ["REMITOS", "ESTADO REMITO"],
+                "columnas": ["REMITOS"],
                 "motivo": "Falta remito oficial (R/RAR)",
             }
         )

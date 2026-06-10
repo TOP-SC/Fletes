@@ -37,6 +37,7 @@ _MIGRATIONS: dict[str, list[tuple[str, str]]] = {
         ("fecha_entrega_d", "DATE"),
     ],
     "tarifas": [("cedol", "VARCHAR(40)"), ("version_id", "INTEGER")],
+    "flete_distancias": [("domicilio_fp", "VARCHAR(64)")],
 }
 
 

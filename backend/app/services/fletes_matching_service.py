@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -28,6 +29,18 @@ ALIAS_LOCALIDAD_SUCURSAL: dict[str, str] = {
     "RINCON DE MILBERG": "ND",
     "NORDELTA": "ND",
     "GENERAL PACHECO": "GP",
+    "PACHECO": "GP",
+    "TRONCOS DEL TALAR": "ND",
+    "LOMAS DE PALOMAR": "LO",
+    "CIUDAD JARDIN": "LO",
+    "PALOMAR": "LO",
+    "CIUDADELA": "SJ",
+    "MUNIZ": "MO",
+    "HURLINGHAM": "PL",
+    "ITUZAINGO": "PL",
+    "WILDE": "AV",
+    "BERAZATEGUI": "QU",
+    "BERAZATGUI": "QU",
     "LA LONJA": "PI",
     "DEL VISO": "PI",
     "MANZANARES": "PI",
@@ -94,7 +107,8 @@ def limpiar_fragmento(texto: str | None) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = re.sub(
-        r"^(CASA|DEPTO|DPTO|DIREC(?:CION)?\s*GEO|DIRECCION\s*COMERCIAL)\s*:?\s*",
+        r"^(CASA|PRINCIPAL|TRABAJO|LABORAL|ENTREGA|FISCAL|DEPTO|DPTO|"
+        r"DIREC(?:CION)?\s*GEO|DIRECCION\s*COMERCIAL)\s*:?\s*",
         "",
         s,
         flags=re.IGNORECASE,
@@ -110,6 +124,20 @@ def _provincia_query(envio: Envio) -> str:
     if prov.upper() in ("CAPITAL FEDERAL", "CABA"):
         return "Ciudad Autónoma de Buenos Aires"
     return prov
+
+
+def fingerprint_domicilio(envio: Envio) -> str | None:
+    """Clave estable domicilio+localidad+cp (reutilizar geocodificación entre remitos)."""
+    partes = [
+        limpiar_fragmento(envio.domicilio),
+        limpiar_fragmento(envio.localidad),
+        limpiar_fragmento(envio.cp),
+        _provincia_query(envio),
+    ]
+    texto = "|".join(norm_texto(p) for p in partes if p)
+    if len(texto) < 8:
+        return None
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()[:32]
 
 
 def texto_destino_envio(envio: Envio) -> str:
@@ -149,14 +177,65 @@ _CABA_BARRIOS = frozenset(
         "BARRACAS",
         "LA BOCA",
         "PUERTO MADERO",
+        "VILLA URQUIZA",
+        "VILLA PUEYRREDON",
+        "SAAVEDRA",
+        "COGHLAN",
+        "VILLA DEVOTO",
+        "VILLA DEL PARQUE",
+        "MONTE CASTRO",
+        "VELEZ SARSFIELD",
+        "LINIERS",
+        "MATADEROS",
+        "PARQUE CHACABUCO",
+        "VILLA SOLDATI",
+        "VILLA LUGANO",
+        "POMPEYA",
+        "CONSTITUCION",
     }
 )
+
+# Barrio CABA → sucursal de referencia (cuando localidad Tango es genérica)
+_BARRIO_CABA_SUCURSAL: dict[str, str] = {
+    "BOEDO": "FL",
+    "ALMAGRO": "FL",
+    "CABALLITO": "FL",
+    "FLORES": "FL",
+    "PARQUE PATRICIOS": "FL",
+    "BALVANERA": "FL",
+    "SAN TELMO": "FL",
+    "BARRACAS": "FL",
+    "LA BOCA": "FL",
+    "POMPEYA": "FL",
+    "CONSTITUCION": "FL",
+    "LINIERS": "FL",
+    "MATADEROS": "FL",
+    "VELEZ SARSFIELD": "FL",
+    "MONTE CASTRO": "FL",
+    "VILLA DEL PARQUE": "FL",
+    "VILLA DEVOTO": "FL",
+    "VILLA CRESPO": "FL",
+    "RECOLETA": "SF",
+    "PALERMO": "SF",
+    "BELGRANO": "CO",
+    "NUNEZ": "CO",
+    "COGHLAN": "CO",
+    "VILLA URQUIZA": "CO",
+    "VILLA PUEYRREDON": "CO",
+    "SAAVEDRA": "CO",
+    "PUERTO MADERO": "SF",
+    "VILLA SOLDATI": "PL",
+    "VILLA LUGANO": "PL",
+    "PARQUE CHACABUCO": "FL",
+}
 
 
 def es_destino_caba(envio: Envio) -> bool:
     prov = norm_texto(envio.provincia)
     loc = norm_texto(envio.localidad)
-    if prov in _CABA_PROVINCIAS or "CAPITAL FEDERAL" in prov:
+    if prov in _CABA_PROVINCIAS or "CAPITAL FEDERAL" in prov or prov == "FEDERAL":
+        return True
+    if loc in ("CABA", "CAPITAL FEDERAL", "CIUDAD AUTONOMA DE BUENOS AIRES"):
         return True
     if loc in _CABA_BARRIOS:
         return True
@@ -164,22 +243,62 @@ def es_destino_caba(envio: Envio) -> bool:
     return any(b in dom for b in _CABA_BARRIOS)
 
 
+def barrio_caba_desde_envio(envio: Envio) -> str | None:
+    """Detecta barrio en domicilio o localidad (CABA con localidad genérica en Tango)."""
+    dom = norm_texto(envio.domicilio)
+    loc = norm_texto(envio.localidad)
+    for barrio in sorted(_CABA_BARRIOS, key=len, reverse=True):
+        if barrio in dom or barrio in loc:
+            return barrio
+    return None
+
+
 def texto_alias_sucursal(envio: Envio) -> str:
     """Localidad + provincia; en CABA agrega barrio del domicilio (sin nombre de calle)."""
     partes: list[str] = []
-    if es_destino_caba(envio):
-        dom = norm_texto(envio.domicilio)
-        for barrio in sorted(_CABA_BARRIOS, key=len, reverse=True):
-            if barrio in dom:
-                partes.append(barrio)
-                break
+    barrio = barrio_caba_desde_envio(envio)
+    if barrio:
+        partes.append(barrio)
     loc = norm_texto(envio.localidad)
-    if loc and loc not in partes:
+    if loc and loc not in partes and loc not in _CLAVES_GENERICAS:
         partes.append(loc)
     prov = norm_texto(envio.provincia)
-    if prov:
+    if prov and prov not in _CLAVES_GENERICAS:
         partes.append(prov)
     return " ".join(partes)
+
+
+def textos_match_sucursal(envio: Envio) -> list[str]:
+    """Candidatos de texto para inferir sucursal (más específico primero)."""
+    vistos: set[str] = set()
+    out: list[str] = []
+    for raw in (
+        texto_alias_sucursal(envio),
+        limpiar_fragmento(envio.domicilio),
+        limpiar_fragmento(envio.localidad),
+        texto_destino_envio(envio),
+    ):
+        t = norm_texto(raw)
+        if not t or t in vistos:
+            continue
+        vistos.add(t)
+        out.append(t)
+    return out
+
+
+def match_sucursal_envio(
+    db: Session,
+    envio: Envio,
+) -> tuple[str | None, str | None]:
+    """Busca código sucursal probando alias, domicilio y localidad."""
+    barrio = barrio_caba_desde_envio(envio)
+    if barrio and barrio in _BARRIO_CABA_SUCURSAL:
+        return _BARRIO_CABA_SUCURSAL[barrio], barrio
+    for texto in textos_match_sucursal(envio):
+        cod, clave = match_localidad_sucursal(db, texto, envio=envio)
+        if cod:
+            return cod, clave
+    return None, None
 
 
 def _clave_coincide_en_destino(clave: str, norm: str, envio: Envio) -> bool:
@@ -202,11 +321,9 @@ def variantes_query_destino(envio: Envio) -> list[tuple[str, str]]:
     cp = limpiar_fragmento(envio.cp)
     out: list[tuple[str, str]] = []
 
+    loc_norm = norm_texto(loc)
     if es_destino_caba(envio):
-        barrio = next(
-            (b for b in _CABA_BARRIOS if b in norm_texto(dom) or b in norm_texto(loc)),
-            None,
-        )
+        barrio = barrio_caba_desde_envio(envio)
         if barrio and dom:
             out.insert(
                 0,
@@ -214,6 +331,11 @@ def variantes_query_destino(envio: Envio) -> list[tuple[str, str]]:
                     "caba_barrio",
                     ", ".join(p for p in (dom, barrio.title(), prov, cp) if p),
                 ),
+            )
+        if dom and loc_norm in _CLAVES_GENERICAS:
+            out.insert(
+                0,
+                ("caba_domicilio", ", ".join(p for p in (dom, "CABA", "Argentina") if p)),
             )
     if dom and loc:
         out.append(("completa", ", ".join(p for p in (dom, loc, prov, cp) if p)))
@@ -368,8 +490,7 @@ def resolver_sucursal(
         if suc and suc.lat is not None:
             return ResultadoSucursal(sucursal=suc, metodo="deposito" if not sucursal_cod else "explicito")
 
-    texto_alias = texto_alias_sucursal(envio) or texto_destino_envio(envio)
-    alias_cod, alias_key = match_localidad_sucursal(db, texto_alias, envio=envio)
+    alias_cod, alias_key = match_sucursal_envio(db, envio)
 
     if dest and dest.lat and dest.lon:
         suc = sucursal_mas_cercana(

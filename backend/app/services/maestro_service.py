@@ -496,7 +496,9 @@ def detalle_caso(
         from app.services.cobro_logistica_service import calcular_cobro_linea
         from app.services.fletes_km_service import info_distancia_sucursal_destino
 
-        result["distancia_sucursal"] = info_distancia_sucursal_destino(db, lineas[0])
+        result["distancia_sucursal"] = info_distancia_sucursal_destino(
+            db, lineas[0], intentar_calculo=True
+        )
         from app.services.pedido_cobro_service import interpretar_pedido
 
         cobro_grupo = calcular_cobro_grupo(lineas, tarifas_db, db=db)

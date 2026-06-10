@@ -49,8 +49,10 @@ def listar_maestro(
         fecha_hasta=filtros.get("fecha_hasta"),
         campo_fecha=str(filtros.get("campo_fecha") or "cualquiera"),
     )
+    from app.services.fletes_km_service import preparar_contexto_km
     from app.services.tarifario_version_service import TarifarioContext
 
+    preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=0)
     tarifario_ctx = TarifarioContext(db)
     filas = construir_maestro(
         envios,
@@ -109,8 +111,16 @@ def exportar_maestro(
     db: Session = Depends(get_db),
     incluir_excluidos: bool = Query(True),
 ) -> Response:
+    """Export Excel maestro. Solo lectura — usa cache km existente (sin enrich masivo)."""
     envios = list(db.scalars(select(Envio)).all())
-    data = export_maestro_wamaro(envios, incluir_excluidos=incluir_excluidos)
+    try:
+        data = export_maestro_wamaro(envios, incluir_excluidos=incluir_excluidos, db=db)
+    except Exception as exc:
+        from fastapi import HTTPException
+        import logging
+
+        logging.getLogger(__name__).exception("export maestro")
+        raise HTTPException(status_code=500, detail=f"Error al exportar: {exc}") from exc
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

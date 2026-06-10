@@ -350,30 +350,14 @@ def resolver_zona_km_pedido(
 
     base = lineas_pedido[0]
 
-    rn = base.remito_norm
-
-    if db and rn:
-
-        from app.models import FleteDistancia
-
-
-
-        dist = db.get(FleteDistancia, rn)
-
-        if dist and dist.zona_km:
-
-            return dist.zona_km
-
     if db:
+        from app.services.fletes_km_service import obtener_distancia_caso, preview_flete_caso
 
-        from app.services.fletes_km_service import preview_flete_caso
-
-
-
+        dist = obtener_distancia_caso(db, base, intentar_reuso_domicilio=True)
+        if dist and dist.zona_km:
+            return dist.zona_km
         prev = preview_flete_caso(db, base)
-
         if prev.get("zona_km"):
-
             return str(prev["zona_km"])
 
     return None

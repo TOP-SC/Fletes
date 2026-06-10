@@ -186,21 +186,21 @@
         (cierre de mes sin Excel paralelo) y similitud con el maestro manual de producción.
       </p>
       <div class="meta">
-        Generado: 2 junio 2026 · Build API: <code>fletes-luces-alerta-columna-2026-06-05</code> ·
-        Base local: <code>data/fletes.db</code> (23.649 renglones)
+        Generado: 2 junio 2026 · Build API: <code>fletes-export-fix-2026-06-02</code> ·
+        Base local: <code>data/fletes.db</code> (4.998 renglones)
       </div>
     </header>
 
     <div class="kpi-row">
       <div class="kpi ok">
         <div class="label">Desarrollo (código)</div>
-        <div class="value">78%</div>
-        <div class="sub">Falta ~22% para funcionalidad completa</div>
+        <div class="value">84%</div>
+        <div class="sub">Falta ~16% para funcionalidad completa</div>
       </div>
       <div class="kpi warn">
         <div class="label">Operación lista</div>
-        <div class="value">58%</div>
-        <div class="sub">Falta ~42% para cerrar mes sin Excel manual</div>
+        <div class="value">62%</div>
+        <div class="sub">Falta ~38% para cerrar mes sin Excel manual</div>
       </div>
       <div class="kpi">
         <div class="label">Similitud maestro manual</div>
@@ -223,7 +223,7 @@
           <h3>Desarrollo — hecho vs pendiente</h3>
           <canvas id="chartDevGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">78%</div>
+            <div class="big">84%</div>
             <div class="small">desarrollado</div>
           </div>
         </div>
@@ -231,15 +231,15 @@
           <h3>Operación — lista vs falta</h3>
           <canvas id="chartOpsGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">58%</div>
+            <div class="big">62%</div>
             <div class="small">operativo</div>
           </div>
         </div>
       </div>
       <div class="callout">
-        <strong>Lectura:</strong> la app está bien construida (~78%), con alertas operativas y luces por columna
-        en grilla. El cuello de botella sigue siendo operativo: prefactura, macheo Clickpack, import SA/Limansky
-        y fleteros casi sin uso en producción.
+        <strong>Lectura:</strong> la app está bien construida (~84%), con pipeline unificado de km/zona/sucursal
+        (geocodificación, cache por domicilio, casos sin remito) y export Excel corregido. El cuello de botella
+        sigue siendo operativo: prefactura, macheo Clickpack, import SA/Limansky y fleteros casi sin uso en producción.
       </div>
     </section>
 
@@ -277,9 +277,9 @@
             <td>Prefactura + macheo en rutina, export Excel</td>
           </tr>
           <tr>
-            <td><strong>M2 Fletes</strong></td><td>60%</td><td>40%</td>
+            <td><strong>M2 Fletes</strong></td><td>82%</td><td>55%</td>
             <td><span class="badge badge-warn">Parcial</span></td>
-            <td>Tango sucursal origen, km masivo, prefactura Gama/Blast</td>
+            <td>Prefactura Gama/Blast; más km reales en rutina (3.311 cache hoy)</td>
           </tr>
           <tr>
             <td><strong>Fleteros locales</strong></td><td>48%</td><td>8%</td>
@@ -292,9 +292,9 @@
             <td>Spec + reglas edge cases interior</td>
           </tr>
           <tr>
-            <td><strong>Infra / UI</strong></td><td>93%</td><td>87%</td>
+            <td><strong>Infra / UI</strong></td><td>95%</td><td>90%</td>
             <td><span class="badge badge-ok">Sólido</span></td>
-            <td>Depósito en imports viejos; alertas + luces por columna listas</td>
+            <td>Export Excel lazy (sin saturar API); alertas + luces por columna listas</td>
           </tr>
         </tbody>
       </table>
@@ -333,15 +333,16 @@
       <table style="margin-top:1rem">
         <thead><tr><th>Indicador</th><th>Valor</th><th>Interpretación</th></tr></thead>
         <tbody>
-          <tr><td>Total renglones Tango</td><td><strong>23.649</strong></td><td>8 lotes importados — pipeline OK</td></tr>
+          <tr><td>Total renglones Tango</td><td><strong>4.998</strong></td><td>Base actual en instalación local</td></tr>
           <tr><td>Tarifas cargadas</td><td><strong>1.775</strong></td><td>Tarifario operativo</td></tr>
-          <tr><td>Con costo tarifario</td><td><strong>22.600 (96%)</strong></td><td>Cálculo automático mayormente aplicado</td></tr>
+          <tr><td>Con costo tarifario</td><td><strong>2.440 (49%)</strong></td><td>AMBA/GBA y casos con tarifa asignada</td></tr>
+          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.311</strong></td><td>~815 km reales + ~2.496 estimados; 49 por <code>pedido-</code> sin remito</td></tr>
           <tr><td>Prefactura cargada</td><td><strong>0</strong></td><td>Conciliación no en uso</td></tr>
           <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Cruce no corrido en producción</td></tr>
           <tr><td>Depósito SA (12)</td><td><strong>0</strong></td><td>WAMARO SA / Limansky sin importar</td></tr>
-          <tr><td>Sin depósito</td><td><strong>22.496</strong></td><td>Imports viejos — columna incompleta</td></tr>
-          <tr><td>Elegir proveedor</td><td><strong>14</strong></td><td>Empates tarifario pendientes (bajó tras reglas por transporte)</td></tr>
-          <tr><td>Fleteros Drive</td><td><strong>268 / 3 matcheados</strong></td><td>1,1% de cruce efectivo</td></tr>
+          <tr><td>Depósito 2 (Tortuguitas)</td><td><strong>227</strong></td><td>Resto sin depósito explícito en import actual</td></tr>
+          <tr><td>Elegir proveedor</td><td><strong>0</strong></td><td>Empates resueltos por reglas de transporte</td></tr>
+          <tr><td>Fleteros Drive</td><td><strong>sin tabla activa</strong></td><td>Módulo listo en código; falta import rutinario</td></tr>
         </tbody>
       </table>
     </section>
@@ -384,32 +385,48 @@
       </table>
     </section>
 
+    <!-- ENTREGAS RECIENTES -->
+    <section>
+      <h2>Entregas recientes (junio 2026)</h2>
+      <p class="intro">Lo implementado en código desde el último reporte de avance.</p>
+      <table>
+        <thead><tr><th>Área</th><th>Entrega</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td>M2 Fletes — km</td><td>Pipeline unificado: geocodificación, cache <code>domicilio_fp</code>, reuso entre remitos, auto-calc en detalle</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>M2 Fletes — domicilio</td><td>Limpieza <code>PRINCIPAL:</code>/<code>CASA:</code>; casos sin remito con clave <code>pedido-…</code></td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Alertas</td><td>Transporte 51 vs 40; remito CD solo donde aplica; una luz por columna</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Export maestro</td><td>Excel bajo demanda (sin llamar API en cada rerun); ~11 s vs ~78 s</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Cobro / maestro</td><td><code>resolver_zona_km_pedido</code> alineado con cache domicilio</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Operación</td><td>Prefactura + macheo Clickpack + import SA en rutina</td><td><span class="badge badge-bad">Pendiente</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <!-- ROADMAP -->
     <section>
       <h2>Camino a finalización — prioridades</h2>
-      <p class="intro">Acciones ordenadas por impacto en operación (sin código nuevo).</p>
+      <p class="intro">Acciones ordenadas por impacto en operación.</p>
       <ol class="steps">
-        <li><strong>Reaplicar reglas y proveedores</strong> (transporte→proveedor, alertas operativas) <span class="impact">+5–8% operación</span></li>
         <li><strong>Import + uso diario prefactura Clickpack</strong> + ejecutar macheo <span class="impact">+12–15%</span></li>
         <li><strong>Import Tango SA / Limansky</strong> (depósito 12, pedidos 102xxxxx) <span class="impact">+8–10%</span></li>
+        <li><strong>Km reales en rutina</strong> — botón batch 500/1000 tras cada import Tango <span class="impact">+5–8%</span></li>
         <li><strong>Mejorar macheo fleteros</strong> (destinatario / remito) <span class="impact">+3–5%</span></li>
-        <li><strong>Export maestro Excel</strong> pulido (pendiente) <span class="impact">+5%</span></li>
-        <li><strong>M2:</strong> Tango con sucursal + prefactura Gama/Blast <span class="impact">+8%</span></li>
+        <li><strong>M2:</strong> prefactura Gama/Blast <span class="impact">+6%</span></li>
         <li><strong>M3:</strong> duplicados interior <span class="impact">+5% dev / +3% ops</span></li>
       </ol>
       <div class="callout" style="margin-top:1.25rem">
-        <strong>Si hacés solo 3 cosas esta semana:</strong> (1) Reaplicar reglas,
-        (2) Importar prefactura + macheo, (3) Importar Tango SA —
-        la operación podría subir de <strong>58% → 73–76%</strong>.
+        <strong>Si hacés solo 3 cosas esta semana:</strong> (1) Importar prefactura + macheo,
+        (2) Importar Tango SA, (3) Correr <strong>Km reales (1000)</strong> en Fletes —
+        la operación podría subir de <strong>62% → 75–78%</strong>.
       </div>
     </section>
 
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        La app está <strong>~78% construida</strong>, pero <strong>~58% lista</strong> para reemplazar
-        el Excel de producción. El gap principal no es programar más, sino <strong>usar en rutina</strong>
-        prefactura, macheo, SA y fleteros.
+        La app está <strong>~84% construida</strong>, pero <strong>~62% lista</strong> para reemplazar
+        el Excel de producción. M2 Fletes ya geocodifica domicilios y cachea km; el gap principal sigue siendo
+        <strong>usar en rutina</strong> prefactura, macheo, SA y fleteros.
       </p>
     </section>
 
@@ -471,30 +488,30 @@
     }
 
     // Global
-    pctDonut("chartDevGlobal", 78, "Desarrollado", "Pendiente");
-    pctDonut("chartOpsGlobal", 58, "Operativo", "Falta", palette.warn);
+    pctDonut("chartDevGlobal", 84, "Desarrollado", "Pendiente");
+    pctDonut("chartOpsGlobal", 62, "Operativo", "Falta", palette.warn);
 
     // Módulos dev
     pctDonut("chartM1Dev", 97, "Hecho", "Pendiente");
-    pctDonut("chartM2Dev", 60, "Hecho", "Pendiente", palette.info);
+    pctDonut("chartM2Dev", 82, "Hecho", "Pendiente", palette.info);
     pctDonut("chartFleDev", 48, "Hecho", "Pendiente", palette.purple);
     pctDonut("chartM3Dev", 15, "Hecho", "Pendiente", palette.bad);
-    pctDonut("chartInfraDev", 93, "Hecho", "Pendiente");
+    pctDonut("chartInfraDev", 95, "Hecho", "Pendiente");
 
     // Módulos ops
     pctDonut("chartM1Ops", 74, "Listo", "Falta");
-    pctDonut("chartM2Ops", 40, "Listo", "Falta", palette.info);
+    pctDonut("chartM2Ops", 55, "Listo", "Falta", palette.info);
     pctDonut("chartFleOps", 8, "Listo", "Falta", palette.bad);
     pctDonut("chartM3Ops", 5, "Listo", "Falta", palette.bad);
-    pctDonut("chartInfraOps", 87, "Listo", "Falta");
+    pctDonut("chartInfraOps", 90, "Listo", "Falta");
 
     // DB
-    donut("chartClasif", ["Interior (16.293)", "AMBA/GBA (7.356)"], [16293, 7356], [palette.interior, palette.amba]);
-    donut("chartColores", ["Verde (15.862)", "Amarillo (1.043)", "Gris (6.744)"], [15862, 1043, 6744], [palette.verde, palette.amarillo, palette.gris]);
-    donut("chartDeposito", ["Sin depósito (22.496)", "Dep. 2 (1.153)", "Dep. 12 SA (0)"], [22496, 1153, 0], [palette.bad, palette.info, palette.pending]);
-    donut("chartCosto", ["Con costo (22.600)", "Sin costo (1.049)"], [22600, 1049], [palette.done, palette.pending]);
-    donut("chartFleteros", ["Matcheados (3)", "Pendientes (265)"], [3, 265], [palette.done, palette.warn]);
-    donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (23.649)"], [0, 23649], [palette.done, palette.bad]);
+    donut("chartClasif", ["Interior (2.645)", "AMBA/GBA (2.353)"], [2645, 2353], [palette.interior, palette.amba]);
+    donut("chartColores", ["Amarillo (2.216)", "Verde (1.401)", "Gris (1.238)", "Naranja (143)"], [2216, 1401, 1238, 143], [palette.amarillo, palette.verde, palette.gris, palette.warn]);
+    donut("chartDeposito", ["Sin depósito (4.771)", "Dep. 2 (227)", "Dep. 12 SA (0)"], [4771, 227, 0], [palette.bad, palette.info, palette.pending]);
+    donut("chartCosto", ["Con costo (2.440)", "Sin costo (2.558)"], [2440, 2558], [palette.done, palette.pending]);
+    donut("chartFleteros", ["Matcheados (0)", "Sin import activo"], [1, 99], [palette.done, palette.warn]);
+    donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (4.998)"], [0, 4998], [palette.done, palette.bad]);
 
     // Maestro
     pctDonut("chartSimGlobal", 60, "Similar", "Diferente", palette.info);

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,8 +15,20 @@ from app.services.fletes_internos_service import (
     resumen_fleteros,
 )
 from app.services.envio_query_service import cargar_envios_filtrados
-from app.services.fletes_km_service import calcular_pendientes, mapa_distancias
-from app.services.mundo2_service import FLETES_COLUMNAS, construir_fletes, stats_mundo2
+from app.services.fletes_km_service import (
+    calcular_o_reusar_distancia,
+    calcular_pendientes,
+    enriquecer_previews_pendientes,
+    info_distancia_sucursal_destino,
+    preparar_contexto_km,
+)
+from app.services.mundo2_service import (
+    FLETES_COLUMNAS,
+    _agrupar_por_caso,
+    construir_fletes,
+    es_envio_mundo2,
+    stats_mundo2,
+)
 from app.api.routes.casos_filtros import build_filtros_casos
 
 router = APIRouter(prefix="/fletes", tags=["fletes"])
@@ -101,7 +113,7 @@ def listar_casos_fletes(
     from app.services.tarifario_version_service import TarifarioContext
 
     tarifario_ctx = TarifarioContext(db)
-    dist = mapa_distancias(db)
+    dist = preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=30)
     mapa_f = mapa_fletero_por_remito(db)
     return construir_fletes(
         envios,
@@ -121,14 +133,67 @@ def columnas_fletes() -> dict:
     return {"columnas": FLETES_COLUMNAS}
 
 
+@router.post("/enriquecer-preview")
+def post_enriquecer_preview(
+    db: Session = Depends(get_db),
+    limit: int | None = Query(None, ge=1, le=20000),
+) -> dict:
+    """Preview rápido: sucursal por localidad/barrio CABA + km estimado (sin geocodificar)."""
+    envios = list(db.scalars(select(Envio)).all())
+    return enriquecer_previews_pendientes(db, envios, limit=limit)
+
+
 @router.post("/calcular-km")
 def post_calcular_km(
     db: Session = Depends(get_db),
-    limit: int = Query(25, ge=1, le=80),
+    limit: int = Query(500, ge=1, le=1000),
 ) -> dict:
-    """Geocodifica y calcula km/zona (Nominatim/ORS). Procesa hasta `limit` casos nuevos."""
+    """Geocodifica y calcula km/zona reales (Nominatim/ORS). Hasta `limit` casos pendientes."""
     envios = list(db.scalars(select(Envio)).all())
     return calcular_pendientes(db, envios, limit=limit)
+
+
+def _resolver_grupo_caso(envios: list[Envio], caso_id: str):
+    grupos = _agrupar_por_caso(envios)
+    grupo = grupos.get(caso_id)
+    if grupo:
+        return grupo
+    for g in grupos.values():
+        if any((e.remito or "") == caso_id for e in g):
+            return g
+    return None
+
+
+@router.post("/caso/{caso_id}/calcular-km")
+def post_calcular_km_caso(
+    caso_id: str,
+    db: Session = Depends(get_db),
+    forzar: bool = Query(False, description="Recalcular aunque ya exista km real"),
+) -> dict:
+    """Geocodifica el domicilio del caso (detalle) y persiste sucursal/km/zona."""
+    envios = list(db.scalars(select(Envio)).all())
+    grupo = _resolver_grupo_caso(envios, caso_id)
+    if not grupo:
+        raise HTTPException(status_code=404, detail="Caso no encontrado")
+    base = grupo[0]
+    if not es_envio_mundo2(base):
+        raise HTTPException(status_code=400, detail="No aplica fletes AMBA/GBA")
+    try:
+        row = calcular_o_reusar_distancia(db, base, forzar=forzar)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not row:
+        raise HTTPException(
+            status_code=400,
+            detail="Sin domicilio/localidad para geocodificar",
+        )
+    info = info_distancia_sucursal_destino(db, base)
+    return {
+        "caso_id": caso_id,
+        "distancia_sucursal": info,
+        "remito_norm": row.remito_norm,
+        "domicilio_fp": row.domicilio_fp,
+    }
 
 
 @router.get("/fleteros")

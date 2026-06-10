@@ -57,7 +57,7 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "fletes-luces-alerta-columna-2026-06-05"
+API_BUILD_ESPERADO = "fletes-export-fix-2026-06-02"
 
 
 def _as_dataframe(data: object) -> pd.DataFrame:
@@ -715,29 +715,34 @@ def _render_distancia_sucursal(info: dict[str, Any] | None) -> None:
     if nombre:
         suc_txt += f" ({nombre})"
 
-    destino = (info.get("destino") or "—").strip()
+    domicilio = (info.get("domicilio") or info.get("destino") or "—").strip()
     km = info.get("distance_km")
     zona = (info.get("zona_etiqueta") or info.get("zona_km") or "").strip()
+
+    if info.get("error_calculo"):
+        st.warning(f"No se pudo geocodificar: {info['error_calculo']}")
 
     if km is not None:
         km_f = float(km)
         km_txt = f"~{km_f:,.1f} km".replace(",", ".") if info.get("es_estimado") else f"{km_f:,.1f} km".replace(",", ".")
         tipo_km = "estimado" if info.get("es_estimado") else "por ruta"
-        linea = f"{origen}: {suc_txt} → **{destino}** · **{km_txt}** ({tipo_km})"
+        linea = f"{origen}: {suc_txt} → **{domicilio}** · **{km_txt}** ({tipo_km})"
         if zona:
             linea += f" · Zona **{zona}**"
         st.markdown(linea)
-        if info.get("es_estimado") or info.get("pendiente_calculo"):
+        if info.get("desde_cache_domicilio"):
+            st.caption("Km reutilizado de otro remito con el mismo domicilio (sin nueva geocodificación).")
+        elif info.get("es_estimado") or info.get("pendiente_calculo"):
             st.caption(
-                "Para la distancia real al domicilio, usá **Fletes → Calcular km** "
-                "(geocodifica la dirección y mide la ruta desde la sucursal)."
+                "Km estimado por localidad. Para medir la ruta real al domicilio, "
+                "usá **Fletes → Calcular km** o el botón de abajo."
             )
     elif cod != "—":
         st.info(
             f"{origen}: **{cod}**"
             + (f" ({nombre})" if nombre else "")
-            + f" → **{destino}**. "
-            "Todavía no hay km calculado — andá a **Fletes → Calcular km**."
+            + f" → **{domicilio}**. "
+            "Todavía no hay km calculado."
         )
     else:
         st.caption("Sin sucursal asignada todavía para este envío local.")
@@ -838,7 +843,21 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
         except json.JSONDecodeError:
             pass
 
-    _render_distancia_sucursal(det.get("distancia_sucursal"))
+    dist_info = det.get("distancia_sucursal") or {}
+    _render_distancia_sucursal(dist_info)
+    if dist_info.get("aplica") and (dist_info.get("pendiente_calculo") or dist_info.get("es_estimado")):
+        col_km, _ = st.columns([1, 3])
+        with col_km:
+            if st.button("Calcular km real", key=f"calc_km_{caso_id}", type="primary"):
+                try:
+                    with api_client() as c:
+                        r = c.post(f"/fletes/caso/{caso_id}/calcular-km")
+                        r.raise_for_status()
+                    get_fletes_casos_cached.clear()
+                    st.success("Distancia calculada — actualizando detalle…")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"No se pudo calcular: {exc}")
 
     st.markdown("#### Resumen maestro")
     m_cols = [k for k in m.keys() if not k.startswith("_")]
@@ -1663,15 +1682,30 @@ def pagina_casos(
             _render_grilla_con_detalle(show_df, df, sel_key=sel_key)
 
         if not solo_pendiente_proveedor and not modo_elegir_proveedor:
-            with api_client() as c:
-                r = c.get("/maestro/export", params={"incluir_excluidos": incluir_excl})
-                r.raise_for_status()
-            st.download_button(
-                "Exportar planilla Excel (Tortuguitas + SA)",
-                r.content,
-                file_name="maestro_wamaro.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+            export_key = f"{key_prefix}_export_xlsx"
+            if st.button(
+                "Generar planilla Excel (Tortuguitas + SA)",
+                key=f"{key_prefix}_export_btn",
+                type="secondary",
+            ):
+                try:
+                    with st.spinner("Generando Excel… puede tardar 1–2 minutos con muchos registros."):
+                        with httpx.Client(base_url=API_URL, timeout=300.0) as c:
+                            r = c.get("/maestro/export", params={"incluir_excluidos": incluir_excl})
+                            r.raise_for_status()
+                        st.session_state[export_key] = r.content
+                    st.success("Planilla lista — usá el botón de descarga.")
+                except Exception as exc:
+                    st.error(f"No se pudo exportar: {exc}")
+
+            if st.session_state.get(export_key):
+                st.download_button(
+                    "Descargar maestro_wamaro.xlsx",
+                    st.session_state[export_key],
+                    file_name="maestro_wamaro.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"{key_prefix}_export_dl",
+                )
 
     except Exception as exc:
         st.error(str(exc))
@@ -1945,23 +1979,64 @@ def pagina_fletes() -> None:
         opciones_f = ["Todos"]
     fletero_f = f4.selectbox("Fletero local", opciones_f, key="fletes_fletero")
 
-    c_calc, _ = st.columns([2, 4])
-    if c_calc.button("Calcular km pendientes (hasta 25)", key="fletes_calc_km"):
+    if not st.session_state.get("fletes_preview_ok"):
         try:
             with api_client() as c:
-                r = c.post("/fletes/calcular-km", params={"limit": 25})
+                r = c.post("/fletes/enriquecer-preview")
                 r.raise_for_status()
-                st.toast(r.json())
+                st.session_state["fletes_preview_ok"] = True
+                st.session_state["fletes_preview_stats"] = r.json()
+                get_fletes_casos_cached.clear()
+        except Exception:
+            pass
+
+    c_prev, c_km500, c_km1000, _ = st.columns([2, 2, 2, 2])
+    if c_prev.button("Actualizar preview (alias/barrio)", key="fletes_enrich_preview"):
+        try:
+            with api_client() as c:
+                r = c.post("/fletes/enriquecer-preview")
+                r.raise_for_status()
+                st.session_state["fletes_preview_stats"] = r.json()
+                get_fletes_casos_cached.clear()
             st.rerun()
         except Exception as exc:
             st.error(str(exc))
 
+    def _calcular_km_fletes(limite: int) -> None:
+        try:
+            with st.spinner(f"Calculando km reales (hasta {limite})…"):
+                with api_client() as c:
+                    r = c.post("/fletes/calcular-km", params={"limit": limite})
+                    r.raise_for_status()
+                    st.session_state["fletes_km_stats"] = r.json()
+                get_fletes_casos_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+    if c_km500.button("Km reales (500)", key="fletes_calc_km_500"):
+        _calcular_km_fletes(500)
+    if c_km1000.button("Km reales (1000)", key="fletes_calc_km_1000"):
+        _calcular_km_fletes(1000)
+
+    prev_stats = st.session_state.get("fletes_preview_stats")
+    km_stats = st.session_state.get("fletes_km_stats")
+    if prev_stats and prev_stats.get("enriquecidos"):
+        st.caption(
+            f"Preview automático: **{prev_stats['enriquecidos']}** casos con sucursal/km estimado."
+        )
+    if km_stats and km_stats.get("calculados"):
+        reuso = km_stats.get("reusados_domicilio", 0)
+        extra = f" · **{reuso}** reusados por domicilio" if reuso else ""
+        st.caption(
+            f"Último cálculo km: **{km_stats['calculados']}** casos "
+            f"({km_stats.get('estimados_localidad', 0)} estimados por localidad){extra}."
+        )
+
     st.caption(
-        "Pedidos Amba/GBA ya importados desde Tango. "
-        "**REMITOS** muestra solo **RAR** o **R** (remito del CD). Si la celda está vacía, "
-        "ese export trae solo la **X** de tránsito en REMITO DI — cargá también el Excel "
-        "completo de Limansky (columna *NRO REMITO LEGAL LIMANSKY*) o reaplicá reglas en Maestro. "
-        "**Calcular km** usa geocodificación y sucursal por localidad."
+        "Al abrir Fletes: **sucursal** por localidad/barrio, **reuso por domicilio** si ya se geocodificó "
+        "la misma dirección, y hasta **30 km reales** automáticos por carga. "
+        "**Km reales (500/1000)** procesa el resto. Con zona km, **total** pasa a importe exacto."
     )
 
     params: dict[str, Any] = {}

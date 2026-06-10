@@ -82,18 +82,54 @@ def _tarifas_zona_local(
     medida: str,
 ) -> dict[str, float]:
     out: dict[str, float] = {}
+    tipos_fallback = [tipo]
+    if tipo == "CONJUNTO_FLETE":
+        tipos_fallback.extend(["CONJUNTO", "FLETE_EXPRESS", "COLCHON"])
+    elif tipo not in ("FLETE_EXPRESS", "COLCHON"):
+        tipos_fallback.extend(["FLETE_EXPRESS", "COLCHON", "MUEBLES"])
     for zona in ZONAS_KM:
-        precio = lookup_tarifa(
-            tarifas,
-            PROVEEDOR_TARIFA_LOCAL,
-            "CABA/GBA",
-            zona,
-            tipo,
-            medida,
-        )
-        if precio is not None:
-            out[zona] = precio
+        for t in tipos_fallback:
+            precio = lookup_tarifa(
+                tarifas,
+                PROVEEDOR_TARIFA_LOCAL,
+                "CABA/GBA",
+                zona,
+                t,
+                medida,
+            )
+            if precio is not None:
+                out[zona] = precio
+                break
     return out
+
+
+def _buscar_distancia_caso(
+    base: Envio,
+    key: str,
+    distancias: dict[str, FleteDistancia] | None,
+    dist_directa: FleteDistancia | None,
+    db: Any = None,
+) -> FleteDistancia | None:
+    """Cache de km: remito, domicilio_fp y reuso (misma lógica en toda la app)."""
+    if db is not None:
+        from app.services.fletes_km_service import obtener_distancia_caso
+
+        row = obtener_distancia_caso(
+            db, base, distancias=distancias, caso_key=key, intentar_reuso_domicilio=True
+        )
+        if row:
+            return row
+    if dist_directa and (dist_directa.zona_km or dist_directa.distance_km is not None):
+        return dist_directa
+    if not distancias:
+        return dist_directa
+    from app.services.fletes_km_service import _claves_lookup_distancia, _fila_distancia_util
+
+    for rk in _claves_lookup_distancia(base, key):
+        row = distancias.get(rk)
+        if _fila_distancia_util(row):
+            return row
+    return dist_directa
 
 
 def _color_fila_fletes(
@@ -160,10 +196,9 @@ def _fila_fletes_desde_grupo(
     es_estimado = False
     motivo_extra: str | None = None
 
-    if dist and dist.zona_km:
+    if dist and (dist.zona_km or dist.distance_km is not None):
         zona_km = dist.zona_km
         costo_ref = por_zona.get(zona_km)
-        km_txt = f"{dist.distance_km:.1f} km" if dist.distance_km else ""
         sucursal_cod = dist.sucursal_cod or ""
         try:
             from app.services.fletes_matching_service import es_estimado_provider
@@ -171,20 +206,36 @@ def _fila_fletes_desde_grupo(
             es_estimado = es_estimado_provider(dist.km_provider)
         except Exception:
             es_estimado = False
-    elif db is not None and por_zona and not retiro:
+        if dist.distance_km:
+            km_val = float(dist.distance_km)
+            km_txt = (
+                f"~{km_val:.0f} km (est.)"
+                if es_estimado
+                else f"{km_val:.1f} km"
+            )
+        else:
+            km_txt = ""
+
+    if not zona_km and db is not None and not retiro:
         try:
             from app.services.fletes_km_service import preview_flete_caso
 
             prev = preview_flete_caso(db, base)
             if prev.get("sucursal_cod"):
                 sucursal_cod = str(prev["sucursal_cod"])
-            if prev.get("zona_km") and not zona_km:
+            if prev.get("zona_km"):
                 zona_km = prev["zona_km"]
-                costo_ref = por_zona.get(zona_km)
+                if costo_ref is None:
+                    costo_ref = por_zona.get(zona_km)
                 es_estimado = bool(prev.get("estimado"))
                 motivo_extra = prev.get("motivo")
                 if prev.get("distance_km"):
-                    km_txt = f"~{float(prev['distance_km']):.0f} km (est.)"
+                    km_val = float(prev["distance_km"])
+                    km_txt = (
+                        f"~{km_val:.0f} km (est.)"
+                        if prev.get("estimado")
+                        else f"{km_val:.1f} km"
+                    )
         except Exception:
             pass
     elif len(por_zona) == 1:
@@ -192,6 +243,11 @@ def _fila_fletes_desde_grupo(
         costo_ref = next(iter(por_zona.values()))
     elif por_zona:
         costo_ref = min(por_zona.values())
+
+    if zona_km and costo_ref is None and tarifas_grupo:
+        if not por_zona:
+            por_zona = _tarifas_zona_local(tarifas_grupo, tipo, medida)
+        costo_ref = por_zona.get(zona_km)
 
     from app.services.alerta_ui import color_fila_fletes_local
 
@@ -222,6 +278,14 @@ def _fila_fletes_desde_grupo(
         zona_asignada=zona_km,
         motivo=motivo,
     )
+    if not alertas_celdas:
+        color_ui = None
+    elif zona_km and sucursal_cod and costo_ref is not None:
+        alertas_celdas = [
+            a for a in alertas_celdas if a.get("codigo") != "zona_km"
+        ]
+        if not alertas_celdas:
+            color_ui = None
 
     fila: dict[str, Any] = {
         "_caso_id": key,
@@ -313,6 +377,7 @@ def construir_fletes(
             continue
         rn = clave_agrupacion_caso(grupo[0]) or key
         dist = (distancias or {}).get(rn) if distancias else None
+        dist = _buscar_distancia_caso(grupo[0], key, distancias, dist, db=db)
         fila = _fila_fletes_desde_grupo(
             key,
             grupo,
@@ -343,9 +408,18 @@ def stats_mundo2(
     *,
     tarifario_ctx: Any = None,
     db: Any = None,
+    distancias: dict[str, FleteDistancia] | None = None,
 ) -> dict[str, Any]:
+    if db is not None and distancias is None:
+        from app.services.fletes_km_service import preparar_contexto_km
+
+        distancias = preparar_contexto_km(db, envios)
     filas = construir_fletes(
-        envios, tarifas=tarifas, tarifario_ctx=tarifario_ctx, db=db
+        envios,
+        tarifas=tarifas,
+        tarifario_ctx=tarifario_ctx,
+        db=db,
+        distancias=distancias,
     )
     por_color: dict[str, int] = defaultdict(int)
     for f in filas:

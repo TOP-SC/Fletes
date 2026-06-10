@@ -145,11 +145,12 @@ class LiquidacionLinea(Base):
 
 
 class FleteDistancia(Base):
-    """Km y zona calculados sucursal → domicilio (cache por remito)."""
+    """Km y zona calculados sucursal → domicilio (cache por remito y domicilio)."""
 
     __tablename__ = "flete_distancias"
 
     remito_norm: Mapped[str] = mapped_column(String(40), primary_key=True)
+    domicilio_fp: Mapped[str | None] = mapped_column(String(64), index=True)
     sucursal_cod: Mapped[str | None] = mapped_column(String(8), index=True)
     distance_km: Mapped[float | None] = mapped_column(Float)
     zona_km: Mapped[str | None] = mapped_column(String(24))

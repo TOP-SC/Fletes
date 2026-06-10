@@ -33,8 +33,13 @@ def _write_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, sheet_name: str) -> N
                 ws.cell(row=row_idx, column=col_idx).fill = FILL_CONTROL_CELL
 
 
-def export_maestro_wamaro(envios: list[Envio], *, incluir_excluidos: bool = True) -> bytes:
-    filas = construir_maestro(envios, incluir_excluidos=incluir_excluidos)
+def export_maestro_wamaro(
+    envios: list[Envio],
+    *,
+    incluir_excluidos: bool = True,
+    db: Session | None = None,
+) -> bytes:
+    filas = construir_maestro(envios, incluir_excluidos=incluir_excluidos, db=db)
     tort = [f for f in filas if f.get("_origen_planilla") == "tortuguitas"]
     sa = [f for f in filas if f.get("_origen_planilla") == "sa"]
 
