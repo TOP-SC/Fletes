@@ -58,32 +58,64 @@ def formato_remito_maestro(remito: str | None) -> str:
     return text
 
 
-def remito_transito_visual(envio: Envio) -> str:
-    """Formato manual Limansky: -0117-00117064 (desde PER o remito X)."""
+def _transito_desde_per_fabrica(envio: Envio) -> str:
+    """Referencia PER del Excel (solo para combinar con R en maestro manual)."""
+    if not envio.raw_json:
+        return ""
+    try:
+        data = json.loads(envio.raw_json)
+        raw = data.get("_excel_raw") if isinstance(data, dict) else {}
+        if not isinstance(raw, dict):
+            return ""
+        for key in ("NRO PEDIDO FABRICA", "NRO PEDIDO FABRICA "):
+            val = raw.get(key)
+            if not val:
+                continue
+            m = _RE_PEDIDO_FABRICA.match(str(val).strip().upper())
+            if m:
+                return f"-0{m.group(1)}-{m.group(2)}"
+    except json.JSONDecodeError:
+        pass
+    return ""
+
+
+def _transito_desde_x(envio: Envio) -> str:
+    """Remito X de tránsito (REMITO DI / ORIGINAL / FINAL), nunca pedido ni PER."""
+    candidatos: list[str] = []
     if envio.raw_json:
         try:
             data = json.loads(envio.raw_json)
+            transito = data.get("remito_transito")
+            if transito and es_remito_transito(str(transito)):
+                candidatos.append(str(transito).strip())
             raw = data.get("_excel_raw") if isinstance(data, dict) else {}
             if isinstance(raw, dict):
-                for val in raw.values():
+                for key, val in raw.items():
+                    ku = str(key).upper()
                     if not val:
                         continue
-                    text = str(val).strip().upper()
-                    m = _RE_PEDIDO_FABRICA.match(text)
-                    if m:
-                        return f"-0{m.group(1)}-{m.group(2)}"
-            transito = data.get("remito_transito") if isinstance(data, dict) else None
-            if transito and es_remito_transito(str(transito)):
-                digits = "".join(c for c in str(transito) if c.isdigit())
-                if len(digits) >= 11:
-                    return f"-0{digits[1:4]}-{digits[4:12]}"
+                    if any(
+                        p in ku
+                        for p in ("REMITO DI", "REMITO ORIGINAL", "REMITO FINAL", "REMITO TRANSITO")
+                    ) and es_remito_transito(str(val)):
+                        candidatos.append(str(val).strip())
         except json.JSONDecodeError:
             pass
     if envio.remito and es_remito_transito(envio.remito):
-        digits = "".join(c for c in envio.remito if c.isdigit())
+        candidatos.append(str(envio.remito).strip())
+    for text in candidatos:
+        digits = "".join(c for c in text if c.isdigit())
         if len(digits) >= 11:
             return f"-0{digits[1:4]}-{digits[4:12]}"
     return ""
+
+
+def remito_transito_visual(envio: Envio) -> str:
+    """Tránsito para maestro manual: PER fábrica (-0117-…); si no, remito X."""
+    t = _transito_desde_per_fabrica(envio)
+    if t:
+        return t
+    return _transito_desde_x(envio)
 
 
 def texto_remito_grilla(envio: Envio) -> str:
@@ -92,20 +124,18 @@ def texto_remito_grilla(envio: Envio) -> str:
 
 
 def texto_remito_grupo(lineas: list[Envio]) -> str:
-    """Columna REMITOS estilo manual: tránsito (-0117-…) + oficial (R-0114-…)."""
-    transitos: list[str] = []
+    """
+    Columna REMITOS: solo remitos oficiales RAR / R-… (sin X ni PER de tránsito).
+    Sin remito oficial → vacío.
+    """
     oficiales: list[str] = []
     for envio in lineas:
-        t = remito_transito_visual(envio)
-        if t and t not in transitos:
-            transitos.append(t)
         oficial = remito_oficial_envio(envio)
         if oficial:
             fmt = formato_remito_maestro(oficial) or oficial.strip()
             if fmt and fmt not in oficiales:
                 oficiales.append(fmt)
-    partes = transitos + oficiales
-    return " + ".join(partes)
+    return " + ".join(oficiales)
 
 
 def clave_agrupacion_caso(envio: Envio) -> str | None:
@@ -134,10 +164,19 @@ def estado_remito_envio(envio: Envio) -> str:
     if envio.raw_json:
         try:
             data = json.loads(envio.raw_json)
+            transito = data.get("remito_transito")
+            if transito and es_remito_transito(str(transito)):
+                return "solo_transito"
             raw = data.get("_excel_raw") if isinstance(data, dict) else {}
             if isinstance(raw, dict):
                 for k, v in raw.items():
-                    if "REMITO DI" in str(k).upper() and es_remito_transito(str(v)):
+                    ku = str(k).upper()
+                    if not v:
+                        continue
+                    if any(
+                        p in ku
+                        for p in ("REMITO DI", "REMITO ORIGINAL", "REMITO FINAL", "REMITO TRANSITO")
+                    ) and es_remito_transito(str(v)):
                         return "solo_transito"
         except json.JSONDecodeError:
             pass

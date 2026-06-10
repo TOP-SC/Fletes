@@ -5,7 +5,7 @@
 | Fuente | Ubicación |
 |--------|-----------|
 | **Referencia (LOG diario)** | `S:\Administración\TOP\LOG -  Envios Fletes 200326\fletes envios log MAYO\...\5 MAY 2026\` — archivos `WAMARO TORTUGUITAS - DD_MM_2026.xlsx` y `WAMARO SA - ...` |
-| **App** | Base `data/fletes.db` → maestro mayo 2026 (filtro fecha pedido/entrega) |
+| **App** | Base `data/fletes.db` → maestro mayo 2026 (filtro **fecha de entrega**, estándar unificado) |
 
 ## Cómo reproducir
 

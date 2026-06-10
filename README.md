@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 | Paso | Fuente | Acción en la app |
 |------|--------|------------------|
-| 1 | Tango `Exportacion.xlsx` | Importar (acumula, no pisa) |
+| 1 | Tango `Exportacion.xlsx` | Importar (acumula, no pisa). **Exportar siempre por fecha de entrega** (CD y Limansky) |
 | 2 | Mail Clickpack (diario) | Import prefactura (`data/plantilla_clickpack.xlsx`) |
 | 3 | — | Ejecutar **macheo** (remito normalizado, conjuntos colchón+somier) |
 | — | Tarifario CEDOL | Import en **Tarifarios** → recalcular costos |
@@ -61,10 +61,10 @@ Los importes con ceros de más (`240000.000000000`) se normalizan a **240000** (
 
 | Mundo | Dev | Operación | Nota |
 |-------|-----|-----------|------|
-| **1 Interior** | 94% | 80% | Cross solo transp. 82. Falta prefactura + macheo en uso |
-| **2 Fletes AMBA/GBA** | 55% | 40% | Sin cross. Falta Gama/Blast + datos Tango sucursal |
+| **1 Interior** | 97% | 74% | Proveedor por transporte, alertas operativas. Falta prefactura + macheo |
+| **2 Fletes AMBA/GBA** | 60% | 40% | Alertas en grilla. Falta Gama/Blast + datos Tango sucursal |
 | **3 Duplicados interior** | 15% | 5% | No AMBA/Fletes. Pendiente spec |
-| **Global** | **~70%** | **~58%** | ~30% dev restante (Fases 6–7) |
+| **Global** | **~78%** | **~58%** | Luces por columna, remitos R/RAR. Falta prefactura en rutina |
 
 ## Mundos siguientes
 

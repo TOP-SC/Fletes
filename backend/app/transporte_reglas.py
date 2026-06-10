@@ -1,17 +1,18 @@
 """
 Reglas de transporte Tango (SommierCenter / Mantello).
 
-Catálogo en data/transportes.json (códigos en uso habitual).
-Códigos no catalogados siguen con heurística por nombre (compatibilidad).
+Jerarquía operativa (siempre en este orden):
+  1. Nº transporte Tango (+ catálogo data/transportes.json)
+  2. Provincia / localidad solo para validar zona (cross 82, AMBA en 40)
 
   40 — Entrega en cliente → AMBA: FLETES_SUC; interior: CLICPAQ
-  51 — Expreso CLICPAQ al interior
-  82 — Crossdocking → FRANSOF / ALFARO / LBO según destino
+  51 — Expreso CLICPAQ al interior → CLICPAQ (toda provincia)
+  82 — Crossdocking → última milla FRANSOF / ALFARO / LBO según zona
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 from app.proveedores import (
     es_cordoba,
@@ -116,6 +117,127 @@ def alerta_uso_transporte(
     return bool(row.get("alerta_uso")) if row else False
 
 
+class CircuitoLogistico(TypedDict):
+    codigo: str | None
+    modo: str
+    proveedor: str | None
+    proveedores_permitidos: list[str]
+    usa_zona: bool
+
+
+def _ultima_milla_crossdock(
+    provincia: str | None,
+    localidad: str | None,
+) -> str | None:
+    """Solo para transporte 82: quién hace sucursal → cliente."""
+    if es_zona_fransof(provincia, localidad):
+        return "FRANSOF"
+    if es_zona_alfaro(provincia):
+        return "ALFARO"
+    if es_cordoba(provincia):
+        return "LBO"
+    return None
+
+
+def resolver_circuito_logistico(
+    transporte_cod: str | None,
+    transporte_nombre: str | None = None,
+    *,
+    provincia: str | None = None,
+    localidad: str | None = None,
+    cp: str | None = None,
+) -> CircuitoLogistico:
+    """
+    Circuito logístico: transporte primero; zona solo si el transporte lo requiere.
+    """
+    cod = normalizar_transporte_cod(transporte_cod, transporte_nombre)
+    row = lookup_transporte_catalogo(transporte_cod, transporte_nombre)
+
+    if cod == COD_EXPRESO_CLICPAQ:
+        return {
+            "codigo": cod,
+            "modo": "red_clicpaq",
+            "proveedor": "CLICPAQ",
+            "proveedores_permitidos": ["CLICPAQ"],
+            "usa_zona": False,
+        }
+
+    if cod == COD_CROSSDOCKING:
+        ultima = _ultima_milla_crossdock(provincia, localidad)
+        permitidos = ["CLICPAQ"]
+        if ultima:
+            permitidos.append(ultima)
+        return {
+            "codigo": cod,
+            "modo": "crossdock",
+            "proveedor": ultima or "CLICPAQ",
+            "proveedores_permitidos": permitidos,
+            "usa_zona": True,
+        }
+
+    if cod == COD_ENTREGA_CLIENTE:
+        from app.services.rules_service import es_amba_gba, normalizar_provincia_geo
+
+        if es_amba_gba(normalizar_provincia_geo(provincia), localidad, cp):
+            return {
+                "codigo": cod,
+                "modo": "fletes_suc",
+                "proveedor": "FLETES_SUC",
+                "proveedores_permitidos": ["FLETES_SUC"],
+                "usa_zona": True,
+            }
+        return {
+            "codigo": cod,
+            "modo": "red_clicpaq",
+            "proveedor": "CLICPAQ",
+            "proveedores_permitidos": ["CLICPAQ"],
+            "usa_zona": False,
+        }
+
+    if row and row.get("proveedor"):
+        prov = normalizar_proveedor(str(row["proveedor"]))
+        return {
+            "codigo": cod,
+            "modo": str(row.get("modo") or "catalogo"),
+            "proveedor": prov,
+            "proveedores_permitidos": [prov] if prov else [],
+            "usa_zona": False,
+        }
+
+    if row and row.get("excluir_planilla"):
+        return {
+            "codigo": cod,
+            "modo": "excluido",
+            "proveedor": None,
+            "proveedores_permitidos": [],
+            "usa_zona": False,
+        }
+
+    return {
+        "codigo": cod,
+        "modo": "ambiguo",
+        "proveedor": None,
+        "proveedores_permitidos": [],
+        "usa_zona": True,
+    }
+
+
+def acotar_candidatos_por_circuito(
+    circuito: CircuitoLogistico,
+    candidatos: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Filtra tarifario según circuito definido por transporte."""
+    permitidos = {normalizar_proveedor(p) for p in circuito["proveedores_permitidos"]}
+    permitidos.discard(None)
+    if not permitidos:
+        return candidatos
+    return [
+        c
+        for c in candidatos
+        if normalizar_proveedor(c.get("proveedor")) in permitidos
+    ]
+
+
 def descripcion_canal_transporte(
     transporte_cod: str | None,
     transporte_nombre: str | None = None,
@@ -137,23 +259,17 @@ def proveedor_sugerido_transporte(
     localidad: str | None,
     *,
     transporte_nombre: str | None = None,
+    cp: str | None = None,
 ) -> str | None:
-    """Sugerencia operativa por nº transporte (no asigna si el tarifario tiene 2+ proveedores)."""
-    row = lookup_transporte_catalogo(transporte_cod, transporte_nombre)
-    if row and row.get("proveedor"):
-        return normalizar_proveedor(str(row["proveedor"]))
-
-    cod = normalizar_transporte_cod(transporte_cod, transporte_nombre)
-    if cod in (COD_ENTREGA_CLIENTE, COD_EXPRESO_CLICPAQ):
-        return "CLICPAQ"
-    if cod == COD_CROSSDOCKING:
-        if es_zona_fransof(provincia, localidad):
-            return "FRANSOF"
-        if es_zona_alfaro(provincia):
-            return "ALFARO"
-        if es_cordoba(provincia):
-            return "LBO"
-    return None
+    """Proveedor operativo: transporte Tango primero; zona solo en cross/AMBA."""
+    circuito = resolver_circuito_logistico(
+        transporte_cod,
+        transporte_nombre,
+        provincia=provincia,
+        localidad=localidad,
+        cp=cp,
+    )
+    return circuito["proveedor"]
 
 
 def proveedores_acotados_por_transporte(
@@ -162,12 +278,19 @@ def proveedores_acotados_por_transporte(
     localidad: str | None,
     *,
     transporte_nombre: str | None = None,
+    cp: str | None = None,
 ) -> list[str] | None:
-    """Solo para etiquetas UI; no limita candidatos del tarifario."""
-    sug = proveedor_sugerido_transporte(
-        transporte_cod, provincia, localidad, transporte_nombre=transporte_nombre
+    """Proveedores válidos para el circuito del transporte."""
+    circuito = resolver_circuito_logistico(
+        transporte_cod,
+        transporte_nombre,
+        provincia=provincia,
+        localidad=localidad,
+        cp=cp,
     )
-    return [sug] if sug else None
+    if circuito["proveedores_permitidos"]:
+        return list(circuito["proveedores_permitidos"])
+    return None
 
 
 def es_canal_clicpaq(

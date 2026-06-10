@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Control de Fletes — Avance del proyecto</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --paper: #ffffff;
+      --ink: #1e2a3a;
+      --muted: #5c6b7d;
+      --accent: #2c5282;
+      --accent2: #2b6cb0;
+      --ok: #276749;
+      --warn: #b7791f;
+      --bad: #c53030;
+      --border: #dde4ee;
+      --shadow: 0 4px 20px rgba(30, 42, 58, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, #eef2f8 0%, #f8f6fc 50%, #eef4f8 100%);
+      color: var(--ink);
+      line-height: 1.5;
+      padding: 1.5rem;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #1a365d 0%, #2c5282 55%, #3182ce 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 2rem 2.25rem;
+      margin-bottom: 1.75rem;
+      box-shadow: var(--shadow);
+    }
+    header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.35rem; }
+    header p { opacity: 0.92; font-size: 0.95rem; max-width: 720px; }
+    .meta { margin-top: 1rem; font-size: 0.82rem; opacity: 0.85; }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .kpi {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.15rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .kpi .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi .value { font-size: 2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0; }
+    .kpi .sub { font-size: 0.82rem; color: var(--muted); }
+    .kpi.warn .value { color: var(--warn); }
+    .kpi.ok .value { color: var(--ok); }
+    section {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    section h2 {
+      font-size: 1.15rem;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e8eef6;
+    }
+    section .intro { font-size: 0.88rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .chart-box {
+      position: relative;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .chart-box h3 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: var(--ink);
+    }
+    .chart-box canvas { max-height: 220px; }
+    .chart-center-label {
+      position: absolute;
+      top: 58%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .chart-center-label .big { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .chart-center-label .small { font-size: 0.72rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    th, td {
+      padding: 0.55rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: #f0f4fa; font-weight: 600; color: var(--accent); }
+    tr:hover td { background: #fafbfd; }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-ok { background: #c6f6d5; color: #22543d; }
+    .badge-warn { background: #fefcbf; color: #744210; }
+    .badge-bad { background: #fed7d7; color: #742a2a; }
+    .badge-info { background: #bee3f8; color: #2a4365; }
+    .callout {
+      background: #ebf8ff;
+      border-left: 4px solid var(--accent2);
+      padding: 1rem 1.15rem;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+    }
+    .callout strong { color: var(--accent); }
+    .steps { list-style: none; counter-reset: step; }
+    .steps li {
+      counter-increment: step;
+      padding: 0.65rem 0 0.65rem 2.5rem;
+      position: relative;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.88rem;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      width: 1.6rem;
+      height: 1.6rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .impact { color: var(--ok); font-weight: 600; font-size: 0.8rem; }
+    footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 1.5rem 0 0.5rem;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      section { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Control de Fletes — Avance hacia finalización</h1>
+      <p>
+        Estado del proyecto SommierCenter / Wamaro: desarrollo en código, operación real
+        (cierre de mes sin Excel paralelo) y similitud con el maestro manual de producción.
+      </p>
+      <div class="meta">
+        Generado: 2 junio 2026 · Build API: <code>fletes-luces-alerta-columna-2026-06-05</code> ·
+        Base local: <code>data/fletes.db</code> (23.649 renglones)
+      </div>
+    </header>
+
+    <div class="kpi-row">
+      <div class="kpi ok">
+        <div class="label">Desarrollo (código)</div>
+        <div class="value">78%</div>
+        <div class="sub">Falta ~22% para funcionalidad completa</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">Operación lista</div>
+        <div class="value">58%</div>
+        <div class="sub">Falta ~42% para cerrar mes sin Excel manual</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Similitud maestro manual</div>
+        <div class="value">~60%</div>
+        <div class="sub">~64% tras reaplicar reglas (estimado)</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">Prefactura en uso</div>
+        <div class="value">0%</div>
+        <div class="sub">0 casos con prefactura cargada en DB</div>
+      </div>
+    </div>
+
+    <!-- GLOBAL -->
+    <section>
+      <h2>Avance global</h2>
+      <p class="intro">Dos miradas: lo que está <strong>programado</strong> vs lo que está <strong>en uso diario</strong>.</p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>Desarrollo — hecho vs pendiente</h3>
+          <canvas id="chartDevGlobal"></canvas>
+          <div class="chart-center-label" style="top:54%">
+            <div class="big">78%</div>
+            <div class="small">desarrollado</div>
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>Operación — lista vs falta</h3>
+          <canvas id="chartOpsGlobal"></canvas>
+          <div class="chart-center-label" style="top:54%">
+            <div class="big">58%</div>
+            <div class="small">operativo</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>Lectura:</strong> la app está bien construida (~78%), con alertas operativas y luces por columna
+        en grilla. El cuello de botella sigue siendo operativo: prefactura, macheo Clickpack, import SA/Limansky
+        y fleteros casi sin uso en producción.
+      </div>
+    </section>
+
+    <!-- MODULOS -->
+    <section>
+      <h2>Avance por módulo (desarrollo)</h2>
+      <p class="intro">Porcentaje de funcionalidad implementada en código por mundo logístico.</p>
+      <div class="grid-3">
+        <div class="chart-box"><h3>M1 Interior</h3><canvas id="chartM1Dev"></canvas></div>
+        <div class="chart-box"><h3>M2 Fletes AMBA/GBA</h3><canvas id="chartM2Dev"></canvas></div>
+        <div class="chart-box"><h3>Fleteros locales</h3><canvas id="chartFleDev"></canvas></div>
+        <div class="chart-box"><h3>M3 Duplicados</h3><canvas id="chartM3Dev"></canvas></div>
+        <div class="chart-box"><h3>Infra compartida</h3><canvas id="chartInfraDev"></canvas></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Avance por módulo (operación)</h2>
+      <p class="intro">Capacidad de usar cada módulo punta a punta con datos productivos hoy.</p>
+      <div class="grid-3">
+        <div class="chart-box"><h3>M1 Interior</h3><canvas id="chartM1Ops"></canvas></div>
+        <div class="chart-box"><h3>M2 Fletes</h3><canvas id="chartM2Ops"></canvas></div>
+        <div class="chart-box"><h3>Fleteros locales</h3><canvas id="chartFleOps"></canvas></div>
+        <div class="chart-box"><h3>M3 Duplicados</h3><canvas id="chartM3Ops"></canvas></div>
+        <div class="chart-box"><h3>Infra compartida</h3><canvas id="chartInfraOps"></canvas></div>
+      </div>
+      <table style="margin-top:1.25rem">
+        <thead>
+          <tr><th>Módulo</th><th>Dev</th><th>Operación</th><th>Estado</th><th>Qué falta para 100%</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>M1 Interior</strong></td><td>97%</td><td>74%</td>
+            <td><span class="badge badge-ok">Operativo</span></td>
+            <td>Prefactura + macheo en rutina, export Excel</td>
+          </tr>
+          <tr>
+            <td><strong>M2 Fletes</strong></td><td>60%</td><td>40%</td>
+            <td><span class="badge badge-warn">Parcial</span></td>
+            <td>Tango sucursal origen, km masivo, prefactura Gama/Blast</td>
+          </tr>
+          <tr>
+            <td><strong>Fleteros locales</strong></td><td>48%</td><td>8%</td>
+            <td><span class="badge badge-bad">Inicial</span></td>
+            <td>Macheo destinatario/remito (3/268 hoy)</td>
+          </tr>
+          <tr>
+            <td><strong>M3 Duplicados</strong></td><td>15%</td><td>5%</td>
+            <td><span class="badge badge-bad">Pendiente</span></td>
+            <td>Spec + reglas edge cases interior</td>
+          </tr>
+          <tr>
+            <td><strong>Infra / UI</strong></td><td>93%</td><td>87%</td>
+            <td><span class="badge badge-ok">Sólido</span></td>
+            <td>Depósito en imports viejos; alertas + luces por columna listas</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- BASE DE DATOS -->
+    <section>
+      <h2>Base de datos actual (<code>fletes.db</code>)</h2>
+      <p class="intro">Métricas medidas en la instalación local — reflejan uso real, no potencial del código.</p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>Clasificación: Interior vs AMBA/GBA</h3>
+          <canvas id="chartClasif"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Colores en DB (reglas persistidas)</h3>
+          <canvas id="chartColores"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Depósito Tango mapeado</h3>
+          <canvas id="chartDeposito"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Cobertura tarifaria</h3>
+          <canvas id="chartCosto"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Fleteros: matcheados vs pendientes</h3>
+          <canvas id="chartFleteros"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Conciliación prefactura</h3>
+          <canvas id="chartPrefactura"></canvas>
+        </div>
+      </div>
+      <table style="margin-top:1rem">
+        <thead><tr><th>Indicador</th><th>Valor</th><th>Interpretación</th></tr></thead>
+        <tbody>
+          <tr><td>Total renglones Tango</td><td><strong>23.649</strong></td><td>8 lotes importados — pipeline OK</td></tr>
+          <tr><td>Tarifas cargadas</td><td><strong>1.775</strong></td><td>Tarifario operativo</td></tr>
+          <tr><td>Con costo tarifario</td><td><strong>22.600 (96%)</strong></td><td>Cálculo automático mayormente aplicado</td></tr>
+          <tr><td>Prefactura cargada</td><td><strong>0</strong></td><td>Conciliación no en uso</td></tr>
+          <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Cruce no corrido en producción</td></tr>
+          <tr><td>Depósito SA (12)</td><td><strong>0</strong></td><td>WAMARO SA / Limansky sin importar</td></tr>
+          <tr><td>Sin depósito</td><td><strong>22.496</strong></td><td>Imports viejos — columna incompleta</td></tr>
+          <tr><td>Elegir proveedor</td><td><strong>14</strong></td><td>Empates tarifario pendientes (bajó tras reglas por transporte)</td></tr>
+          <tr><td>Fleteros Drive</td><td><strong>268 / 3 matcheados</strong></td><td>1,1% de cruce efectivo</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- MAESTRO MANUAL -->
+    <section>
+      <h2>Similitud vs maestro manual de producción</h2>
+      <p class="intro">Comparación con planillas LOG diarias (WAMARO SA / Tortuguitas) y cruce mayo 2026.</p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>Similitud global estimada</h3>
+          <canvas id="chartSimGlobal"></canvas>
+          <div class="chart-center-label" style="top:54%">
+            <div class="big">60%</div>
+            <div class="small">similar</div>
+          </div>
+        </div>
+        <div class="chart-box">
+          <h3>Dimensiones de similitud</h3>
+          <canvas id="chartSimDims"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Mayo 2026 — cruce por remito</h3>
+          <canvas id="chartMayoCruce"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Mayo — logística similar (±15%)</h3>
+          <canvas id="chartMayoLog"></canvas>
+        </div>
+      </div>
+      <table style="margin-top:1rem">
+        <thead><tr><th>Dimensión</th><th>%</th><th>Nota</th></tr></thead>
+        <tbody>
+          <tr><td>Estructura planilla (29 columnas)</td><td><strong>92%</strong></td><td>Columnas idénticas; zonas C0/B3, REMITOS X+R recientes</td></tr>
+          <tr><td>Cobertura de casos</td><td><strong>35–40%</strong></td><td>503/2.064 remitos mayo en común; SA sin import</td></tr>
+          <tr><td>Montos LOGISTICA (donde hay cruce)</td><td><strong>52%</strong></td><td>263/503 casos mayo dentro de tolerancia</td></tr>
+          <tr><td>Control prefactura (PN, dif)</td><td><strong>25–35%</strong></td><td>Sin prefactura en rutina</td></tr>
+          <tr><td><strong>Global ponderado</strong></td><td><strong>~60%</strong></td><td>~64% post reaplicar reglas + remitos R/RAR</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ROADMAP -->
+    <section>
+      <h2>Camino a finalización — prioridades</h2>
+      <p class="intro">Acciones ordenadas por impacto en operación (sin código nuevo).</p>
+      <ol class="steps">
+        <li><strong>Reaplicar reglas y proveedores</strong> (transporte→proveedor, alertas operativas) <span class="impact">+5–8% operación</span></li>
+        <li><strong>Import + uso diario prefactura Clickpack</strong> + ejecutar macheo <span class="impact">+12–15%</span></li>
+        <li><strong>Import Tango SA / Limansky</strong> (depósito 12, pedidos 102xxxxx) <span class="impact">+8–10%</span></li>
+        <li><strong>Mejorar macheo fleteros</strong> (destinatario / remito) <span class="impact">+3–5%</span></li>
+        <li><strong>Export maestro Excel</strong> pulido (pendiente) <span class="impact">+5%</span></li>
+        <li><strong>M2:</strong> Tango con sucursal + prefactura Gama/Blast <span class="impact">+8%</span></li>
+        <li><strong>M3:</strong> duplicados interior <span class="impact">+5% dev / +3% ops</span></li>
+      </ol>
+      <div class="callout" style="margin-top:1.25rem">
+        <strong>Si hacés solo 3 cosas esta semana:</strong> (1) Reaplicar reglas,
+        (2) Importar prefactura + macheo, (3) Importar Tango SA —
+        la operación podría subir de <strong>58% → 73–76%</strong>.
+      </div>
+    </section>
+
+    <section>
+      <h2>Resumen en una línea</h2>
+      <p style="font-size:1.05rem;padding:0.5rem 0">
+        La app está <strong>~78% construida</strong>, pero <strong>~58% lista</strong> para reemplazar
+        el Excel de producción. El gap principal no es programar más, sino <strong>usar en rutina</strong>
+        prefactura, macheo, SA y fleteros.
+      </p>
+    </section>
+
+    <footer>
+      Control de Fletes · TOP-SC · Documento informativo interno ·
+      <a href="https://github.com/TOP-SC/Fletes" style="color:var(--accent2)">github.com/TOP-SC/Fletes</a>
+    </footer>
+  </div>
+
+  <script>
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.plugins.legend.position = "bottom";
+    Chart.defaults.plugins.legend.labels.boxWidth = 12;
+    Chart.defaults.plugins.legend.labels.padding = 14;
+
+    const palette = {
+      done: "#38a169",
+      pending: "#e2e8f0",
+      warn: "#d69e2e",
+      bad: "#e53e3e",
+      info: "#3182ce",
+      purple: "#805ad5",
+      gray: "#a0aec0",
+      interior: "#2b6cb0",
+      amba: "#718096",
+      verde: "#48bb78",
+      amarillo: "#ecc94b",
+      rojo: "#fc8181",
+      gris: "#cbd5e0",
+    };
+
+    function donut(id, labels, data, colors, cutout = "68%") {
+      const ctx = document.getElementById(id);
+      return new Chart(ctx, {
+        type: "doughnut",
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
+        options: {
+          cutout,
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (c) => {
+                  const t = c.dataset.data.reduce((a, b) => a + b, 0);
+                  const p = ((c.raw / t) * 100).toFixed(1);
+                  return ` ${c.label}: ${c.raw} (${p}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function pctDonut(id, pct, labelDone, labelPending, colorDone = palette.done) {
+      donut(id, [labelDone, labelPending], [pct, 100 - pct], [colorDone, palette.pending]);
+    }
+
+    // Global
+    pctDonut("chartDevGlobal", 78, "Desarrollado", "Pendiente");
+    pctDonut("chartOpsGlobal", 58, "Operativo", "Falta", palette.warn);
+
+    // Módulos dev
+    pctDonut("chartM1Dev", 97, "Hecho", "Pendiente");
+    pctDonut("chartM2Dev", 60, "Hecho", "Pendiente", palette.info);
+    pctDonut("chartFleDev", 48, "Hecho", "Pendiente", palette.purple);
+    pctDonut("chartM3Dev", 15, "Hecho", "Pendiente", palette.bad);
+    pctDonut("chartInfraDev", 93, "Hecho", "Pendiente");
+
+    // Módulos ops
+    pctDonut("chartM1Ops", 74, "Listo", "Falta");
+    pctDonut("chartM2Ops", 40, "Listo", "Falta", palette.info);
+    pctDonut("chartFleOps", 8, "Listo", "Falta", palette.bad);
+    pctDonut("chartM3Ops", 5, "Listo", "Falta", palette.bad);
+    pctDonut("chartInfraOps", 87, "Listo", "Falta");
+
+    // DB
+    donut("chartClasif", ["Interior (16.293)", "AMBA/GBA (7.356)"], [16293, 7356], [palette.interior, palette.amba]);
+    donut("chartColores", ["Verde (15.862)", "Amarillo (1.043)", "Gris (6.744)"], [15862, 1043, 6744], [palette.verde, palette.amarillo, palette.gris]);
+    donut("chartDeposito", ["Sin depósito (22.496)", "Dep. 2 (1.153)", "Dep. 12 SA (0)"], [22496, 1153, 0], [palette.bad, palette.info, palette.pending]);
+    donut("chartCosto", ["Con costo (22.600)", "Sin costo (1.049)"], [22600, 1049], [palette.done, palette.pending]);
+    donut("chartFleteros", ["Matcheados (3)", "Pendientes (265)"], [3, 265], [palette.done, palette.warn]);
+    donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (23.649)"], [0, 23649], [palette.done, palette.bad]);
+
+    // Maestro
+    pctDonut("chartSimGlobal", 60, "Similar", "Diferente", palette.info);
+    new Chart(document.getElementById("chartSimDims"), {
+      type: "doughnut",
+      data: {
+        labels: ["Estructura 92%", "Cobertura 38%", "Montos 52%", "Prefactura 30%"],
+        datasets: [{
+          data: [92, 38, 52, 30],
+          backgroundColor: [palette.done, palette.warn, palette.info, palette.bad],
+          borderWidth: 2, borderColor: "#fff"
+        }]
+      },
+      options: {
+        cutout: "55%",
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: { callbacks: { label: (c) => ` ${c.label}` } }
+        }
+      }
+    });
+    donut("chartMayoCruce", ["En ambos (503)", "Solo LOG (1.561)", "Solo app (5.477)"], [503, 1561, 5477], [palette.done, palette.warn, palette.info]);
+    donut("chartMayoLog", ["Similar ±15% (263)", "Diferente (240)"], [263, 240], [palette.done, palette.bad]);
+  </script>
+</body>
+</html>

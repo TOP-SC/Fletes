@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import unicodedata
+
 from app.config import DEPOSITO_ORIGEN
 
 _CABA_PROVINCIAS = frozenset(
@@ -28,7 +30,10 @@ _LOCALIDADES_ESPECIALES: dict[str, tuple[str, str]] = {
 
 
 def _norm(value: str | None) -> str:
-    return (value or "").strip().upper()
+    v = (value or "").strip().upper()
+    return "".join(
+        c for c in unicodedata.normalize("NFD", v) if unicodedata.category(c) != "Mn"
+    )
 
 
 def zona_origen_maestro(deposito: str | None, origen_cd: str | None) -> tuple[str, str]:
@@ -49,7 +54,7 @@ def zona_destino_maestro(
     *,
     es_amba_gba: bool = False,
 ) -> tuple[str, str]:
-    """Replica códigos del Excel manual (B3 interior BA, S1 SF interior, etc.)."""
+    """Zona destino: provincia primero; localidad solo para casos especiales (MDP, etc.)."""
     prov = _norm(provincia)
     loc = _norm(localidad)
 
@@ -63,8 +68,10 @@ def zona_destino_maestro(
     if "BUENOS AIRES" in prov:
         return ("B3", "INTERIOR BUENOS AIRES")
 
-    if prov in _CAPITALES and (loc == prov or loc in prov):
-        return _CAPITALES[prov]
+    if prov in _CAPITALES:
+        cap_label = _CAPITALES[prov][1]
+        if loc and (cap_label in loc or "CAPITAL" in loc):
+            return _CAPITALES[prov]
 
     if prov == "SANTA FE":
         return ("S1", "SANTA FE INTERIOR")

@@ -27,7 +27,7 @@ def _envios_para_fletes(
     *,
     fecha_desde: str | None = None,
     fecha_hasta: str | None = None,
-    campo_fecha: str = "cualquiera",
+    campo_fecha: str = "entrega",
     mes_control_anio: int | None = None,
     mes_control_mes: int | None = None,
 ):
@@ -45,7 +45,7 @@ def _envios_para_fletes(
         db,
         fecha_desde=filtros.get("fecha_desde"),
         fecha_hasta=filtros.get("fecha_hasta"),
-        campo_fecha=str(filtros.get("campo_fecha") or "cualquiera"),
+        campo_fecha=str(filtros.get("campo_fecha") or "entrega"),
     )
 
 
@@ -54,7 +54,7 @@ def get_stats_fletes(
     db: Session = Depends(get_db),
     mes_control_anio: int | None = Query(None),
     mes_control_mes: int | None = Query(None, ge=1, le=12),
-    campo_fecha: str = Query("cualquiera"),
+    campo_fecha: str = Query("entrega"),
 ) -> dict:
     envios = _envios_para_fletes(
         db,
@@ -76,7 +76,7 @@ def listar_casos_fletes(
     sucursal: str | None = Query(None, description="Código sucursal AV, BE…"),
     fecha_desde: str | None = Query(None),
     fecha_hasta: str | None = Query(None),
-    campo_fecha: str = Query("cualquiera"),
+    campo_fecha: str = Query("entrega"),
     remito_estado: str = Query("todos"),
     fletero: str | None = Query(None, description="Código corto: BLAS, GAMA, ARMANDO…"),
     mes_control_anio: int | None = Query(None),
@@ -96,7 +96,7 @@ def listar_casos_fletes(
         db,
         fecha_desde=filtros.get("fecha_desde"),
         fecha_hasta=filtros.get("fecha_hasta"),
-        campo_fecha=str(filtros.get("campo_fecha") or "cualquiera"),
+        campo_fecha=str(filtros.get("campo_fecha") or "entrega"),
     )
     from app.services.tarifario_version_service import TarifarioContext
 

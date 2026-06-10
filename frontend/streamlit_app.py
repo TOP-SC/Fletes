@@ -35,7 +35,6 @@ try:
     importlib.reload(_ui_labels_mod)
     from app.proveedores import caso_en_vista_proveedor, proveedores_para_selector
     from app.transporte_reglas import proveedores_acotados_por_transporte
-    from app.labels import COLOR_LEYENDA
     from app.ui_labels import (
         etiqueta_columna,
         etiqueta_menu,
@@ -58,16 +57,7 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-    COLOR_LEYENDA = {
-        "amarillo": "Pendiente — tarifa o prefactura",
-        "verde": "OK — prefactura conciliada",
-        "rojo": "Diferencia / no paga",
-        "gris": "Amba excluido",
-        "naranja": "Revisar carga / postventa",
-        "celeste": "Abona Wamaro — sin prefactura",
-    }
-
-API_BUILD_ESPERADO = "fletes-maestro-manual-align-2026-06-05"
+API_BUILD_ESPERADO = "fletes-luces-alerta-columna-2026-06-05"
 
 
 def _as_dataframe(data: object) -> pd.DataFrame:
@@ -76,14 +66,9 @@ def _as_dataframe(data: object) -> pd.DataFrame:
         return data
     return pd.DataFrame(data)
 
-# Fondos pastel + texto oscuro (legible en tema claro)
+# Solo filas con alerta (detalle en lupa)
 COLOR_MAP = {
-    "amarillo": ("#FFF8DC", "#5C4A00"),
-    "rojo": ("#FFE4E4", "#8B2525"),
-    "gris": ("#ECEFF3", "#4A5568"),
-    "celeste": ("#E3F0FF", "#1E4A7A"),
-    "verde": ("#E6F6EA", "#1F5C35"),
-    "naranja": ("#FFECD9", "#7A4510"),
+    "alerta": ("#FFE8E8", "#7A3030"),
 }
 
 MENU_PROVEEDORES = [
@@ -473,13 +458,25 @@ def filtrar_df_zona_proveedor(df: pd.DataFrame, proveedor: str | None) -> pd.Dat
         return df
 
     def _ok(row: pd.Series) -> bool:
-        return bool(
-            vista_fn(
-                proveedor,
-                row.get("PROVINCIA"),
-                row.get("LOCALIDAD"),
+        try:
+            return bool(
+                vista_fn(
+                    proveedor,
+                    row.get("PROVINCIA"),
+                    row.get("LOCALIDAD"),
+                    transporte_cod=row.get("_transporte_cod") or row.get("NRO TRANSP"),
+                    transporte_nombre=row.get("TRANSPORTE"),
+                    proveedor_asignado=row.get("PROVEEDOR"),
+                )
             )
-        )
+        except TypeError:
+            return bool(
+                vista_fn(
+                    proveedor,
+                    row.get("PROVINCIA"),
+                    row.get("LOCALIDAD"),
+                )
+            )
 
     filtrado = df[df.apply(_ok, axis=1)]
     return pd.DataFrame(filtrado)
@@ -529,25 +526,29 @@ def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
     campo_ui = c2.selectbox(
         "Filtrar casos por",
         (
+            "Solo fecha de entrega",
             "Pedido o entrega (cualquiera)",
             "Solo fecha de pedido",
-            "Solo fecha de entrega",
         ),
+        index=0,
         key=f"{key_prefix}_campo_fecha",
+        help="Estándar: mes a controlar = fecha de entrega (mismo criterio DIST y Limansky).",
     )
     campo_map = {
+        "Solo fecha de entrega": "entrega",
         "Pedido o entrega (cualquiera)": "cualquiera",
         "Solo fecha de pedido": "pedido",
-        "Solo fecha de entrega": "entrega",
     }
     campo_api = campo_map[campo_ui]
     if campo_api == "entrega":
-        c1.caption(f"Casos con **entrega** en **{label_mes}** (1 al último día del mes).")
+        c1.caption(
+            f"Casos con **entrega** en **{label_mes}** (estándar unificado CD + Limansky)."
+        )
     elif campo_api == "pedido":
-        c1.caption(f"Casos con **pedido** en **{label_mes}** (1 al último día del mes).")
+        c1.caption(f"Casos con **pedido** en **{label_mes}** (solo consulta excepcional).")
     else:
         c1.caption(
-            f"Casos con **pedido o entrega** en **{label_mes}** (1 al último día del mes)."
+            f"Casos con **pedido o entrega** en **{label_mes}** (más amplio que el estándar)."
         )
     remito_ui = c3.selectbox(
         "Remito",
@@ -643,7 +644,7 @@ def style_maestro(df: pd.DataFrame) -> Any:
 
     def row_style(row: pd.Series) -> list[str]:
         key = row.get("_regla_color") if "_regla_color" in row.index else None
-        pair = COLOR_MAP.get(key) if key else None
+        pair = COLOR_MAP.get(key) if key == "alerta" else None
         styles: list[str] = []
         for col_name in row.index:
             is_control = col_name in MAESTRO_CONTROL
@@ -758,6 +759,15 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
         return
 
     m = det.get("maestro", {})
+    renglones = det.get("renglones", [])
+    alertas_det = _parse_alertas_celdas(m.get("_alertas_celdas"))
+    if alertas_det:
+        for al in alertas_det:
+            cols_txt = ", ".join(al.get("columnas") or [])
+            st.warning(f"**{cols_txt}:** {al.get('motivo', '')}")
+    elif m.get("_alerta_motivo"):
+        st.warning(str(m["_alerta_motivo"]))
+
     st.markdown("#### Proveedor de tarifa")
     prov = m.get("PROVEEDOR") or m.get("_proveedor_tarifa")
     if prov:
@@ -836,7 +846,6 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     st.dataframe(style_maestro(m_df), width="stretch", hide_index=True)
 
     st.markdown("#### Renglones Tango (artículos / postventa)")
-    renglones = det.get("renglones", [])
     if renglones:
         for i, ren in enumerate(renglones, 1):
             titulo_ren = ren.get("descripcion") or ren.get("cod_articulo") or f"Renglón {i}"
@@ -913,6 +922,41 @@ def _abrir_detalle_por_id(caso_id: str, df: pd.DataFrame, sel_key: str) -> None:
     }
 
 
+_META_GRILLA = (
+    "_regla_color",
+    "_caso_id",
+    "_es_marcador_tarifario",
+    "_alertas_celdas",
+    "_alerta_motivo",
+)
+
+
+def _parse_alertas_celdas(raw: Any) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [a for a in raw if isinstance(a, dict)]
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else []
+        return [a for a in parsed if isinstance(a, dict)] if isinstance(parsed, list) else []
+    except json.JSONDecodeError:
+        return []
+
+
+def _motivo_luz_columna(fila: dict[str, Any], col_name: str) -> str | None:
+    for alerta in _parse_alertas_celdas(fila.get("_alertas_celdas")):
+        if col_name in (alerta.get("columnas") or []):
+            return str(alerta.get("motivo") or "").strip() or None
+    return None
+
+
+def _html_luz_alerta(motivo: str) -> str:
+    t = html_lib.escape(motivo)
+    return (
+        f'<span class="alerta-luz" title="{t}" aria-label="{t}"></span>'
+    )
+
+
 def _hex_to_rgba(hex_color: str, alpha: float = 0.14) -> str:
     h = hex_color.lstrip("#")
     if len(h) != 6:
@@ -926,6 +970,9 @@ def _css_grilla_detalle() -> None:
         """
         <style>
         .grilla-celda-dato {
+            display: flex;
+            align-items: center;
+            gap: 4px;
             padding: 0 7px;
             height: 1.85rem;
             line-height: 1.85rem;
@@ -935,6 +982,25 @@ def _css_grilla_detalle() -> None:
             text-overflow: ellipsis;
             border-bottom: 1px solid #c8d4e0;
             box-sizing: border-box;
+        }
+        .alerta-luz {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            min-width: 9px;
+            border-radius: 50%;
+            background: #e53935;
+            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.28);
+            cursor: help;
+            flex-shrink: 0;
+        }
+        .celda-luz-wrap {
+            display: flex;
+            align-items: center;
+            min-height: 1.85rem;
+            border-bottom: 1px solid #c8d4e0;
+            padding: 0 4px;
+            height: 100%;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] {
             font-size: 0.78rem;
@@ -1030,12 +1096,15 @@ def _celda_html(
     tint = _hex_to_rgba(bg, 0.38)
     control = "border-left:2px solid #8FA8C8;" if col_name in MAESTRO_CONTROL else ""
     title = f' title="{html_lib.escape(texto)}"' if len(texto) > 22 else ""
-    if not texto:
+    luz_motivo = _motivo_luz_columna(fila, col_name)
+    luz = _html_luz_alerta(luz_motivo) if luz_motivo else ""
+    if not texto and not luz:
         return f'<div class="grilla-celda-dato" style="background:{tint};"></div>'
     return (
         f'<div class="grilla-celda-dato" style="background:{tint};color:{fg};'
         f'{control}"{title}>'
-        f"{html_lib.escape(texto)}</div>"
+        f"{luz}<span style='overflow:hidden;text-overflow:ellipsis;'>"
+        f"{html_lib.escape(texto)}</span></div>"
     )
 
 
@@ -1106,8 +1175,7 @@ def _render_grilla_filas_click(
         for idx, (_, row) in enumerate(df.iterrows()):
             fila = row.to_dict()
             if fila.get("_es_marcador_tarifario") is True:
-                color_key = "rojo"
-                bg, fg = COLOR_MAP.get(color_key, ("#FFE4E4", "#8B2525"))
+                bg, fg = COLOR_MAP.get("alerta", ("#FFE8E8", "#7A3030"))
                 texto = (
                     f"⚠ {fila.get('REMITOS', 'CAMBIO TARIFARIO')} — "
                     f"{fila.get('DESTINATARIO', '')}"
@@ -1123,9 +1191,11 @@ def _render_grilla_filas_click(
             caso_id = str(fila.get("_caso_id") or "").strip()
             if not caso_id:
                 continue
-            color_key = str(fila.get("_regla_color") or "")
-            bg, fg = COLOR_MAP.get(color_key, ("#ffffff", "#2c3e50"))
-            tint = _hex_to_rgba(bg, 0.38)
+            if fila.get("_regla_color") == "alerta":
+                bg, fg = COLOR_MAP["alerta"]
+            else:
+                bg, fg = "#ffffff", "#2c3e50"
+            tint = _hex_to_rgba(bg, 0.38) if fila.get("_regla_color") == "alerta" else "#ffffff"
             row_key = row_offset + idx
 
             cols = st.columns(ratios_fila)
@@ -1145,22 +1215,41 @@ def _render_grilla_filas_click(
                     mapa_key = f"{key_prefix}_map_{caso_id}"
                     state_key = f"{key_prefix}_pe_{caso_id}"
                     st.session_state[mapa_key] = mapa
+                    luz_prov = _motivo_luz_columna(fila, "PROVEEDOR")
+                    luz_html = _html_luz_alerta(luz_prov) if luz_prov else ""
                     if len(opciones) <= 1:
                         col_widget.markdown(
                             f'<div class="grilla-celda-dato" style="background:{tint};color:{fg};">'
-                            "Sin tarifa</div>",
+                            f"{luz_html}Sin tarifa</div>",
                             unsafe_allow_html=True,
                         )
                     else:
-                        with col_widget:
-                            st.selectbox(
-                                "Proveedor",
-                                options=opciones,
-                                key=state_key,
-                                label_visibility="collapsed",
-                                on_change=_asignar_proveedor_callback,
-                                args=(caso_id, state_key, mapa_key),
+                        if luz_html:
+                            luz_col, sel_col = col_widget.columns([0.07, 0.93], gap="small")
+                            luz_col.markdown(
+                                f'<div class="celda-luz-wrap" style="justify-content:center;">'
+                                f"{luz_html}</div>",
+                                unsafe_allow_html=True,
                             )
+                            with sel_col:
+                                st.selectbox(
+                                    "Proveedor",
+                                    options=opciones,
+                                    key=state_key,
+                                    label_visibility="collapsed",
+                                    on_change=_asignar_proveedor_callback,
+                                    args=(caso_id, state_key, mapa_key),
+                                )
+                        else:
+                            with col_widget:
+                                st.selectbox(
+                                    "Proveedor",
+                                    options=opciones,
+                                    key=state_key,
+                                    label_visibility="collapsed",
+                                    on_change=_asignar_proveedor_callback,
+                                    args=(caso_id, state_key, mapa_key),
+                                )
                 else:
                     col_widget.markdown(
                         _celda_html(fila, col_name, bg, fg),
@@ -1183,11 +1272,7 @@ def _render_grilla_con_detalle(
     _render_panel_detalle(sel_key)
     _css_grilla_detalle()
 
-    cols_grilla = [
-        c
-        for c in show_df.columns
-        if c not in ("_regla_color", "_caso_id", "_es_marcador_tarifario")
-    ]
+    cols_grilla = [c for c in show_df.columns if c not in _META_GRILLA]
     total = len(df)
     offset = _controles_paginacion_grilla(total, sel_key)
     df_page = df.iloc[offset : offset + _GRILLA_PAGE_SIZE]
@@ -1222,16 +1307,6 @@ def _etiqueta_caso(row: pd.Series) -> str:
     dest = row.get("DESTINATARIO") or ""
     reng = row.get("_cantidad_renglones", 1)
     return f"{rem} — {dest} ({reng} reng.)"
-
-
-def leyenda_colores() -> None:
-    chips = []
-    for key, label in COLOR_LEYENDA.items():
-        bg, fg = COLOR_MAP[key]
-        chips.append(
-            f'<span class="leyenda-chip" style="background:{bg};color:{fg}">{label}</span>'
-        )
-    st.markdown(f'<div class="leyenda-wrap">{"".join(chips)}</div>', unsafe_allow_html=True)
 
 
 def _dash_card(body: str, accent: str, bg: str = "#ffffff") -> str:
@@ -1322,25 +1397,6 @@ def pagina_dashboard() -> None:
     c2.metric("Sin datos Tango", interior.get("sin_datos_tango", 0))
     c3.metric("Sin prefactura", interior.get("pendientes_sin_prefactura", 0))
     st.markdown("</div>", unsafe_allow_html=True)
-
-    por_color = interior.get("por_color") or {}
-    if por_color:
-        labels = {**COLOR_LEYENDA, "sin_color": "Sin clasificar"}
-        chips = []
-        for key, n in sorted(por_color.items(), key=lambda x: -x[1]):
-            if n <= 0:
-                continue
-            bg, fg = COLOR_MAP.get(key, ("#f0f0f0", "#2c3e50"))
-            lbl = labels.get(key, key)
-            chips.append(
-                f'<span class="leyenda-chip" style="background:{bg};color:{fg}">{lbl}: {n}</span>'
-            )
-        if chips:
-            st.markdown(
-                "**Clasificación por color:** "
-                f'<div class="leyenda-wrap">{"".join(chips)}</div>',
-                unsafe_allow_html=True,
-            )
 
     sin_datos = interior.get("sin_datos_tango", 0)
     if sin_datos:
@@ -1486,10 +1542,10 @@ def pagina_casos(
         st.rerun()
 
     f1, f2, f3 = st.columns([2, 2, 3])
-    color_f = f1.selectbox(
-        "Filtrar por color",
-        ["Todos", "Verde (OK)", "Amarillo", "Celeste", "Rojo", "Gris", "Naranja"],
-        key=f"{key_prefix}_color_f",
+    solo_alerta = f1.checkbox(
+        "Solo con alerta",
+        value=False,
+        key=f"{key_prefix}_solo_alerta",
     )
     solo_macheo = False
     if not solo_pendiente_proveedor and not modo_elegir_proveedor:
@@ -1504,7 +1560,6 @@ def pagina_casos(
 
     filtros_extra = _ui_filtros_fecha_remito(key_prefix)
 
-    leyenda_colores()
     if modo_elegir_proveedor:
         st.caption(
             "Solo casos excepcionales sin crossdock automático. "
@@ -1513,8 +1568,8 @@ def pagina_casos(
         )
     else:
         st.caption(
-            "Usá la **lupa** (primera columna) para ver el caso completo. "
-            "El **proveedor** se asigna por destino y tarifario (Rosario puede requerir elección manual)."
+            "Fila **roja** = hay algo para revisar. **Luz roja** en una columna = dónde está el problema "
+            "(pasá el mouse sobre la luz). **🔍** abre el detalle."
         )
 
     params: dict[str, Any] = {"incluir_excluidos": incluir_excl}
@@ -1562,16 +1617,8 @@ def pagina_casos(
         elif solo_pendiente_proveedor or modo_elegir_proveedor:
             st.metric("Empates de proveedor", total_maestro)
 
-        COLOR_FILTRO = {
-            "Verde (OK)": "verde",
-            "Amarillo": "amarillo",
-            "Celeste": "celeste",
-            "Rojo": "rojo",
-            "Gris": "gris",
-            "Naranja": "naranja",
-        }
-        if color_f != "Todos" and "_regla_color" in df.columns:
-            df = _as_dataframe(df[df["_regla_color"] == COLOR_FILTRO[color_f]])
+        if solo_alerta and "_regla_color" in df.columns:
+            df = _as_dataframe(df[df["_regla_color"] == "alerta"])
 
         if solo_macheo and "PRECIO NETO" in df.columns:
             pn = cast(pd.Series, pd.to_numeric(df["PRECIO NETO"], errors="coerce"))
@@ -1601,9 +1648,7 @@ def pagina_casos(
 
         cols_grilla = [c for c in MAESTRO_VISTA_GRILLA if c in df.columns]
         show_df = _as_dataframe(df[cols_grilla].copy())
-        if "_regla_color" in df.columns:
-            show_df["_regla_color"] = df["_regla_color"]
-        for meta in ("_caso_id", "_es_marcador_tarifario"):
+        for meta in _META_GRILLA:
             if meta in df.columns:
                 show_df[meta] = df[meta]
 
@@ -1845,7 +1890,7 @@ def pagina_fletes() -> None:
     if filtros_extra.get("mes_control_anio") and filtros_extra.get("mes_control_mes"):
         stats_params["mes_control_anio"] = filtros_extra["mes_control_anio"]
         stats_params["mes_control_mes"] = filtros_extra["mes_control_mes"]
-        stats_params["campo_fecha"] = filtros_extra.get("campo_fecha", "cualquiera")
+        stats_params["campo_fecha"] = filtros_extra.get("campo_fecha", "entrega")
 
     try:
         with st.spinner("Calculando métricas Fletes…"):
@@ -1887,11 +1932,7 @@ def pagina_fletes() -> None:
         }[x],
         key="fletes_origen",
     )
-    color_f = f2.selectbox(
-        "Filtrar por color",
-        ["Todos", "Verde (OK)", "Amarillo", "Celeste", "Rojo", "Gris", "Naranja"],
-        key="fletes_color",
-    )
+    solo_alerta_f = f2.checkbox("Solo con alerta", value=False, key="fletes_solo_alerta")
     buscar = f3.text_input(
         "Buscar remito o destinatario",
         placeholder="Ej: 318022 — busca en toda la base",
@@ -1903,8 +1944,6 @@ def pagina_fletes() -> None:
     except Exception:
         opciones_f = ["Todos"]
     fletero_f = f4.selectbox("Fletero local", opciones_f, key="fletes_fletero")
-
-    leyenda_colores()
 
     c_calc, _ = st.columns([2, 4])
     if c_calc.button("Calcular km pendientes (hasta 25)", key="fletes_calc_km"):
@@ -1978,16 +2017,8 @@ def pagina_fletes() -> None:
             return
 
         df = preparar_maestro_df(pd.DataFrame(filas))
-        COLOR_FILTRO = {
-            "Verde (OK)": "verde",
-            "Amarillo": "amarillo",
-            "Celeste": "celeste",
-            "Rojo": "rojo",
-            "Gris": "gris",
-            "Naranja": "naranja",
-        }
-        if color_f != "Todos" and "_regla_color" in df.columns:
-            df = _as_dataframe(df[df["_regla_color"] == COLOR_FILTRO[color_f]])
+        if solo_alerta_f and "_regla_color" in df.columns:
+            df = _as_dataframe(df[df["_regla_color"] == "alerta"])
 
         if buscar.strip():
             df = _filtrar_df_buscar(
@@ -2009,8 +2040,9 @@ def pagina_fletes() -> None:
 
         cols = [c for c in FLETES_VISTA_GRILLA if c in df.columns]
         show_df = _as_dataframe(df[cols].copy())
-        if "_regla_color" in df.columns:
-            show_df["_regla_color"] = df["_regla_color"]
+        for meta in _META_GRILLA:
+            if meta in df.columns:
+                show_df[meta] = df[meta]
 
         _render_grilla_con_detalle(show_df, df, sel_key="fletes_sel")
     except Exception as exc:
@@ -2204,14 +2236,18 @@ def pagina_configuracion() -> None:
         st.subheader("Exportacion.xlsx — SommierCenter")
         st.markdown(
             """
-            **Cómo exportar en Tango (estándar recomendado)**
+            **Cómo exportar en Tango (estándar unificado)**
 
             1. Elegí el **mes a controlar** en Maestro/Fletes (ej. mayo).
-            2. En Tango, exportá el **mes que estás controlando** (ej. 01/05 → 31/05).
-            3. **Cada archivo nuevo se suma** a la base (las filas ya importadas no se pisan).
-            4. El remito oficial es **RAR / R** (`NRO REMITO LEGAL LIMANSKY`); la **X** es tránsito.
+            2. En Tango, filtrá y exportá siempre por **fecha de entrega**
+               (ej. 01/05 → 31/05) — **Distribuidora (CD) y Limansky (SA)** igual.
+            3. El Excel trae **pedido y entrega** en columnas; la app usa entrega para el mes
+               de control (pedidos que se entregan en otro mes quedan en el mes correcto).
+            4. **Cada archivo nuevo se suma** a la base (las filas ya importadas no se pisan).
+            5. Remito oficial: **RAR / R** (`NRO REMITO LEGAL LIMANSKY`); la **X** es tránsito.
 
-            Podés importar **abril, mayo y junio** por separado; la grilla filtra por el mes elegido.
+            Importá **abril, mayo, junio…** por separado si hace falta. Si un mes se bajó
+            antes solo por fecha de pedido, conviene **volver a importar** ese mes por entrega.
             """
         )
         tango = st.file_uploader("Archivo Tango", type=["xlsx"], key="cfg_tango")

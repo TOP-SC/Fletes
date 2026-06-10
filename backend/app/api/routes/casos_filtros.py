@@ -9,7 +9,7 @@ def build_filtros_casos(
     *,
     fecha_desde: str | None = None,
     fecha_hasta: str | None = None,
-    campo_fecha: str = "cualquiera",
+    campo_fecha: str = "entrega",
     remito_estado: str = "todos",
 ) -> dict:
     desde = parse_fecha_query(fecha_desde)

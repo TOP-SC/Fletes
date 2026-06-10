@@ -38,6 +38,7 @@ from app.services.cobro_logistica_service import (
     calcular_cobro_pedido,
     cobro_red_y_provincia,
 )
+from app.services.alerta_ui import color_fila_maestro
 from app.services.rules_service import costo_referencia_linea, es_amba_gba
 from app.services.zona_maestro import zona_destino_maestro, zona_origen_maestro
 
@@ -211,10 +212,19 @@ def _fila_maestro_desde_grupo(
     bultos = _bultos_grupo(lineas)
     origen_key = _origen_planilla(base.deposito, base.origen_cd)
 
+    color_ui, alerta_motivo, alertas_celdas = color_fila_maestro(
+        lineas,
+        lineas_sin_tarifa=cobro.lineas_sin_tarifa or 0,
+        total_logistica=costo_lineas or 0.0,
+    )
+
     fila = {
         "_caso_id": key,
         "_origen_planilla": origen_key,
-        "_regla_color": base.regla_color,
+        "_regla_color": color_ui,
+        "_alerta_motivo": alerta_motivo,
+        "_alertas_celdas": alertas_celdas,
+        "_regla_motivo": base.regla_motivo,
         "_cantidad_renglones": len(lineas),
         "_proveedor_tarifa": base.proveedor_tarifa,
         "_requiere_elegir_proveedor": base.requiere_elegir_proveedor,
@@ -305,7 +315,7 @@ def insertar_marcadores_cambio_tarifario(filas: list[dict[str, Any]]) -> list[di
             out.append(
                 {
                     "_es_marcador_tarifario": True,
-                    "_regla_color": "rojo",
+                    "_regla_color": "alerta",
                     "_caso_id": "",
                     "FECHA": corte,
                     "FECHA ENTREGA": formato_fecha_grilla(str(corte)) if corte else "",
@@ -382,7 +392,14 @@ def construir_maestro(
             ) < 2:
                 continue
         elif vista:
-            if not caso_en_vista_proveedor(vista, base.provincia, base.localidad):
+            if not caso_en_vista_proveedor(
+                vista,
+                base.provincia,
+                base.localidad,
+                transporte_cod=base.transporte_cod,
+                transporte_nombre=base.transporte_nombre,
+                proveedor_asignado=base.proveedor_tarifa,
+            ):
                 continue
 
         fila = _fila_maestro_desde_grupo(

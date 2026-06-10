@@ -27,7 +27,7 @@ def listar_maestro(
     solo_pendiente_proveedor: bool = Query(False),
     fecha_desde: str | None = Query(None),
     fecha_hasta: str | None = Query(None),
-    campo_fecha: str = Query("cualquiera"),
+    campo_fecha: str = Query("entrega"),
     remito_estado: str = Query("todos"),
     mes_control_anio: int | None = Query(None, description="Año del mes a controlar"),
     mes_control_mes: int | None = Query(None, ge=1, le=12),
@@ -82,8 +82,8 @@ def periodo_control(
         "fecha_desde": desde.isoformat(),
         "fecha_hasta": hasta.isoformat(),
         "nota": (
-            "Exportá Tango con el mes que controlás. "
-            "En la grilla podés filtrar por fecha de pedido o de entrega."
+            "Exportá Tango filtrando por fecha de entrega (DIST y Limansky). "
+            "La grilla controla el mes por entrega por defecto."
         ),
     }
 

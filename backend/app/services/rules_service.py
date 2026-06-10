@@ -1,5 +1,8 @@
 """Reglas Mundo 1 — interior Clickpac / Limansky."""
 
+from __future__ import annotations
+
+import unicodedata
 from typing import Any
 
 from app.config import DEPOSITO_ORIGEN, settings
@@ -54,6 +57,35 @@ def _norm(value: str | None) -> str:
     return (value or "").strip().upper()
 
 
+def _norm_geo(value: str | None) -> str:
+    """Mayúsculas sin tildes — comparar provincias/localidades de Tango."""
+    v = _norm(value)
+    return "".join(
+        c for c in unicodedata.normalize("NFD", v) if unicodedata.category(c) != "Mn"
+    )
+
+
+_PROVINCIA_CANON: dict[str, str] = {
+    "CAPITAL FEDERAL": "CABA",
+    "CIUDAD AUTONOMA DE BUENOS AIRES": "CABA",
+    "CIUDAD DE BUENOS AIRES": "CABA",
+    "CABA": "CABA",
+    "BUENOS AIRES": "BUENOS AIRES",
+    "RIO NEGRO": "RIO NEGRO",
+    "CORDOBA": "CORDOBA",
+    "TUCUMAN": "TUCUMAN",
+    "ENTRE RIOS": "ENTRE RIOS",
+    "NEUQUEN": "NEUQUEN",
+    "RIOJA": "LA RIOJA",
+    "LA RIOJA": "LA RIOJA",
+}
+
+
+def normalizar_provincia_geo(provincia: str | None) -> str:
+    p = _norm_geo(provincia)
+    return _PROVINCIA_CANON.get(p, p)
+
+
 def es_retiro_sucursal(
     transporte: str | None,
     transporte_cod: str | None = None,
@@ -87,12 +119,12 @@ def es_amba_gba(provincia: str | None, localidad: str | None, cp: str | None) ->
     """
     CABA y GBA conurbano → tarifario fletes sucursales (no maestro interior).
 
-    Interior de Buenos Aires (Mercedes, MDP, Bahía Blanca, etc.) **no** es AMBA:
-    va al maestro interior con CLICPAQ / tarifario provincial (como el Excel SA manual).
+    Prioridad: provincia (CABA) antes que localidad del cliente (ej. Boedo no está en Tango).
+    Interior de Buenos Aires (Mercedes, MDP, etc.) **no** es AMBA.
     """
-    prov = _norm(provincia)
-    loc = _norm(localidad)
-    if prov in ("CABA", "CAPITAL FEDERAL", "CIUDAD AUTONOMA DE BUENOS AIRES"):
+    prov = normalizar_provincia_geo(provincia)
+    loc = _norm_geo(localidad)
+    if prov == "CABA":
         return True
     if "BUENOS AIRES" not in prov:
         return False
@@ -253,8 +285,8 @@ def lookup_tarifa(
     tipo_producto: str,
     medida: str,
 ) -> float | None:
-    prov = _norm(provincia)
-    loc = _norm(localidad)
+    prov = normalizar_provincia_geo(provincia)
+    loc = _norm_geo(localidad)
     tipo = _norm(tipo_producto)
     med_variants = medidas_equivalentes(medida) if medida else set()
     banda = medida_a_banda(medida) if medida else ""
@@ -267,7 +299,7 @@ def lookup_tarifa(
         if tprov_canon != prov_key:
             return None
         score = 0
-        tprov = _norm(t.provincia)
+        tprov = normalizar_provincia_geo(t.provincia)
         if tprov == prov or (tprov and prov and (tprov in prov or prov in tprov)):
             score += 2
         elif tprov in ("GENERAL", ""):
@@ -275,7 +307,7 @@ def lookup_tarifa(
         else:
             return None
 
-        tloc = _norm(t.localidad)
+        tloc = _norm_geo(t.localidad)
         if tloc and loc:
             if tloc in loc or loc in tloc:
                 score += 4
@@ -327,6 +359,40 @@ def lookup_tarifa(
     return best_price
 
 
+def lookup_tarifa_priorizado(
+    tarifas: list[Any],
+    proveedor: str,
+    provincia: str,
+    localidad: str,
+    tipo_producto: str,
+    medida: str,
+) -> float | None:
+    """
+    Tarifario con jerarquía: provincia antes que localidad del cliente.
+    La localidad (ej. Boedo) solo refina si hay fila exacta; si no, tarifa provincial.
+    """
+    prov = provincia or ""
+    loc = (localidad or "").strip()
+    intentos_loc: list[str] = ["", "INTERIOR"]
+    if loc:
+        intentos_loc.append(loc)
+    prov_geo = normalizar_provincia_geo(prov)
+    if prov_geo:
+        intentos_loc.append(f"{prov_geo} INTERIOR")
+        intentos_loc.append(prov_geo)
+
+    vistos: set[str] = set()
+    for loc_try in intentos_loc:
+        key = _norm_geo(loc_try)
+        if key in vistos:
+            continue
+        vistos.add(key)
+        precio = lookup_tarifa(tarifas, proveedor, prov, loc_try, tipo_producto, medida)
+        if precio is not None:
+            return precio
+    return None
+
+
 def enrich_from_tarifario(
     envio: Envio, tarifas: list[Any], proveedor: str | None = None
 ) -> None:
@@ -336,31 +402,23 @@ def enrich_from_tarifario(
     medida = infer_medida(envio.descripcion)
     tipo = infer_tipo_producto(envio.descripcion, envio.cod_articulo)
 
-    precio = lookup_tarifa(
+    banda = medida_a_banda(medida) if medida else medida
+    precio = lookup_tarifa_priorizado(
         tarifas,
         prov,
         envio.provincia or "",
         envio.localidad or "",
         tipo,
-        medida_a_banda(medida) if medida else medida,
+        banda or medida or "",
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
-        precio = lookup_tarifa(
+        precio = lookup_tarifa_priorizado(
             tarifas,
             prov,
             envio.provincia or "",
             envio.localidad or "",
             "COLCHON",
-            medida_a_banda(medida) if medida else "",
-        )
-    if precio is None:
-        precio = lookup_tarifa(
-            tarifas,
-            prov,
-            envio.provincia or "",
-            "",
-            tipo,
-            medida_a_banda(medida) if medida else "",
+            banda or "",
         )
 
     if precio is not None and envio.costo_total is None and not envio.regla_postventa:

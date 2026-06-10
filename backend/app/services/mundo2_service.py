@@ -193,7 +193,9 @@ def _fila_fletes_desde_grupo(
     elif por_zona:
         costo_ref = min(por_zona.values())
 
-    color, motivo = _color_fila_fletes(
+    from app.services.alerta_ui import color_fila_fletes_local
+
+    color_raw, motivo = _color_fila_fletes(
         retiro=retiro,
         abona_wamaro=bool(base.abona_wamaro),
         tiene_tarifa=bool(por_zona),
@@ -214,10 +216,19 @@ def _fila_fletes_desde_grupo(
                 f"Ref. ${pmin:,.0f}–${pmax:,.0f} (elegir zona km)".replace(",", ".")
             )
 
+    color_ui, alertas_celdas = color_fila_fletes_local(
+        retiro=retiro,
+        tiene_tarifa=bool(por_zona),
+        zona_asignada=zona_km,
+        motivo=motivo,
+    )
+
     fila: dict[str, Any] = {
         "_caso_id": key,
         "_origen_planilla": _origen_planilla(base.deposito, base.origen_cd),
-        "_regla_color": color,
+        "_regla_color": color_ui,
+        "_alerta_motivo": alertas_celdas[0]["motivo"] if alertas_celdas else None,
+        "_alertas_celdas": alertas_celdas,
         "_regla_motivo": motivo,
         "_cantidad_renglones": len(lineas),
         "_por_zona_tarifa": por_zona,

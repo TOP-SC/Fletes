@@ -9,13 +9,17 @@ from app.models import Envio, Tarifa
 from app.proveedores import (
     PROVEEDORES_MENU,
     es_cordoba,
-    es_destino_crossdock,
     es_zona_fransof,
     es_zona_alfaro,
     normalizar_proveedor,
 )
-from app.services.transportes_service import lookup_transporte_catalogo
-from app.transporte_reglas import COD_CROSSDOCKING, normalizar_transporte_cod
+from app.transporte_reglas import (
+    COD_CROSSDOCKING,
+    acotar_candidatos_por_circuito,
+    normalizar_transporte_cod,
+    proveedor_sugerido_transporte,
+    resolver_circuito_logistico,
+)
 from app.services.excel_parser import infer_medida, infer_tipo_producto
 from app.services.medida_utils import medida_a_banda
 from app.services.cobro_logistica_service import aplicar_cobro_linea
@@ -24,7 +28,11 @@ from app.services.costo_conceptos import (
     es_amba_gba_envio,
     es_retiro_sin_flete_domicilio,
 )
-from app.services.rules_service import es_retiro_sucursal, lookup_tarifa, recalcular_costos_linea
+from app.services.rules_service import (
+    es_retiro_sucursal,
+    lookup_tarifa_priorizado,
+    recalcular_costos_linea,
+)
 
 
 def _candidato_dict(proveedor: str, precio: float) -> dict[str, Any]:
@@ -44,7 +52,7 @@ def candidatos_tarifa(
 
     candidatos: list[dict[str, Any]] = []
     for prov in PROVEEDORES_MENU:
-        precio = lookup_tarifa(
+        precio = lookup_tarifa_priorizado(
             tarifas,
             prov,
             envio.provincia or "",
@@ -53,7 +61,7 @@ def candidatos_tarifa(
             banda or medida or "",
         )
         if precio is None and tipo in ("BASE", "SOMIER"):
-            precio = lookup_tarifa(
+            precio = lookup_tarifa_priorizado(
                 tarifas,
                 prov,
                 envio.provincia or "",
@@ -92,20 +100,19 @@ def es_planilla_interior(envio: Envio) -> bool:
 
 def es_crossdocking_envio(envio: Envio) -> bool:
     """
-    Crossdock solo si Tango trae transporte crossdock (82 / modo crossdock).
-    Remito + depósito + nº transporte definen el circuito: un 51 Expreso CLICPAQ
-    a Córdoba/Rosario/NOA es un tramo CLICPAQ, no cross, aunque exista tarifa
-    provincial. CABA/GBA nunca entra (planilla interior + zona crossdock).
+    Crossdock solo si Tango trae transporte 82 (o catálogo modo crossdock).
+    La provincia define la última milla, no si es cross.
     """
     if not es_planilla_interior(envio):
         return False
-    if not es_destino_crossdock(envio.provincia, envio.localidad):
-        return False
-    row = lookup_transporte_catalogo(envio.transporte_cod, envio.transporte_nombre)
-    if row is not None:
-        return str(row.get("modo") or "").strip().lower() == "crossdock"
-    cod = normalizar_transporte_cod(envio.transporte_cod, envio.transporte_nombre)
-    return cod == COD_CROSSDOCKING
+    circuito = resolver_circuito_logistico(
+        envio.transporte_cod,
+        envio.transporte_nombre,
+        provincia=envio.provincia,
+        localidad=envio.localidad,
+        cp=envio.cp,
+    )
+    return circuito["modo"] == "crossdock"
 
 
 def es_crossdock_operativo(
@@ -209,6 +216,46 @@ def _elegir_automatico(candidatos: list[dict[str, Any]]) -> str | None:
     return None
 
 
+def _circuito_envio(envio: Envio):
+    return resolver_circuito_logistico(
+        envio.transporte_cod,
+        envio.transporte_nombre,
+        provincia=envio.provincia,
+        localidad=envio.localidad,
+        cp=envio.cp,
+    )
+
+
+def _asignar_por_circuito_transporte(
+    envio: Envio,
+    tarifas: list[Tarifa],
+    circuito,
+) -> bool:
+    """Asigna proveedor según circuito del transporte (prioridad sobre provincia)."""
+    modo = circuito["modo"]
+    todos = candidatos_tarifa(envio, tarifas)
+    envio.proveedores_candidatos = (
+        json.dumps(todos, ensure_ascii=False) if todos else None
+    )
+
+    if modo == "fletes_suc":
+        envio.proveedor_tarifa = PROVEEDOR_FLETE_LOCAL
+        envio.requiere_elegir_proveedor = False
+        return True
+
+    if modo == "red_clicpaq" and circuito["proveedor"]:
+        envio.proveedor_tarifa = circuito["proveedor"]
+        envio.requiere_elegir_proveedor = False
+        return True
+
+    if modo == "catalogo" and circuito["proveedor"]:
+        envio.proveedor_tarifa = circuito["proveedor"]
+        envio.requiere_elegir_proveedor = False
+        return True
+
+    return False
+
+
 def asignar_proveedor_envio(
     envio: Envio,
     tarifas: list[Tarifa],
@@ -222,12 +269,6 @@ def asignar_proveedor_envio(
         envio.requiere_elegir_proveedor = False
         return
 
-    if es_amba_gba_envio(envio):
-        envio.proveedor_tarifa = PROVEEDOR_FLETE_LOCAL
-        envio.proveedores_candidatos = None
-        envio.requiere_elegir_proveedor = False
-        return
-
     if forzar:
         canon = normalizar_proveedor(forzar)
         if canon:
@@ -237,13 +278,34 @@ def asignar_proveedor_envio(
             envio.proveedores_candidatos = json.dumps(cand, ensure_ascii=False)
             return
 
-    if es_crossdocking_envio(envio) and _asignar_proveedor_crossdock(envio, tarifas):
+    circuito = _circuito_envio(envio)
+
+    if circuito["modo"] == "excluido":
+        envio.proveedor_tarifa = None
+        envio.proveedores_candidatos = None
+        envio.requiere_elegir_proveedor = False
         return
 
-    candidatos = candidatos_tarifa(envio, tarifas)
+    if circuito["modo"] == "crossdock":
+        if _asignar_proveedor_crossdock(envio, tarifas):
+            return
+        if _asignar_por_circuito_transporte(envio, tarifas, circuito):
+            return
+
+    if _asignar_por_circuito_transporte(envio, tarifas, circuito):
+        return
+
+    candidatos = acotar_candidatos_por_circuito(
+        circuito, candidatos_tarifa(envio, tarifas)
+    )
     envio.proveedores_candidatos = (
         json.dumps(candidatos, ensure_ascii=False) if candidatos else None
     )
+
+    if circuito["proveedor"] and circuito["modo"] != "ambiguo":
+        envio.proveedor_tarifa = circuito["proveedor"]
+        envio.requiere_elegir_proveedor = False
+        return
 
     elegido = _elegir_automatico(candidatos)
     if elegido:
@@ -265,7 +327,7 @@ def aplicar_tarifa_proveedor_asignado(envio: Envio, tarifas: list[Tarifa]) -> No
     medida = infer_medida(envio.descripcion)
     tipo = infer_tipo_producto(envio.descripcion, envio.cod_articulo)
     banda = medida_a_banda(medida) if medida else medida
-    precio = lookup_tarifa(
+    precio = lookup_tarifa_priorizado(
         tarifas,
         envio.proveedor_tarifa,
         envio.provincia or "",
@@ -274,7 +336,7 @@ def aplicar_tarifa_proveedor_asignado(envio: Envio, tarifas: list[Tarifa]) -> No
         banda or medida or "",
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
-        precio = lookup_tarifa(
+        precio = lookup_tarifa_priorizado(
             tarifas,
             envio.proveedor_tarifa,
             envio.provincia or "",
@@ -341,7 +403,7 @@ def precio_tarifa_linea(
     medida = infer_medida(envio.descripcion)
     tipo = tipo_producto or infer_tipo_producto(envio.descripcion, envio.cod_articulo)
     banda = medida_banda or (medida_a_banda(medida) if medida else medida)
-    precio = lookup_tarifa(
+    precio = lookup_tarifa_priorizado(
         tarifas,
         canon,
         envio.provincia or "",
@@ -350,7 +412,7 @@ def precio_tarifa_linea(
         banda or medida or "",
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
-        precio = lookup_tarifa(
+        precio = lookup_tarifa_priorizado(
             tarifas,
             canon,
             envio.provincia or "",
@@ -390,9 +452,14 @@ def etiqueta_proveedor_maestro(envio: Envio) -> str:
                     return "Crossdock: " + " + ".join(nombres)
         except json.JSONDecodeError:
             pass
+    if envio.proveedor_tarifa:
+        return envio.proveedor_tarifa
+    circuito = _circuito_envio(envio)
     if envio.requiere_elegir_proveedor:
+        if circuito["proveedor"] and circuito["modo"] != "ambiguo":
+            return circuito["proveedor"]
         return "?"
-    return envio.proveedor_tarifa or ""
+    return circuito["proveedor"] or ""
 
 
 def elegir_proveedor_remito(
@@ -466,7 +533,14 @@ def stats_por_proveedor(envios: list[Envio]) -> dict[str, int]:
             if cuenta_proveedores_tarifario(cand) >= 2:
                 pendientes.add(key)
         for p in PROVEEDORES_MENU:
-            if caso_en_vista_proveedor(p, e.provincia, e.localidad):
+            if caso_en_vista_proveedor(
+                p,
+                e.provincia,
+                e.localidad,
+                transporte_cod=e.transporte_cod,
+                transporte_nombre=e.transporte_nombre,
+                proveedor_asignado=e.proveedor_tarifa,
+            ):
                 casos[p].add(key)
     out = {p: len(casos[p]) for p in PROVEEDORES_MENU}
     out["PENDIENTE_ELEGIR"] = len(pendientes)
