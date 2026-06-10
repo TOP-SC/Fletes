@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,12 @@ from app.models import Envio, Tarifa
 from app.services.export_service import export_maestro_wamaro
 from app.services.fecha_utils import periodo_mes_solo, resolver_periodo_vista
 from app.services.envio_query_service import cargar_envios_filtrados
-from app.services.maestro_service import MAESTRO_COLUMNAS, construir_maestro, detalle_caso
+from app.services.maestro_service import (
+    MAESTRO_COLUMNAS,
+    construir_maestro,
+    detalle_caso,
+    obtener_lineas_caso,
+)
 from app.api.routes.casos_filtros import build_filtros_casos
 
 router = APIRouter(prefix="/maestro", tags=["maestro"])
@@ -100,10 +106,33 @@ def ver_caso(caso_id: str, db: Session = Depends(get_db)) -> dict:
     envios = list(db.scalars(select(Envio)).all())
     det = detalle_caso(envios, caso_id, db)
     if not det:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="Caso no encontrado")
     return det
+
+
+class PostventaCasoIn(BaseModel):
+    accion: str  # aprobar_viaje | no_pagar
+
+
+@router.post("/caso/{caso_id}/postventa")
+def resolver_postventa_caso_api(
+    caso_id: str,
+    body: PostventaCasoIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    if body.accion not in ("aprobar_viaje", "no_pagar"):
+        raise HTTPException(status_code=400, detail="accion debe ser aprobar_viaje o no_pagar")
+    envios = list(db.scalars(select(Envio)).all())
+    found = obtener_lineas_caso(envios, caso_id)
+    if not found:
+        raise HTTPException(status_code=404, detail="Caso no encontrado")
+    _, lineas = found
+    from app.services.postventa_rules import resolver_postventa_caso
+
+    try:
+        return resolver_postventa_caso(db, lineas, body.accion)  # type: ignore[arg-type]
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/export")

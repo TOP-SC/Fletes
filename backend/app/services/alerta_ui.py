@@ -8,7 +8,7 @@ from typing import Any, TypedDict
 
 from app.models import Envio
 from app.proveedores import normalizar_proveedor
-from app.services.costo_conceptos import debe_calcular_costo_proveedor
+from app.services.costo_conceptos import debe_calcular_costo_proveedor, es_amba_gba_envio
 from app.services.remito_maestro import estado_remito_envio, remito_oficial_envio
 from app.transporte_reglas import (
     COD_CROSSDOCKING,
@@ -77,13 +77,23 @@ def _falta_cotizar_provincia(
     lineas_sin_tarifa: int,
     total_logistica: float,
 ) -> bool:
-    if lineas_sin_tarifa > 0:
-        return True
     if total_logistica > 0:
         return False
+    if any(l.regla_postventa == "revisar_manual" for l in lineas):
+        return False
+    if lineas_sin_tarifa > 0:
+        return True
     if any(l.excluir_planilla for l in lineas):
         return False
     return any(debe_calcular_costo_proveedor(l) for l in lineas)
+
+
+def _postventa_pendiente_amba(lineas: list[Envio], *, total_logistica: float) -> bool:
+    if total_logistica > 0:
+        return False
+    if not any(l.regla_postventa == "revisar_manual" for l in lineas):
+        return False
+    return any(es_amba_gba_envio(l) for l in lineas)
 
 
 def _inconsistencia_transporte_proveedor(envio: Envio) -> str | None:
@@ -148,6 +158,15 @@ def alertas_maestro_grilla(
                 "codigo": "dif_prefactura",
                 "columnas": ["PRECIO NETO", "total"],
                 "motivo": "Diferencia prefactura vs control",
+            }
+        )
+
+    if _postventa_pendiente_amba(lineas, total_logistica=total_logistica):
+        out.append(
+            {
+                "codigo": "postventa_amba",
+                "columnas": ["LOGISTICA", "PROVEEDOR"],
+                "motivo": "Postventa sin resolver — calcular km o aprobar viaje en detalle",
             }
         )
 

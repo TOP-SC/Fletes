@@ -420,21 +420,33 @@ def construir_maestro(
     return filas
 
 
+def obtener_lineas_caso(
+    envios: list[Envio],
+    caso_id: str,
+) -> tuple[str, list[Envio]] | None:
+    grupos = _agrupar_por_caso(envios)
+    lineas = grupos.get(caso_id)
+    key = caso_id
+    if not lineas:
+        for k, g in grupos.items():
+            if any((l.remito or "") == caso_id for l in g):
+                lineas = g
+                key = k
+                break
+    if not lineas:
+        return None
+    return key, lineas
+
+
 def detalle_caso(
     envios: list[Envio],
     caso_id: str,
     db: Session | None = None,
 ) -> dict[str, Any] | None:
-    grupos = _agrupar_por_caso(envios)
-    lineas = grupos.get(caso_id)
-    if not lineas:
-        for key, g in grupos.items():
-            if any((l.remito or "") == caso_id for l in g):
-                lineas = g
-                caso_id = key
-                break
-    if not lineas:
+    found = obtener_lineas_caso(envios, caso_id)
+    if not found:
         return None
+    caso_id, lineas = found
 
     renglones = []
     for l in lineas:

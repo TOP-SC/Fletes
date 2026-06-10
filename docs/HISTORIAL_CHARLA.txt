@@ -1,0 +1,297 @@
+================================================================================
+CONTROL DE FLETES — TOP-SC / SommierCenter · Wamaro
+HISTORIAL DE CONVERSACIÓN (resumen estructurado)
+Generado: 2 junio 2026
+Repositorio: https://github.com/TOP-SC/Fletes
+================================================================================
+
+NOTA: Este documento condensa el hilo de trabajo entre el equipo y el asistente
+de desarrollo. Incluye decisiones, entregas, problemas resueltos y pendientes
+identificados en la sesión actual y sesiones anteriores del mismo proyecto.
+
+
+================================================================================
+1. ORIGEN DEL PROYECTO
+================================================================================
+
+Objetivo inicial:
+  App de control de fletes para SommierCenter/Wamaro.
+  - Frontend: Streamlit (ágil, práctico).
+  - Backend: FastAPI.
+  - Fuente principal: Excel Exportacion.xlsx desde Tango (tablero del cliente).
+  - Premisa: cada import NO pisa datos anteriores (acumulativo / deduplicado).
+
+Alcance funcional pedido:
+  - Automatizar filtros, colores y reglas que hoy hace el operador a mano.
+  - Generar maestro de costos (columnas de control con color distinto al Tango).
+  - Normalizar valores monetarios (ceros de más: 240000.000000 → $240.000).
+  - Tres “mundos” logísticos: Interior (M1), Fletes AMBA/GBA (M2), Duplicados (M3).
+
+Decisiones tempranas:
+  - Terminar Mundo 1 antes de seguir.
+  - Tarifarios: carpeta data/tarifarios/ + import desde Configuración.
+  - Botón reset/vaciar BD para cierre de mes.
+  - Iniciar con .bat de un solo doble clic (API + Streamlit).
+
+
+================================================================================
+2. MUNDO 1 — MAESTRO INTERIOR
+================================================================================
+
+Implementado:
+  - Import Tango acumulativo (fingerprint, no pisa).
+  - Reglas automáticas: colores, proveedor, AMBA vs interior, Clickpack.
+  - Tarifarios: CLICPAQ, LBO, FRANSOF, ALFARO, FLETES_SUC (Mantello).
+  - Maestro con columnas alineadas al Excel manual WAMARO (29 cols).
+  - Columnas de control (LOGISTICA, SEGURO, total, dif, obs) con tint distinto.
+  - Macheo prefactura Clickpack (cuando el cliente sube el archivo).
+  - Postventa desde Tango (TipoGestion / SubTipo) y Excel aparte.
+  - Popup detalle por caso (lupa) con renglones Tango completos.
+  - Export Excel maestro.
+
+Problemas resueltos en M1:
+  - Columnas mal mapeadas en import nuevo Excel.
+  - Popup que se abría solo → corregido (solo con lupa; cerrar deselecciona).
+  - Casos con 0 bultos → lógica de agrupación corregida.
+  - Valores moneda vs cantidades (normalización de ceros).
+  - warnings contentscript.js → extensión navegador, no de la app.
+  - Clickpack ficticio para probar verde → flujo macheo documentado.
+  - Casos “desaparecidos” tras macheo → filtros/vista explicados.
+
+Comparación con maestro manual:
+  - Planillas WAMARO SA y TORTUGUITAS analizadas.
+  - Estructura ~92% similar; cobertura y montos dependen de prefactura en uso.
+  - Clickpack no disponible al inicio → maestro visible igual que manual.
+
+
+================================================================================
+3. REORGANIZACIÓN UI — PROVEEDORES Y MAESTRO
+================================================================================
+
+Cambio de óptica pedido:
+  - Sidebar por proveedor: CLICPAQ, FRANSOF, ALFARO, LBO, FLETES_SUC, etc.
+  - Cada vista muestra solo casos que corresponden a ese proveedor/zona.
+  - “Casos” renombrado conceptualmente a MAESTRO (vista unificada).
+  - Reglas de transporte refinadas (ej. FRANSOF solo Rosario, no General Rodríguez).
+
+Implementado:
+  - Módulo proveedores + asignación por transporte/zona.
+  - Menú Streamlit por proveedor.
+  - Reaplicar reglas y proveedores.
+  - CLICPAQ renombrado en UI; tarifarios normalizados.
+
+
+================================================================================
+4. MUNDO 2 — FLETES AMBA/GBA (KM / SUCURSAL / ZONA)
+================================================================================
+
+Objetivo:
+  Calcular km desde domicilio exacto del detalle Tango (no casos puntuales).
+  Lógica general con cache de geocodificación.
+
+Pipeline implementado (fletes_km_service.py):
+  1. Cache por remito oficial.
+  2. Cache por domicilio_fp (hash domicilio).
+  3. Geocodificación + haversine desde sucursal/CD.
+  4. Preview estimado por localidad si falla geo.
+  5. Reuso de domicilio entre remitos.
+  6. Claves pedido-{nro} y fp-{hash} para casos sin remito.
+
+Integración app-wide:
+  - Grilla Fletes, detalle auto-calc, cobro maestro, stats, fletes internos.
+  - Endpoints POST /fletes/calcular-km y /fletes/caso/{id}/calcular-km.
+  - GET /fletes/casos con enrich automático (hasta 30 km por carga).
+
+Limpieza domicilios:
+  - Quitar PRINCIPAL:, CASA:, TRABAJO:, etc.
+  - Variante caba_domicilio para localidad genérica Buenos Aires/CABA.
+
+Alertas transporte:
+  - Transporte 51 vs 40; remito CD solo donde aplica.
+  - Una luz por columna en grilla.
+
+Métricas (auditoría jun 2026):
+  - 1.640 km reales en cache; 3.337 filas totales flete_distancias.
+  - Grilla Fletes: 1.327 casos; 1.101 (83%) con sucursal+km+total; 0 alertas.
+  - 129 domicilios AMBA sin geocode (3er batch opcional).
+
+
+================================================================================
+5. EXPORT MAESTRO — FIX PERFORMANCE
+================================================================================
+
+Problema:
+  Streamlit llamaba /maestro/export en cada rerun + enrich km en toda la base (~78 s).
+  Error 500 / API saturada.
+
+Solución:
+  - Export bajo demanda (botón Generar + Descargar).
+  - API export solo lectura (~11 s).
+  - Build: fletes-export-fix-2026-06-02.
+
+
+================================================================================
+6. UI STREAMLIT — IDENTIDAD VISUAL
+================================================================================
+
+Tema “sobrio con personalidad”:
+  - MODULE_THEMES, inject_module_accent(), headers por módulo.
+  - Sidebar con banda marca (gradiente navy), nav activo resaltado.
+  - KPI con borde de acento, chips leyenda operativa.
+  - Solo frontend/streamlit_app.py; colores funcionales de alertas intactos.
+
+
+================================================================================
+7. AVANCE Y GIT (JUNIO 2026)
+================================================================================
+
+Commits relevantes:
+  - 8734233: Km unificado, cache domicilio, export fix.
+  - 642fd28: UI identidad visual + auditoria_total.py.
+  - e0c7bb0: Avance HTML auditoría 2 jun confirmada.
+
+Reportes:
+  - docs/AVANCE_PROYECTO.html (KPI dev ~86%, ops ~72%).
+  - backend/scripts/auditoria_total.py (métricas reproducibles).
+
+Métricas base fletes.db:
+  - 4.998 renglones Tango · 2.764 casos maestro · 1.327 casos Fletes.
+  - Prefactura / macheo OK: 0 (cliente no cargó prefactura Clickpack en rutina).
+  - Depósito 14 (CD): 4.333 renglones — operación real actual.
+
+
+================================================================================
+8. SESIÓN ACTUAL — CASO PILOTO Y ROL CREADOR
+================================================================================
+
+8.1 Actualizar estatus (2 jun 2026)
+  - Re-auditoría confirmó métricas sin cambio.
+  - HTML y GitHub sincronizados.
+
+8.2 Simulación como cliente — caso REY Griselda
+  Remito: R-0178-00320443 (R0017800320443)
+  Pedido: 33300074892
+  Cliente: REY GRISELDA
+  Domicilio: Quirno 211 4 403, C1406, Capital Federal
+  Transporte: 42 — SUBIDA POR ESCALERA AMBA
+  Producto: Cama Cajón Antilla 090 Blanco
+  Postventa Tango: Reclamo por garantía / Mal encajado
+  regla_postventa: revisar_manual (naranja)
+
+  Lo que ve el operador en MAESTRO:
+  - LOGISTICA / SEGURO / total = $0
+  - Luces rojas: PROVINCIA, LOGISTICA
+  - Alerta: "Falta cotizar destino en tarifario (provincia)"
+
+  Lo que hay en FLETES M2 (misma app):
+  - SUCURSAL CD · 24,6 km · Zona 3 (40 km)
+  - Tarifa ref ~$30.000 · total ~$33.000
+  - Sin alertas (caso resuelto en M2)
+
+  Causa técnica:
+  - calcular_cobro_pedido con regla_postventa activa usa costo_referencia_linea
+    (None) → $0, sin pasar por tarifario FLETES_SUC aunque km esté en cache.
+  - Maestro y Fletes no comparten el mismo “verde” para postventa AMBA.
+
+8.3 ¿Cómo lo resuelve el operador HOY?
+  - En Fletes M2: ya está OK.
+  - En Maestro: no puede cerrarlo solo; postventa revisar_manual bloquea cobro.
+  - Macheo Clickpack: NO aplica (es FLETES_SUC, no red interior).
+  - No hay botón “Aprobar viaje postventa” (pendiente de desarrollo).
+
+8.4 División de responsabilidades (acordada en charla)
+
+  CLIENTE / OPERACIÓN (datos que ya tiene):
+  - Export Tango periódico.
+  - Prefactura Clickpack cuando opera red 51/40 interior.
+  - Tarifario actualizado cuando cambia proveedor.
+  - Decisión puntual en postventa ambiguo.
+
+  CREADORES / APP (nuestro rol):
+  - Import, normalización, deduplicación.
+  - Reglas y clasificación automática (incl. postventa desde Tango).
+  - Pipeline único km → zona → tarifa en TODA la app.
+  - Maestro ↔ Fletes alineados (mismo costo, mismas alertas).
+  - Estados claros (verde/amarillo/naranja/rojo/gris) accionables.
+  - UX resolución en 1–2 clics (aprobar viaje / no pagar / calcular km).
+  - Alertas honestas (no “falta cotizar” si ya hay km).
+  - Performance, cache, auditoría, export.
+
+8.5 Decisión de alcance (2 jun 2026)
+  - Depósito 12 / transporte 12 / SA-Limansky: EXISTEN en Tango pero NO SE USAN
+    en la operación actual → FUERA del camino de desarrollo y del % de avance.
+  - Foco desarrollo: cerrar gaps de lógica/UX sin pedir cargas extra al cliente
+    más allá de Tango + tarifario base + prefactura cuando corresponda interior.
+
+
+================================================================================
+9. BACKLOG CREADOR (PRIORIZADO — SIN DEP. 12)
+================================================================================
+
+P0 — Cierre operativo sin Excel paralelo:
+  [ ] Cobro postventa AMBA: usar tarifario Fletes si hay km en cache.
+  [ ] Clasificador postventa: garantía/mal encajado → viaje pagado (desde Tango).
+  [ ] Maestro muestra mismo costo que Fletes M2 para casos AMBA.
+  [ ] Botón detalle: “Aprobar viaje postventa” / “No se paga transporte”.
+  [ ] Alertas accionables (mensaje + columna correcta).
+
+P1 — Completar cobertura:
+  [ ] 3er batch km opcional (129 domicilios AMBA restantes).
+  [ ] Macheo prefactura Clickpack (código listo; activación cuando cliente sube archivo).
+  [ ] Mejorar macheo fleteros locales (destinatario/remito).
+
+P2 — Evolutivo:
+  [ ] M3 duplicados interior (spec + reglas).
+  [ ] Prefactura Gama/Blast en M2 (si negocio lo requiere).
+
+EXCLUIDO DEL ROADMAP:
+  - Import Tango SA / Limansky depósito 12.
+  - Transporte 12 como requisito de avance.
+
+
+================================================================================
+10. ARCHIVOS CLAVE DEL PROYECTO
+================================================================================
+
+  backend/app/services/fletes_km_service.py    — núcleo km/cache
+  backend/app/services/fletes_matching_service.py — geocode, limpieza domicilio
+  backend/app/services/mundo2_service.py       — grilla Fletes
+  backend/app/services/cobro_logistica_service.py — zona km en cobro
+  backend/app/services/postventa_rules.py      — reglas postventa
+  backend/app/services/alerta_ui.py            — luces y alertas grilla
+  frontend/streamlit_app.py                    — UI + tema
+  docs/AVANCE_PROYECTO.html                    — reporte avance visual
+  docs/HISTORIAL_CHARLA.txt                    — este archivo
+  backend/scripts/auditoria_total.py           — auditoría reproducible
+  data/fletes.db                               — base local
+  data/sucursales.json                         — sucursales km
+
+
+================================================================================
+11. P0 IMPLEMENTADO (2 jun 2026)
+================================================================================
+
+P0 = Prioridad 0 (bloqueantes para cerrar ciclo sin Excel paralelo).
+
+Entregado:
+  - Cobro postventa AMBA unificado: reglas con km usan tarifario FLETES_SUC en Maestro.
+  - Clasificador ampliado: garantía / reclamo / mal encajado → cruce_medidas_aprobado.
+  - Reaplicar postventa desde Tango en POST /mundo1/postventa/aplicar.
+  - API POST /maestro/caso/{id}/postventa (aprobar_viaje | no_pagar).
+  - UI detalle: botones Aprobar viaje / No se paga transporte.
+  - Alertas: postventa_amba en lugar de falso "falta cotizar provincia".
+  - Build API: postventa-p0-2026-06-02.
+
+Impacto medido en fletes.db:
+  - revisar_manual: 143 → 0 (reclasificados 141).
+  - Caso REY Griselda: verde, LOGISTICA $45.000, sin alertas.
+  - Alertas maestro: ~1247 → ~1178.
+
+12. UX Fletes — card Pend. zona km interactiva (2 jun 2026)
+  - Se mantienen las 4 KPI cards informativas.
+  - Solo "Pend. zona km" tiene botón Ver pendientes / Ver todos.
+  - Filtra la grilla a casos sin zona km asignada (226 en jun 2026).
+
+================================================================================
+FIN DEL HISTORIAL
+================================================================================

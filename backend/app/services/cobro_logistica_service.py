@@ -412,6 +412,58 @@ def calcular_cobro_pedido(
 
     if base.regla_postventa:
 
+        from app.services.postventa_rules import (
+
+            postventa_bloquea_cobro,
+
+            postventa_usa_tarifario_fletes_amba,
+
+        )
+
+
+
+        if postventa_bloquea_cobro(base.regla_postventa):
+
+            return CobroPedidoResult(
+
+                "postventa_cero",
+
+                0.0,
+
+                tiene_tarifa=False,
+
+                interpretacion=interp,
+
+                cobro_cliente_cero=cobro_al_cliente_es_cero(base),
+
+            )
+
+
+
+        if (
+
+            es_amba_gba_envio(base)
+
+            and postventa_usa_tarifario_fletes_amba(base.regla_postventa)
+
+        ):
+
+            zona = zona_km or resolver_zona_km_pedido(lineas_pedido, db)
+
+            if zona:
+
+                r = calcular_cobro_flete_local(lineas_pedido, tarifas, zona)
+
+                if r.tiene_tarifa:
+
+                    r.modo = "postventa_flete_local"
+
+                    r.cobro_cliente_cero = cobro_al_cliente_es_cero(base)
+
+                    return r
+
+
+
         ref = costo_referencia_linea(base) or 0.0
 
         log = ref - settings.seguro_fijo if ref > settings.seguro_fijo else ref
@@ -426,7 +478,7 @@ def calcular_cobro_pedido(
 
             interpretacion=interp,
 
-            cobro_cliente_cero=False,
+            cobro_cliente_cero=cobro_al_cliente_es_cero(base),
 
         )
 
@@ -862,7 +914,17 @@ def calcular_cobro_grupo(
 
             modo = "crossdock"
 
-        elif modo != "crossdock" and cobro.modo in ("simple", "flete_local", "flete_local_sin_zona_km"):
+        elif modo != "crossdock" and cobro.modo in (
+
+            "simple",
+
+            "flete_local",
+
+            "flete_local_sin_zona_km",
+
+            "postventa_flete_local",
+
+        ):
 
             modo = cobro.modo
 

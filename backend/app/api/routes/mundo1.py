@@ -148,7 +148,11 @@ def macheo_ejecutar(db: Session = Depends(get_db)) -> dict[str, int]:
 
 @router.post("/postventa/aplicar")
 def postventa_aplicar(db: Session = Depends(get_db)) -> dict[str, int]:
-    return aplicar_postventa_a_envios(db)
+    from app.services.postventa_rules import reaplicar_postventa_desde_tango
+
+    archivo = aplicar_postventa_a_envios(db)
+    tango = reaplicar_postventa_desde_tango(db)
+    return {"archivo_postventa": archivo, "tango": tango}
 
 
 @router.post("/liquidacion/conciliar")

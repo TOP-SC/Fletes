@@ -186,8 +186,9 @@
         (cierre de mes sin Excel paralelo) y similitud con el maestro manual de producción.
       </p>
       <div class="meta">
-        Generado: 2 junio 2026 · Re-auditoría confirmada · commit <code>642fd28</code> en <code>main</code> ·
-        Build API: <code>fletes-export-fix-2026-06-02</code> ·
+        Generado: 2 junio 2026 · P0 + UX Fletes pendientes ·
+        Historial: <code>docs/HISTORIAL_CHARLA.txt</code> ·
+        Build API: <code>postventa-p0-2026-06-02</code> ·
         Base: <code>data/fletes.db</code> (4.998 renglones · 2.764 casos maestro)
       </div>
     </header>
@@ -195,23 +196,23 @@
     <div class="kpi-row">
       <div class="kpi ok">
         <div class="label">Desarrollo (código)</div>
-        <div class="value">86%</div>
-        <div class="sub">UI con identidad visual + km masivo en uso</div>
+        <div class="value">91%</div>
+        <div class="sub">P0 cerrado · pendiente P1 km batch y fleteros</div>
       </div>
-      <div class="kpi warn">
+      <div class="kpi ok">
         <div class="label">Operación lista</div>
-        <div class="value">72%</div>
-        <div class="sub">1.640 km reales; falta prefactura y SA</div>
+        <div class="value">81%</div>
+        <div class="sub">90% maestro con LOGISTICA · interior espera prefactura</div>
+      </div>
+      <div class="kpi ok">
+        <div class="label">Rol creador (P0)</div>
+        <div class="value">✓</div>
+        <div class="sub">4/4 entregado — 141 postventa reclasificados</div>
       </div>
       <div class="kpi">
         <div class="label">Similitud maestro manual</div>
-        <div class="value">~60%</div>
-        <div class="sub">~64% tras reaplicar reglas (estimado)</div>
-      </div>
-      <div class="kpi warn">
-        <div class="label">Prefactura en uso</div>
-        <div class="value">0%</div>
-        <div class="sub">0 casos con prefactura cargada en DB</div>
+        <div class="value">~62%</div>
+        <div class="sub">CD + Tortuguitas; sin dep. 12 (no operativo)</div>
       </div>
     </div>
 
@@ -224,7 +225,7 @@
           <h3>Desarrollo — hecho vs pendiente</h3>
           <canvas id="chartDevGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">86%</div>
+            <div class="big">91%</div>
             <div class="small">desarrollado</div>
           </div>
         </div>
@@ -232,15 +233,91 @@
           <h3>Operación — lista vs falta</h3>
           <canvas id="chartOpsGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">72%</div>
+            <div class="big">81%</div>
             <div class="small">operativo</div>
           </div>
         </div>
       </div>
       <div class="callout">
-        <strong>Lectura actualizada:</strong> tras más batches de km, hay <strong>1.640 geocodificaciones reales</strong>
-        en cache. Fletes cubre <strong>83%</strong> de casos con sucursal+km+total y <strong>0 alertas</strong> en grilla.
-        Sigue faltando <strong>prefactura (0%)</strong>, macheo Clickpack y depósito SA (12).
+        <strong>Post-P0 (auditoría 2 jun):</strong> <strong>1.640 km reales</strong>; Fletes M2
+        <strong>83%</strong> sin alertas. Maestro: <strong>2.498</strong> casos con LOGISTICA (<strong>90%</strong>),
+        alertas <strong>1.178</strong> (−69). Postventa: <strong>0</strong> <code>revisar_manual</code>,
+        <strong>141</strong> viajes aprobados. Gap restante: prefactura interior (cliente) + <strong>129</strong> km opcionales.
+      </div>
+    </section>
+
+    <!-- ROL CREADOR -->
+    <section>
+      <h2>Rol del creador vs rol del cliente</h2>
+      <p class="intro">
+        Avance medido separando lo que <strong>nos toca implementar</strong> de lo que el operador
+        carga cuando corresponde (Tango, prefactura interior). Sin depósito 12 en el camino.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Responsable</th><th>Qué hace</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Cliente</strong></td>
+            <td>Export Tango periódico</td>
+            <td><span class="badge badge-ok">En rutina</span></td>
+          </tr>
+          <tr>
+            <td><strong>Cliente</strong></td>
+            <td>Prefactura Clickpack (solo red 51/40 interior)</td>
+            <td><span class="badge badge-warn">0% cargado — activa macheo cuando suba archivo</span></td>
+          </tr>
+          <tr>
+            <td><strong>Cliente</strong></td>
+            <td>Tarifario cuando cambia proveedor</td>
+            <td><span class="badge badge-ok">1.775 filas cargadas</span></td>
+          </tr>
+          <tr>
+            <td><strong>Cliente</strong></td>
+            <td>Decisión puntual postventa ambiguo</td>
+            <td><span class="badge badge-ok">2 casos naranja — botones en detalle</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Import Tango acumulativo + reglas + colores</td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Pipeline km → zona → tarifa + cache domicilio</td>
+            <td><span class="badge badge-ok">Listo en M2</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Mismo cobro Maestro y Fletes (postventa AMBA)</td>
+            <td><span class="badge badge-ok">P0 listo</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Clasificador postventa desde Tango (garantía, mal encajado…)</td>
+            <td><span class="badge badge-ok">P0 listo — 141 reclasificados</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Botones detalle: aprobar viaje / no pagar transporte</td>
+            <td><span class="badge badge-ok">P0 listo</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Alertas honestas y accionables (sin falsos “falta cotizar”)</td>
+            <td><span class="badge badge-ok">P0 listo</span></td>
+          </tr>
+          <tr>
+            <td><strong>Creador</strong></td>
+            <td>Macheo prefactura (motor ya coded)</td>
+            <td><span class="badge badge-ok">Listo — espera archivo cliente</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Caso piloto (REY Griselda, R-0178-00320443):</strong> cerrado en Maestro y Fletes —
+        verde, LOGISTICA <strong>$45.000</strong>, sin alertas. Ciclo postventa AMBA resuelto por P0.
       </div>
     </section>
 
@@ -273,14 +350,14 @@
         </thead>
         <tbody>
           <tr>
-            <td><strong>M1 Interior</strong></td><td>97%</td><td>74%</td>
+            <td><strong>M1 Interior</strong></td><td>97%</td><td>78%</td>
             <td><span class="badge badge-ok">Operativo</span></td>
-            <td>Prefactura + macheo en rutina, export Excel</td>
+            <td>Macheo cuando cliente suba prefactura Clickpack</td>
           </tr>
           <tr>
-            <td><strong>M2 Fletes</strong></td><td>82%</td><td>74%</td>
-            <td><span class="badge badge-warn">Parcial</span></td>
-            <td>129 domicilios AMBA sin geocode; prefactura Gama/Blast</td>
+            <td><strong>M2 Fletes</strong></td><td>90%</td><td>88%</td>
+            <td><span class="badge badge-ok">Operativo</span></td>
+            <td>129 km opcionales; 4 Fletes_suc sin zona</td>
           </tr>
           <tr>
             <td><strong>Fleteros locales</strong></td><td>48%</td><td>8%</td>
@@ -293,9 +370,9 @@
             <td>Spec + reglas edge cases interior</td>
           </tr>
           <tr>
-            <td><strong>Infra / UI</strong></td><td>96%</td><td>92%</td>
+            <td><strong>Infra / UI</strong></td><td>97%</td><td>94%</td>
             <td><span class="badge badge-ok">Sólido</span></td>
-            <td>UI con acentos por módulo, sidebar marca, leyenda operativa</td>
+            <td>Card pend. zona interactiva, historial charla, UX postventa</td>
           </tr>
         </tbody>
       </table>
@@ -303,7 +380,7 @@
 
     <!-- AUDITORIA JUNIO -->
     <section>
-      <h2>Auditoría intensiva — 2 junio 2026</h2>
+      <h2>Auditoría intensiva — 2 junio 2026 (post-P0)</h2>
       <p class="intro">Chequeo reproducible con <code>backend/scripts/auditoria_total.py</code> sobre la instalación local.</p>
       <div class="grid-2">
         <div class="chart-box">
@@ -319,19 +396,22 @@
         <thead><tr><th>Área</th><th>Resultado</th><th>Veredicto</th></tr></thead>
         <tbody>
           <tr><td>Km reales en cache</td><td><strong>1.640</strong> geocodificaciones reales en <code>flete_distancias</code></td><td><span class="badge badge-ok">OK</span></td></tr>
-          <tr><td>Cache total km</td><td><strong>3.337</strong> (1.697 estimados · 530 reuso · 3.212 <code>domicilio_fp</code> · 64 <code>pedido-</code>)</td><td><span class="badge badge-ok">OK</span></td></tr>
+          <tr><td>Cache total km</td><td><strong>3.337</strong> (1.697 estimados · 567 reuso · 3.212 <code>domicilio_fp</code> · 64 <code>pedido-</code>)</td><td><span class="badge badge-ok">OK</span></td></tr>
           <tr><td>Grilla Fletes (1.327 casos)</td><td><strong>1.101</strong> con sucursal+km+total (<strong>83%</strong>); <strong>0</strong> en alerta</td><td><span class="badge badge-ok">Muy bueno</span></td></tr>
           <tr><td>AMBA con domicilio sin km</td><td><strong>129</strong> pendientes de geocode (no retiro)</td><td><span class="badge badge-warn">3er batch opcional</span></td></tr>
-          <tr><td>Maestro (2.764 casos)</td><td><strong>2.429</strong> con LOGISTICA; <strong>1.247</strong> alerta (prefactura/remito)</td><td><span class="badge badge-warn">Parcial</span></td></tr>
-          <tr><td>Prefactura / macheo</td><td><strong>0</strong> en toda la base</td><td><span class="badge badge-bad">Crítico</span></td></tr>
-          <tr><td>Depósito SA (12)</td><td><strong>0</strong> renglones — imports actuales son dep. 14 (CD) dominante</td><td><span class="badge badge-bad">Falta SA</span></td></tr>
+          <tr><td>Maestro (2.764 casos)</td><td><strong>2.498</strong> con LOGISTICA (<strong>90%</strong>); <strong>1.178</strong> alerta</td><td><span class="badge badge-ok">Mejoró</span></td></tr>
+          <tr><td>Prefactura / macheo</td><td><strong>0</strong> en toda la base</td><td><span class="badge badge-warn">Espera carga cliente</span></td></tr>
+          <tr><td>Postventa</td><td><strong>0</strong> revisar_manual · <strong>141</strong> viaje aprobado · <strong>2</strong> naranja</td><td><span class="badge badge-ok">P0 OK</span></td></tr>
+          <tr><td>Verde en DB</td><td><strong>1.542</strong> (+141 vs auditoría anterior)</td><td><span class="badge badge-ok">OK</span></td></tr>
+          <tr><td>Fletes_suc LOG $0</td><td><strong>4</strong> casos (sin km)</td><td><span class="badge badge-warn">P1 batch km</span></td></tr>
+          <tr><td>Depósito operativo</td><td><strong>14 (CD)</strong> — 4.333 renglones</td><td><span class="badge badge-ok">Base real</span></td></tr>
           <tr><td>Sucursal top cache</td><td>CD 1.016 · CG 310 · LP 186 · FL 147 · …</td><td><span class="badge badge-info">Coherente</span></td></tr>
-          <tr><td>UI Streamlit</td><td>Sidebar marca, acentos por módulo, leyenda chips, headers con franja</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>UI Streamlit</td><td>4 KPI Fletes; card <strong>Pend. zona km</strong> filtra grilla al clic</td><td><span class="badge badge-ok">Listo</span></td></tr>
         </tbody>
       </table>
       <div class="callout">
-        <strong>Acción inmediata sugerida:</strong> cargar <strong>prefactura Clickpack</strong> y macheo;
-        importar Excel SA/Limansky (dep. 12); opcional <strong>Km reales (500)</strong> para los 129 domicilios restantes.
+        <strong>Próximo sprint (P1):</strong> batch km 129 domicilios · macheo fleteros ·
+        prefactura Clickpack cuando el cliente suba archivo (motor listo).
       </div>
     </section>
 
@@ -371,14 +451,16 @@
           <tr><td>Total renglones Tango</td><td><strong>4.998</strong></td><td>Base actual en instalación local</td></tr>
           <tr><td>Tarifas cargadas</td><td><strong>1.775</strong></td><td>Tarifario operativo</td></tr>
           <tr><td>Con costo tarifario</td><td><strong>2.440 (49%)</strong></td><td>AMBA/GBA y casos con tarifa asignada</td></tr>
-          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.337</strong></td><td><strong>1.640</strong> km reales · 1.697 estimados · 530 reuso · 64 <code>pedido-</code></td></tr>
+          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.337</strong></td><td><strong>1.640</strong> km reales · 1.697 estimados · 567 reuso · 64 <code>pedido-</code></td></tr>
+          <tr><td>Pend. zona km (Fletes)</td><td><strong>226</strong> casos</td><td>Card interactiva → ver solo pendientes en grilla</td></tr>
           <tr><td>Grilla Fletes</td><td><strong>1.327 casos</strong></td><td>83% con sucursal+km+total · 0 alertas</td></tr>
-          <tr><td>Maestro agrupado</td><td><strong>2.764 casos</strong></td><td>88% con LOGISTICA &gt; 0</td></tr>
+          <tr><td>Maestro agrupado</td><td><strong>2.764 casos</strong></td><td><strong>90%</strong> con LOGISTICA &gt; 0 · 1.178 alertas</td></tr>
+          <tr><td>Postventa aprobada</td><td><strong>141</strong></td><td>Clasificador Tango + cobro Fletes en Maestro</td></tr>
           <tr><td>Prefactura cargada</td><td><strong>0</strong></td><td>Conciliación no en uso</td></tr>
-          <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Cruce no corrido en producción</td></tr>
-          <tr><td>Depósito SA (12)</td><td><strong>0</strong></td><td>WAMARO SA / Limansky sin importar</td></tr>
-          <tr><td>Depósito 14 (CD)</td><td><strong>4.333</strong></td><td>Mayoría del import actual</td></tr>
-          <tr><td>Depósito 2</td><td><strong>227</strong></td><td>Tortuguitas / local</td></tr>
+          <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Motor listo; cliente sube prefactura interior</td></tr>
+          <tr><td>Depósito 14 (CD)</td><td><strong>4.333</strong></td><td>Único depósito en uso operativo</td></tr>
+          <tr><td>Depósito 2 (Tortuguitas)</td><td><strong>227</strong></td><td>Origen local complementario</td></tr>
+          <tr><td>Dep. 12 / transporte 12</td><td><strong>N/A</strong></td><td>Existe en Tango pero no se usa — fuera del plan</td></tr>
           <tr><td>Elegir proveedor</td><td><strong>0</strong></td><td>Empates resueltos por reglas de transporte</td></tr>
           <tr><td>Fleteros Drive</td><td><strong>sin tabla activa</strong></td><td>Módulo listo en código; falta import rutinario</td></tr>
         </tbody>
@@ -394,7 +476,7 @@
           <h3>Similitud global estimada</h3>
           <canvas id="chartSimGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">60%</div>
+            <div class="big">62%</div>
             <div class="small">similar</div>
           </div>
         </div>
@@ -415,10 +497,10 @@
         <thead><tr><th>Dimensión</th><th>%</th><th>Nota</th></tr></thead>
         <tbody>
           <tr><td>Estructura planilla (29 columnas)</td><td><strong>92%</strong></td><td>Columnas idénticas; zonas C0/B3, REMITOS X+R recientes</td></tr>
-          <tr><td>Cobertura de casos</td><td><strong>35–40%</strong></td><td>503/2.064 remitos mayo en común; SA sin import</td></tr>
+          <tr><td>Cobertura de casos</td><td><strong>45–50%</strong></td><td>CD + Tortuguitas; dep. 12 excluido (no operativo)</td></tr>
           <tr><td>Montos LOGISTICA (donde hay cruce)</td><td><strong>52%</strong></td><td>263/503 casos mayo dentro de tolerancia</td></tr>
           <tr><td>Control prefactura (PN, dif)</td><td><strong>25–35%</strong></td><td>Sin prefactura en rutina</td></tr>
-          <tr><td><strong>Global ponderado</strong></td><td><strong>~60%</strong></td><td>~64% post reaplicar reglas + remitos R/RAR</td></tr>
+          <tr><td><strong>Global ponderado</strong></td><td><strong>~62%</strong></td><td>Sin penalizar por dep. 12 no usado</td></tr>
         </tbody>
       </table>
     </section>
@@ -438,36 +520,42 @@
           <tr><td>Km reales batch</td><td>Múltiples corridas → <strong>1.640</strong> geocodificados reales en DB</td><td><span class="badge badge-ok">Hecho</span></td></tr>
           <tr><td>UI Streamlit</td><td>Tema por módulo, sidebar marca, leyenda, KPI con acento</td><td><span class="badge badge-ok">Listo</span></td></tr>
           <tr><td>Auditoría</td><td>Script <code>auditoria_total.py</code> + reporte HTML sincronizado con GitHub</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Operación</td><td>Prefactura + macheo Clickpack + import SA en rutina</td><td><span class="badge badge-bad">Pendiente</span></td></tr>
+          <tr><td>Documentación</td><td><code>HISTORIAL_CHARLA.txt</code> + avance rol creador</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>P0 postventa AMBA</td><td>Cobro unificado, clasificador, botones detalle, alertas</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>UX Fletes — pend. zona</td><td>4 cards informativas; última filtra grilla (226 casos)</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Caso piloto REY Griselda</td><td>Verde en Maestro — LOG $45.000</td><td><span class="badge badge-ok">Cerrado</span></td></tr>
+          <tr><td>Historial charla</td><td><code>docs/HISTORIAL_CHARLA.txt</code></td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Operación cliente</td><td>Prefactura Clickpack cuando use red interior</td><td><span class="badge badge-warn">Cuando corresponda</span></td></tr>
         </tbody>
       </table>
     </section>
 
-    <!-- ROADMAP -->
+    <!-- ROADMAP CREADOR -->
     <section>
-      <h2>Camino a finalización — prioridades</h2>
-      <p class="intro">Acciones ordenadas por impacto en operación.</p>
+      <h2>Camino a finalización — rol creador (P0 → P2)</h2>
+      <p class="intro">Solo trabajo nuestro. Sin dep. 12 / transporte 12. Prefactura = carga cliente interior.</p>
       <ol class="steps">
-        <li><strong>Import + uso diario prefactura Clickpack</strong> + ejecutar macheo <span class="impact">+12–15%</span></li>
-        <li><strong>Import Tango SA / Limansky</strong> (depósito 12, pedidos 102xxxxx) <span class="impact">+8–10%</span></li>
-        <li><strong>3er batch km (opcional)</strong> — 129 domicilios AMBA sin geocode <span class="impact">+2%</span></li>
-        <li><strong>Mejorar macheo fleteros</strong> (destinatario / remito) <span class="impact">+3–5%</span></li>
-        <li><strong>M2:</strong> prefactura Gama/Blast <span class="impact">+6%</span></li>
-        <li><strong>M3:</strong> duplicados interior <span class="impact">+5% dev / +3% ops</span></li>
+        <li><strong>P0 — Cobro postventa AMBA</strong> <span class="impact">✓ hecho</span></li>
+        <li><strong>P0 — Clasificador postventa Tango</strong> <span class="impact">✓ 141 reclasificados</span></li>
+        <li><strong>P0 — UX detalle</strong> aprobar / no pagar <span class="impact">✓ hecho</span></li>
+        <li><strong>P0 — Alertas accionables</strong> <span class="impact">✓ hecho</span></li>
+        <li><strong>P1 — Batch km opcional</strong> 129 domicilios AMBA restantes <span class="impact">+2%</span></li>
+        <li><strong>P1 — Macheo fleteros</strong> destinatario / remito <span class="impact">+3%</span></li>
+        <li><strong>P1 — Prefactura Clickpack</strong> cuando cliente suba archivo <span class="impact">+8%</span></li>
+        <li><strong>P2 — M3 duplicados</strong> interior edge cases <span class="impact">+5% dev</span></li>
       </ol>
       <div class="callout" style="margin-top:1.25rem">
-        <strong>Si hacés solo 3 cosas esta semana:</strong> (1) Importar prefactura + macheo,
-        (2) Importar Tango SA, (3) Cargar prefactura —
-        la operación podría subir de <strong>72% → 82–85%</strong>.
+        <strong>Meta creador:</strong> operador cierra mes con Tango + tarifario base, sin Excel paralelo
+        para AMBA/Fletes. Interior verde cuando el cliente suba prefactura Clickpack (motor ya listo).
       </div>
     </section>
 
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        La app está <strong>~86% construida</strong> y <strong>~72% lista</strong> operativamente.
-        M2 Fletes tiene <strong>1.640 km reales</strong>, 83% de casos con total y grilla sin alertas; el gap principal sigue siendo
-        <strong>prefactura, macheo y datos SA</strong>.
+        La app está <strong>~91% construida</strong> y <strong>~81% lista</strong> operativamente.
+        <strong>P0 cerrado</strong> (postventa AMBA unificado). Siguiente: <strong>P1</strong> km batch + fleteros;
+        interior verde cuando el cliente suba prefactura Clickpack.
       </p>
     </section>
 
@@ -529,26 +617,26 @@
     }
 
     // Global
-    pctDonut("chartDevGlobal", 86, "Desarrollado", "Pendiente");
-    pctDonut("chartOpsGlobal", 72, "Operativo", "Falta", palette.warn);
+    pctDonut("chartDevGlobal", 91, "Desarrollado", "Pendiente");
+    pctDonut("chartOpsGlobal", 81, "Operativo", "Falta", palette.done);
 
     // Módulos dev
     pctDonut("chartM1Dev", 97, "Hecho", "Pendiente");
-    pctDonut("chartM2Dev", 82, "Hecho", "Pendiente", palette.info);
+    pctDonut("chartM2Dev", 90, "Hecho", "Pendiente", palette.info);
     pctDonut("chartFleDev", 48, "Hecho", "Pendiente", palette.purple);
     pctDonut("chartM3Dev", 15, "Hecho", "Pendiente", palette.bad);
-    pctDonut("chartInfraDev", 96, "Hecho", "Pendiente");
+    pctDonut("chartInfraDev", 97, "Hecho", "Pendiente");
 
     // Módulos ops
-    pctDonut("chartM1Ops", 74, "Listo", "Falta");
-    pctDonut("chartM2Ops", 74, "Listo", "Falta", palette.info);
+    pctDonut("chartM1Ops", 78, "Listo", "Falta");
+    pctDonut("chartM2Ops", 88, "Listo", "Falta", palette.info);
     pctDonut("chartFleOps", 8, "Listo", "Falta", palette.bad);
     pctDonut("chartM3Ops", 5, "Listo", "Falta", palette.bad);
-    pctDonut("chartInfraOps", 92, "Listo", "Falta");
+    pctDonut("chartInfraOps", 94, "Listo", "Falta");
 
     // DB
     donut("chartClasif", ["Interior (2.645)", "AMBA/GBA (2.353)"], [2645, 2353], [palette.interior, palette.amba]);
-    donut("chartColores", ["Amarillo (2.216)", "Verde (1.401)", "Gris (1.238)", "Naranja (143)"], [2216, 1401, 1238, 143], [palette.amarillo, palette.verde, palette.gris, palette.warn]);
+    donut("chartColores", ["Amarillo (2.216)", "Verde (1.542)", "Gris (1.238)", "Naranja (2)"], [2216, 1542, 1238, 2], [palette.amarillo, palette.verde, palette.gris, palette.warn]);
     donut("chartDeposito", ["Dep. 14 CD (4.333)", "Dep. 1 (255)", "Dep. 2 (227)", "Otros (183)"], [4333, 255, 227, 183], [palette.interior, palette.info, palette.amba, palette.gray]);
     donut("chartKmCache", ["Km reales (1.640)", "Estimados (1.697)"], [1640, 1697], [palette.done, palette.warn]);
     donut("chartFletesCov", ["Completo (1.101)", "Pendiente (226)"], [1101, 226], [palette.done, palette.pending]);
@@ -557,13 +645,13 @@
     donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (4.998)"], [0, 4998], [palette.done, palette.bad]);
 
     // Maestro
-    pctDonut("chartSimGlobal", 60, "Similar", "Diferente", palette.info);
+    pctDonut("chartSimGlobal", 62, "Similar", "Diferente", palette.info);
     new Chart(document.getElementById("chartSimDims"), {
       type: "doughnut",
       data: {
-        labels: ["Estructura 92%", "Cobertura 38%", "Montos 52%", "Prefactura 30%"],
+        labels: ["Estructura 92%", "Cobertura 48%", "Montos 52%", "Prefactura 30%"],
         datasets: [{
-          data: [92, 38, 52, 30],
+          data: [92, 48, 52, 30],
           backgroundColor: [palette.done, palette.warn, palette.info, palette.bad],
           borderWidth: 2, borderColor: "#fff"
         }]

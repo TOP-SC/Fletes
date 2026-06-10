@@ -57,7 +57,7 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "fletes-export-fix-2026-06-02"
+API_BUILD_ESPERADO = "postventa-p0-2026-06-02"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
@@ -450,6 +450,13 @@ def inject_theme() -> None:
         }
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
             font-size: 1.35rem !important;
+        }
+        .module-metrics.pend-filter-on [data-testid="column"]:nth-child(4) [data-testid="stMetric"] {
+            border-left-color: #c53030 !important;
+            background: #fff8f8 !important;
+        }
+        .module-metrics.pend-filter-on [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {
+            color: #c53030 !important;
         }
         .leyenda-wrap {
             display: flex;
@@ -1009,10 +1016,61 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                         r = c.post(f"/fletes/caso/{caso_id}/calcular-km")
                         r.raise_for_status()
                     get_fletes_casos_cached.clear()
+                    get_maestro_filas_cached.clear()
                     st.success("Distancia calculada — actualizando detalle…")
                     st.rerun()
                 except Exception as exc:
                     st.error(f"No se pudo calcular: {exc}")
+
+    pv_regla = None
+    pv_motivo = None
+    for ren in renglones:
+        pv_regla = ren.get("regla_postventa") or pv_regla
+        pv_motivo = ren.get("motivo_postventa") or ren.get("tipo_gestion") or pv_motivo
+    if pv_regla or pv_motivo:
+        st.markdown("#### Postventa")
+        if pv_motivo:
+            st.caption(str(pv_motivo))
+        if pv_regla == "revisar_manual":
+            st.warning(
+                "Postventa sin clasificar automáticamente. "
+                "Si el viaje se paga, aprobá; si no corresponde flete, marcá no pagar."
+            )
+            c_ap, c_np = st.columns(2)
+            with c_ap:
+                if st.button("Aprobar viaje postventa", key=f"pv_ok_{caso_id}", type="primary"):
+                    try:
+                        with api_client() as c:
+                            r = c.post(
+                                f"/maestro/caso/{caso_id}/postventa",
+                                json={"accion": "aprobar_viaje"},
+                            )
+                            r.raise_for_status()
+                        get_fletes_casos_cached.clear()
+                        get_maestro_filas_cached.clear()
+                        st.success("Viaje aprobado — actualizando…")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
+            with c_np:
+                if st.button("No se paga transporte", key=f"pv_no_{caso_id}"):
+                    try:
+                        with api_client() as c:
+                            r = c.post(
+                                f"/maestro/caso/{caso_id}/postventa",
+                                json={"accion": "no_pagar"},
+                            )
+                            r.raise_for_status()
+                        get_fletes_casos_cached.clear()
+                        get_maestro_filas_cached.clear()
+                        st.success("Marcado como no pago — actualizando…")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
+        elif pv_regla in ("cruce_medidas_aprobado", "viaje_aprobado"):
+            st.success("Viaje postventa aprobado — tarifario Fletes aplicado si hay km.")
+        elif pv_regla in ("no_pagar_transporte", "costo_cero_pendiente"):
+            st.info("Transporte no se paga ($0) según regla postventa.")
 
     st.markdown("#### Resumen maestro")
     m_cols = [k for k in m.keys() if not k.startswith("_")]
@@ -1102,7 +1160,27 @@ _META_GRILLA = (
     "_es_marcador_tarifario",
     "_alertas_celdas",
     "_alerta_motivo",
+    "_zona_km_asignada",
+    "_por_zona_tarifa",
 )
+
+
+def _es_pendiente_zona_km_fila(row: pd.Series) -> bool:
+    """Caso Fletes con tarifario local pero sin zona km asignada."""
+    if row.get("_por_zona_tarifa") and not row.get("_zona_km_asignada"):
+        return True
+    tarifa = str(row.get("TARIFA REF") or "").strip()
+    zona = str(row.get("ZONA KM") or "").strip()
+    if tarifa and (not zona or zona == "—"):
+        return True
+    return False
+
+
+def _filtrar_pendiente_zona_km(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    mask = df.apply(_es_pendiente_zona_km_fila, axis=1)
+    return _as_dataframe(df[mask])
 
 
 def _parse_alertas_celdas(raw: Any) -> list[dict[str, Any]]:
@@ -2090,13 +2168,31 @@ def pagina_fletes() -> None:
         st.error(f"No se pudo conectar al módulo Fletes: {exc}")
         st.stop()
 
-    st.markdown('<div class="module-metrics">', unsafe_allow_html=True)
+    pend_zona = int(stats.get("pendiente_zona_km", 0) or 0)
+    filtro_pendiente = bool(st.session_state.get("fletes_solo_pendiente_zona", False))
+    metrics_cls = "module-metrics pend-filter-on" if filtro_pendiente else "module-metrics"
+
+    st.markdown(f'<div class="{metrics_cls}">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Casos fletes", stats.get("casos_fletes", 0))
     c2.metric("Renglones Amba/GBA", stats.get("renglones_fletes", stats.get("renglones_mundo2", 0)))
     c3.metric("Con km calculado", stats.get("con_km_calculado", 0))
-    c4.metric("Pend. zona km", stats.get("pendiente_zona_km", 0))
+    with c4:
+        c4.metric("Pend. zona km", pend_zona)
+        if pend_zona > 0:
+            btn_label = "Ver todos" if filtro_pendiente else "Ver pendientes"
+            if st.button(
+                btn_label,
+                key="fletes_toggle_pend_zona",
+                type="secondary" if filtro_pendiente else "primary",
+                use_container_width=True,
+            ):
+                st.session_state["fletes_solo_pendiente_zona"] = not filtro_pendiente
+                st.rerun()
+        elif filtro_pendiente:
+            st.session_state["fletes_solo_pendiente_zona"] = False
     st.markdown("</div>", unsafe_allow_html=True)
+
     if stats.get("envios_cargados") is not None:
         st.caption(
             f"Período filtrado: **{stats.get('envios_cargados', 0):,}** renglones Tango en memoria "
@@ -2253,6 +2349,8 @@ def pagina_fletes() -> None:
         df = preparar_maestro_df(pd.DataFrame(filas))
         if solo_alerta_f and "_regla_color" in df.columns:
             df = _as_dataframe(df[df["_regla_color"] == "alerta"])
+        if st.session_state.get("fletes_solo_pendiente_zona"):
+            df = _filtrar_pendiente_zona_km(df)
 
         if buscar.strip():
             df = _filtrar_df_buscar(
@@ -2261,7 +2359,12 @@ def pagina_fletes() -> None:
                 ("REMITOS", "ENVIO", "DESTINATARIO", "LOCALIDAD", "FLETERO"),
             )
 
-        if buscar.strip():
+        if st.session_state.get("fletes_solo_pendiente_zona"):
+            st.info(
+                f"Grilla filtrada: **{len(df)}** casos **pendientes de zona km** "
+                "(tienen tarifario local pero falta asignar zona / calcular km)."
+            )
+        elif buscar.strip():
             st.caption(
                 f"Búsqueda en **toda la base importada** (sin filtro de mes): "
                 f"**{len(df)}** casos. Usá la **lupa** a la izquierda de cada fila."
