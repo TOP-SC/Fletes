@@ -186,21 +186,22 @@
         (cierre de mes sin Excel paralelo) y similitud con el maestro manual de producción.
       </p>
       <div class="meta">
-        Generado: 2 junio 2026 · Build API: <code>fletes-export-fix-2026-06-02</code> ·
-        Base local: <code>data/fletes.db</code> (4.998 renglones)
+        Generado: 10 junio 2026 · Re-auditoría post 2º batch km + UI Streamlit ·
+        Build API: <code>fletes-export-fix-2026-06-02</code> ·
+        Base: <code>data/fletes.db</code> (4.998 renglones · 2.764 casos maestro)
       </div>
     </header>
 
     <div class="kpi-row">
       <div class="kpi ok">
         <div class="label">Desarrollo (código)</div>
-        <div class="value">84%</div>
-        <div class="sub">Falta ~16% para funcionalidad completa</div>
+        <div class="value">86%</div>
+        <div class="sub">UI con identidad visual + km masivo en uso</div>
       </div>
       <div class="kpi warn">
         <div class="label">Operación lista</div>
-        <div class="value">62%</div>
-        <div class="sub">Falta ~38% para cerrar mes sin Excel manual</div>
+        <div class="value">72%</div>
+        <div class="sub">1.640 km reales; falta prefactura y SA</div>
       </div>
       <div class="kpi">
         <div class="label">Similitud maestro manual</div>
@@ -223,7 +224,7 @@
           <h3>Desarrollo — hecho vs pendiente</h3>
           <canvas id="chartDevGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">84%</div>
+            <div class="big">86%</div>
             <div class="small">desarrollado</div>
           </div>
         </div>
@@ -231,15 +232,15 @@
           <h3>Operación — lista vs falta</h3>
           <canvas id="chartOpsGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">62%</div>
+            <div class="big">72%</div>
             <div class="small">operativo</div>
           </div>
         </div>
       </div>
       <div class="callout">
-        <strong>Lectura:</strong> la app está bien construida (~84%), con pipeline unificado de km/zona/sucursal
-        (geocodificación, cache por domicilio, casos sin remito) y export Excel corregido. El cuello de botella
-        sigue siendo operativo: prefactura, macheo Clickpack, import SA/Limansky y fleteros casi sin uso en producción.
+        <strong>Lectura actualizada:</strong> tras más batches de km, hay <strong>1.640 geocodificaciones reales</strong>
+        en cache. Fletes cubre <strong>83%</strong> de casos con sucursal+km+total y <strong>0 alertas</strong> en grilla.
+        Sigue faltando <strong>prefactura (0%)</strong>, macheo Clickpack y depósito SA (12).
       </div>
     </section>
 
@@ -277,9 +278,9 @@
             <td>Prefactura + macheo en rutina, export Excel</td>
           </tr>
           <tr>
-            <td><strong>M2 Fletes</strong></td><td>82%</td><td>55%</td>
+            <td><strong>M2 Fletes</strong></td><td>82%</td><td>74%</td>
             <td><span class="badge badge-warn">Parcial</span></td>
-            <td>Prefactura Gama/Blast; más km reales en rutina (3.311 cache hoy)</td>
+            <td>129 domicilios AMBA sin geocode; prefactura Gama/Blast</td>
           </tr>
           <tr>
             <td><strong>Fleteros locales</strong></td><td>48%</td><td>8%</td>
@@ -292,12 +293,46 @@
             <td>Spec + reglas edge cases interior</td>
           </tr>
           <tr>
-            <td><strong>Infra / UI</strong></td><td>95%</td><td>90%</td>
+            <td><strong>Infra / UI</strong></td><td>96%</td><td>92%</td>
             <td><span class="badge badge-ok">Sólido</span></td>
-            <td>Export Excel lazy (sin saturar API); alertas + luces por columna listas</td>
+            <td>UI con acentos por módulo, sidebar marca, leyenda operativa</td>
           </tr>
         </tbody>
       </table>
+    </section>
+
+    <!-- AUDITORIA JUNIO -->
+    <section>
+      <h2>Auditoría intensiva — 10 junio 2026</h2>
+      <p class="intro">Chequeo tras imports Tango, batches km y uso real en la instalación medida.</p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>Cache km: reales vs estimados</h3>
+          <canvas id="chartKmCache"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Grilla Fletes — cobertura</h3>
+          <canvas id="chartFletesCov"></canvas>
+        </div>
+      </div>
+      <table style="margin-top:1rem">
+        <thead><tr><th>Área</th><th>Resultado</th><th>Veredicto</th></tr></thead>
+        <tbody>
+          <tr><td>Km reales en cache</td><td><strong>1.640</strong> geocodificaciones reales en <code>flete_distancias</code></td><td><span class="badge badge-ok">OK</span></td></tr>
+          <tr><td>Cache total km</td><td><strong>3.337</strong> (1.697 estimados + 530 reuso domicilio)</td><td><span class="badge badge-ok">OK</span></td></tr>
+          <tr><td>Grilla Fletes (1.327 casos)</td><td><strong>1.101</strong> con sucursal+km+total (<strong>83%</strong>); <strong>0</strong> en alerta</td><td><span class="badge badge-ok">Muy bueno</span></td></tr>
+          <tr><td>AMBA con domicilio sin km</td><td><strong>129</strong> pendientes de geocode (no retiro)</td><td><span class="badge badge-warn">3er batch opcional</span></td></tr>
+          <tr><td>Maestro (2.764 casos)</td><td><strong>2.429</strong> con LOGISTICA; <strong>1.247</strong> alerta (prefactura/remito)</td><td><span class="badge badge-warn">Parcial</span></td></tr>
+          <tr><td>Prefactura / macheo</td><td><strong>0</strong> en toda la base</td><td><span class="badge badge-bad">Crítico</span></td></tr>
+          <tr><td>Depósito SA (12)</td><td><strong>0</strong> renglones — imports actuales son dep. 14 (CD) dominante</td><td><span class="badge badge-bad">Falta SA</span></td></tr>
+          <tr><td>Sucursal top cache</td><td>CD 1.016 · CG 310 · LP 186 · FL 147 · …</td><td><span class="badge badge-info">Coherente</span></td></tr>
+          <tr><td>UI Streamlit</td><td>Sidebar marca, acentos por módulo, leyenda chips, headers con franja</td><td><span class="badge badge-ok">Listo</span></td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Acción inmediata sugerida:</strong> cargar <strong>prefactura Clickpack</strong> y macheo;
+        importar Excel SA/Limansky (dep. 12); opcional <strong>Km reales (500)</strong> para los 129 domicilios restantes.
+      </div>
     </section>
 
     <!-- BASE DE DATOS -->
@@ -336,11 +371,14 @@
           <tr><td>Total renglones Tango</td><td><strong>4.998</strong></td><td>Base actual en instalación local</td></tr>
           <tr><td>Tarifas cargadas</td><td><strong>1.775</strong></td><td>Tarifario operativo</td></tr>
           <tr><td>Con costo tarifario</td><td><strong>2.440 (49%)</strong></td><td>AMBA/GBA y casos con tarifa asignada</td></tr>
-          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.311</strong></td><td>~815 km reales + ~2.496 estimados; 49 por <code>pedido-</code> sin remito</td></tr>
+          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.337</strong></td><td><strong>1.640</strong> km reales · 1.697 estimados · 530 reuso · 64 <code>pedido-</code></td></tr>
+          <tr><td>Grilla Fletes</td><td><strong>1.327 casos</strong></td><td>83% con sucursal+km+total · 0 alertas</td></tr>
+          <tr><td>Maestro agrupado</td><td><strong>2.764 casos</strong></td><td>88% con LOGISTICA &gt; 0</td></tr>
           <tr><td>Prefactura cargada</td><td><strong>0</strong></td><td>Conciliación no en uso</td></tr>
           <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Cruce no corrido en producción</td></tr>
           <tr><td>Depósito SA (12)</td><td><strong>0</strong></td><td>WAMARO SA / Limansky sin importar</td></tr>
-          <tr><td>Depósito 2 (Tortuguitas)</td><td><strong>227</strong></td><td>Resto sin depósito explícito en import actual</td></tr>
+          <tr><td>Depósito 14 (CD)</td><td><strong>4.333</strong></td><td>Mayoría del import actual</td></tr>
+          <tr><td>Depósito 2</td><td><strong>227</strong></td><td>Tortuguitas / local</td></tr>
           <tr><td>Elegir proveedor</td><td><strong>0</strong></td><td>Empates resueltos por reglas de transporte</td></tr>
           <tr><td>Fleteros Drive</td><td><strong>sin tabla activa</strong></td><td>Módulo listo en código; falta import rutinario</td></tr>
         </tbody>
@@ -397,6 +435,8 @@
           <tr><td>Alertas</td><td>Transporte 51 vs 40; remito CD solo donde aplica; una luz por columna</td><td><span class="badge badge-ok">Listo</span></td></tr>
           <tr><td>Export maestro</td><td>Excel bajo demanda (sin llamar API en cada rerun); ~11 s vs ~78 s</td><td><span class="badge badge-ok">Listo</span></td></tr>
           <tr><td>Cobro / maestro</td><td><code>resolver_zona_km_pedido</code> alineado con cache domicilio</td><td><span class="badge badge-ok">Listo</span></td></tr>
+          <tr><td>Km reales batch</td><td>Múltiples corridas → <strong>1.640</strong> geocodificados reales en DB</td><td><span class="badge badge-ok">Hecho</span></td></tr>
+          <tr><td>UI Streamlit</td><td>Tema por módulo, sidebar marca, leyenda, KPI con acento</td><td><span class="badge badge-ok">Listo</span></td></tr>
           <tr><td>Operación</td><td>Prefactura + macheo Clickpack + import SA en rutina</td><td><span class="badge badge-bad">Pendiente</span></td></tr>
         </tbody>
       </table>
@@ -409,24 +449,24 @@
       <ol class="steps">
         <li><strong>Import + uso diario prefactura Clickpack</strong> + ejecutar macheo <span class="impact">+12–15%</span></li>
         <li><strong>Import Tango SA / Limansky</strong> (depósito 12, pedidos 102xxxxx) <span class="impact">+8–10%</span></li>
-        <li><strong>Km reales en rutina</strong> — botón batch 500/1000 tras cada import Tango <span class="impact">+5–8%</span></li>
+        <li><strong>3er batch km (opcional)</strong> — 129 domicilios AMBA sin geocode <span class="impact">+2%</span></li>
         <li><strong>Mejorar macheo fleteros</strong> (destinatario / remito) <span class="impact">+3–5%</span></li>
         <li><strong>M2:</strong> prefactura Gama/Blast <span class="impact">+6%</span></li>
         <li><strong>M3:</strong> duplicados interior <span class="impact">+5% dev / +3% ops</span></li>
       </ol>
       <div class="callout" style="margin-top:1.25rem">
         <strong>Si hacés solo 3 cosas esta semana:</strong> (1) Importar prefactura + macheo,
-        (2) Importar Tango SA, (3) Correr <strong>Km reales (1000)</strong> en Fletes —
-        la operación podría subir de <strong>62% → 75–78%</strong>.
+        (2) Importar Tango SA, (3) Cargar prefactura —
+        la operación podría subir de <strong>72% → 82–85%</strong>.
       </div>
     </section>
 
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        La app está <strong>~84% construida</strong>, pero <strong>~62% lista</strong> para reemplazar
-        el Excel de producción. M2 Fletes ya geocodifica domicilios y cachea km; el gap principal sigue siendo
-        <strong>usar en rutina</strong> prefactura, macheo, SA y fleteros.
+        La app está <strong>~86% construida</strong> y <strong>~72% lista</strong> operativamente.
+        M2 Fletes tiene <strong>1.640 km reales</strong>, 83% de casos con total y grilla sin alertas; el gap principal sigue siendo
+        <strong>prefactura, macheo y datos SA</strong>.
       </p>
     </section>
 
@@ -488,27 +528,29 @@
     }
 
     // Global
-    pctDonut("chartDevGlobal", 84, "Desarrollado", "Pendiente");
-    pctDonut("chartOpsGlobal", 62, "Operativo", "Falta", palette.warn);
+    pctDonut("chartDevGlobal", 86, "Desarrollado", "Pendiente");
+    pctDonut("chartOpsGlobal", 72, "Operativo", "Falta", palette.warn);
 
     // Módulos dev
     pctDonut("chartM1Dev", 97, "Hecho", "Pendiente");
     pctDonut("chartM2Dev", 82, "Hecho", "Pendiente", palette.info);
     pctDonut("chartFleDev", 48, "Hecho", "Pendiente", palette.purple);
     pctDonut("chartM3Dev", 15, "Hecho", "Pendiente", palette.bad);
-    pctDonut("chartInfraDev", 95, "Hecho", "Pendiente");
+    pctDonut("chartInfraDev", 96, "Hecho", "Pendiente");
 
     // Módulos ops
     pctDonut("chartM1Ops", 74, "Listo", "Falta");
-    pctDonut("chartM2Ops", 55, "Listo", "Falta", palette.info);
+    pctDonut("chartM2Ops", 74, "Listo", "Falta", palette.info);
     pctDonut("chartFleOps", 8, "Listo", "Falta", palette.bad);
     pctDonut("chartM3Ops", 5, "Listo", "Falta", palette.bad);
-    pctDonut("chartInfraOps", 90, "Listo", "Falta");
+    pctDonut("chartInfraOps", 92, "Listo", "Falta");
 
     // DB
     donut("chartClasif", ["Interior (2.645)", "AMBA/GBA (2.353)"], [2645, 2353], [palette.interior, palette.amba]);
     donut("chartColores", ["Amarillo (2.216)", "Verde (1.401)", "Gris (1.238)", "Naranja (143)"], [2216, 1401, 1238, 143], [palette.amarillo, palette.verde, palette.gris, palette.warn]);
-    donut("chartDeposito", ["Sin depósito (4.771)", "Dep. 2 (227)", "Dep. 12 SA (0)"], [4771, 227, 0], [palette.bad, palette.info, palette.pending]);
+    donut("chartDeposito", ["Dep. 14 CD (4.333)", "Dep. 1 (255)", "Dep. 2 (227)", "Otros (183)"], [4333, 255, 227, 183], [palette.interior, palette.info, palette.amba, palette.gray]);
+    donut("chartKmCache", ["Km reales (1.640)", "Estimados (1.697)"], [1640, 1697], [palette.done, palette.warn]);
+    donut("chartFletesCov", ["Completo (1.101)", "Pendiente (226)"], [1101, 226], [palette.done, palette.pending]);
     donut("chartCosto", ["Con costo (2.440)", "Sin costo (2.558)"], [2440, 2558], [palette.done, palette.pending]);
     donut("chartFleteros", ["Matcheados (0)", "Sin import activo"], [1, 99], [palette.done, palette.warn]);
     donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (4.998)"], [0, 4998], [palette.done, palette.bad]);

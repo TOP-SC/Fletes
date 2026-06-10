@@ -59,6 +59,23 @@ except ImportError:
         return "" if valor is None else str(valor).strip()
 API_BUILD_ESPERADO = "fletes-export-fix-2026-06-02"
 
+# Acentos por módulo (sobrio con personalidad)
+MODULE_THEMES: dict[str, dict[str, str]] = {
+    "Dashboard": {"accent": "#1a365d", "accent2": "#3182ce", "bg": "#eef4fc", "icon": "◆"},
+    "MAESTRO": {"accent": "#2b6cb0", "accent2": "#4299e1", "bg": "#ebf4ff", "icon": "▣"},
+    "Fletes": {"accent": "#0f766e", "accent2": "#14b8a6", "bg": "#ecfdf5", "icon": "▶"},
+    "Configuración": {"accent": "#475569", "accent2": "#64748b", "bg": "#f1f5f9", "icon": "⚙"},
+    "CLICPAQ": {"accent": "#5b21b6", "accent2": "#7c3aed", "bg": "#f5f3ff", "icon": "◎"},
+    "FRANSOF": {"accent": "#b45309", "accent2": "#d97706", "bg": "#fffbeb", "icon": "▷"},
+    "ALFARO": {"accent": "#be123c", "accent2": "#e11d48", "bg": "#fff1f2", "icon": "▷"},
+    "LBO": {"accent": "#0369a1", "accent2": "#0ea5e9", "bg": "#f0f9ff", "icon": "▷"},
+    "Proveedor a elegir": {"accent": "#c2410c", "accent2": "#ea580c", "bg": "#fff7ed", "icon": "?"},
+}
+
+
+def _theme_for(pagina_o_titulo: str) -> dict[str, str]:
+    return MODULE_THEMES.get(pagina_o_titulo, MODULE_THEMES["MAESTRO"])
+
 
 def _as_dataframe(data: object) -> pd.DataFrame:
     """Asegura DataFrame para el type checker (filtros pandas devuelven uniones amplias)."""
@@ -256,12 +273,66 @@ def inject_theme() -> None:
     st.markdown(
         """
         <style>
+        :root {
+            --brand-navy: #1a365d;
+            --brand-blue: #2c5282;
+            --mod-accent: #2b6cb0;
+            --mod-accent2: #4299e1;
+            --mod-bg: #ebf4ff;
+        }
         .stApp {
-            background: linear-gradient(165deg, #f7f9fc 0%, #eef2f7 45%, #f4f0f8 100%);
+            background: linear-gradient(165deg, #faf8f5 0%, #f0f4fa 42%, #f3eef8 100%);
         }
         [data-testid="stSidebar"] {
-            background-color: #e8eef6 !important;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f8 100%) !important;
             border-right: 1px solid #d5dde8;
+        }
+        .sidebar-brand-band {
+            margin: -0.75rem -1rem 0.85rem -1rem;
+            padding: 1rem 1rem 0.9rem 1rem;
+            background: linear-gradient(135deg, #1a365d 0%, #2c5282 55%, #3182ce 100%);
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 4px 14px rgba(26, 54, 93, 0.22);
+        }
+        .sidebar-brand-band .sidebar-brand-title {
+            font-size: 1.12rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            line-height: 1.25;
+            letter-spacing: 0.01em;
+        }
+        .sidebar-brand-band .sidebar-brand-caption {
+            font-size: 0.76rem;
+            color: rgba(255, 255, 255, 0.88);
+            margin: 0.2rem 0 0 0;
+        }
+        .page-header {
+            background: var(--mod-bg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-left: 6px solid var(--mod-accent);
+            border-radius: 0 14px 14px 0;
+            padding: 0.85rem 1.15rem 0.75rem 1rem;
+            margin: 0 0 1rem 0;
+            box-shadow: 0 2px 12px rgba(30, 42, 58, 0.06);
+        }
+        .page-header h1 {
+            font-size: 1.55rem !important;
+            font-weight: 700 !important;
+            color: #1e2a3a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.2 !important;
+        }
+        .page-header .page-header-icon {
+            color: var(--mod-accent);
+            margin-right: 0.35rem;
+        }
+        .page-header .page-header-caption {
+            font-size: 0.88rem;
+            color: #5c6b7d;
+            margin: 0.35rem 0 0 0;
+            line-height: 1.4;
         }
         section[data-testid="stSidebar"],
         [data-testid="stSidebar"] > div,
@@ -285,26 +356,28 @@ def inject_theme() -> None:
         [data-testid="stSidebar"] .stMarkdown {
             color: #2c3e50 !important;
         }
-        [data-testid="stSidebar"] .sidebar-brand {
-            font-size: 1.15rem !important;
-            font-weight: 700 !important;
-            margin: 0 0 0.1rem 0 !important;
-            line-height: 1.2 !important;
-        }
-        [data-testid="stSidebar"] .sidebar-brand-caption {
-            font-size: 0.78rem !important;
-            margin: 0 0 0.35rem 0 !important;
-            color: #5a6b7d !important;
-        }
         [data-testid="stSidebar"] div[role="radiogroup"] {
-            gap: 0 !important;
+            gap: 0.15rem !important;
         }
         [data-testid="stSidebar"] div[role="radiogroup"] label {
-            font-size: 0.95rem !important;
+            font-size: 0.92rem !important;
             font-weight: 600 !important;
-            padding: 0.12rem 0.1rem !important;
+            padding: 0.42rem 0.55rem 0.42rem 0.65rem !important;
             min-height: 0 !important;
             margin: 0 !important;
+            border-radius: 8px !important;
+            border-left: 4px solid transparent !important;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+            background: color-mix(in srgb, var(--mod-accent) 14%, #ffffff) !important;
+            border-left-color: var(--mod-accent) !important;
+            color: #1e2a3a !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stExpander"] label:has(input:checked),
+        [data-testid="stSidebar"] [data-testid="stExpander"] div[role="radiogroup"] label:has(input:checked) {
+            background: color-mix(in srgb, var(--mod-accent) 12%, #ffffff) !important;
+            border-left-color: var(--mod-accent) !important;
         }
         [data-testid="stSidebar"] div[role="radiogroup"] label p,
         [data-testid="stSidebar"] div[role="radiogroup"] label span {
@@ -325,8 +398,17 @@ def inject_theme() -> None:
         }
         [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
             padding: 0 0 0 0.65rem !important;
-            border-left: 2px solid #b8c9de;
+            border-left: 2px solid color-mix(in srgb, var(--mod-accent) 35%, #b8c9de);
             margin-left: 0.25rem !important;
+        }
+        .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+            border-bottom-color: var(--mod-accent) !important;
+            color: var(--mod-accent) !important;
+            font-weight: 600 !important;
+        }
+        .stButton button[kind="primary"] {
+            background: linear-gradient(135deg, var(--mod-accent) 0%, var(--mod-accent2) 100%) !important;
+            border: none !important;
         }
         [data-testid="stSidebar"] hr {
             margin: 0.35rem 0 !important;
@@ -352,11 +434,13 @@ def inject_theme() -> None:
             color: #8b2525 !important;
         }
         h1, h2, h3 { color: #2c3e50 !important; }
-        .block-container { padding-top: 1.5rem; }
+        .block-container { padding-top: 1.25rem; }
+        .module-metrics div[data-testid="stMetric"],
         div[data-testid="stMetric"] {
             background: #ffffffee;
             border: 1px solid #dde5f0;
-            border-radius: 16px;
+            border-left: 5px solid var(--mod-accent, #8FA8C8);
+            border-radius: 14px;
             padding: 0.65rem 0.85rem 0.65rem 1rem;
             box-shadow: 0 2px 8px #0000000a;
             overflow: hidden;
@@ -383,11 +467,32 @@ def inject_theme() -> None:
             margin: 0;
             padding: 5px 12px;
             border-radius: 999px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
+            font-weight: 600;
             line-height: 1.25;
             white-space: nowrap;
-            border: 1px solid #00000012;
-            box-shadow: 0 1px 2px #0000000a;
+            border: 1px solid #00000014;
+            box-shadow: 0 1px 3px #0000000c;
+        }
+        .leyenda-chip.chip-alerta {
+            background: #ffe8e8;
+            color: #7a3030;
+            border-color: #e8b4b4;
+        }
+        .leyenda-chip.chip-ok {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border-color: #a5d6a7;
+        }
+        .leyenda-chip.chip-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-color: #90caf9;
+        }
+        .leyenda-chip.chip-luz {
+            background: #fff8e1;
+            color: #6d4c00;
+            border-color: #ffe082;
         }
         .dash-card {
             position: relative;
@@ -397,6 +502,11 @@ def inject_theme() -> None:
             margin-bottom: 0.35rem;
             box-shadow: 0 2px 10px #0000000d;
             min-height: 4.5rem;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .dash-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px #00000012;
         }
         .dash-card-accent {
             position: absolute;
@@ -415,6 +525,51 @@ def inject_theme() -> None:
             font-size: 0.98rem;
         }
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def inject_module_accent(pagina: str) -> None:
+    """Variables CSS y acento del módulo activo."""
+    theme = _theme_for(pagina)
+    st.markdown(
+        f"""
+        <style>
+        :root {{
+            --mod-accent: {theme["accent"]};
+            --mod-accent2: {theme["accent2"]};
+            --mod-bg: {theme["bg"]};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_page_header(titulo: str, subtitulo: str, theme_key: str) -> None:
+    theme = _theme_for(theme_key)
+    icon = theme.get("icon", "")
+    st.markdown(
+        f"""
+        <div class="page-header">
+            <h1><span class="page-header-icon">{icon}</span>{html_lib.escape(titulo)}</h1>
+            <p class="page-header-caption">{html_lib.escape(subtitulo)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_leyenda_operativa() -> None:
+    st.markdown(
+        """
+        <div class="leyenda-wrap">
+            <span class="leyenda-chip chip-alerta">● Revisar</span>
+            <span class="leyenda-chip chip-ok">● OK</span>
+            <span class="leyenda-chip chip-info">🔍 Detalle</span>
+            <span class="leyenda-chip chip-luz">Luz = columna a revisar</span>
+        </div>
         """,
         unsafe_allow_html=True,
     )
@@ -1375,12 +1530,12 @@ def plantilla_download(nombre: str, etiqueta: str) -> None:
 
 
 def pagina_dashboard() -> None:
-    st.title("Dashboard")
-    _css_dashboard()
-    st.markdown(
-        "Vista general del control logístico. Los datos se acumulan con cada importación "
-        "(no se pisan registros ya cargados)."
+    _render_page_header(
+        "Dashboard",
+        "Vista general del control logístico. Los datos se acumulan con cada importación.",
+        "Dashboard",
     )
+    _css_dashboard()
 
     if not check_health():
         st.warning("El servidor no está activo. Ejecutá **Iniciar_Fletes.bat** en la carpeta del proyecto.")
@@ -1394,7 +1549,7 @@ def pagina_dashboard() -> None:
         return
 
     st.subheader("Resumen general")
-    st.markdown('<div class="dash-metrics">', unsafe_allow_html=True)
+    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total envíos en base", general["total_envios"])
     c2.metric("Excluidos Amba / retiro", general["excluidos"])
@@ -1403,7 +1558,7 @@ def pagina_dashboard() -> None:
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.subheader("Envíos al interior")
-    st.markdown('<div class="dash-metrics">', unsafe_allow_html=True)
+    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
     i1, i2, i3, i4, i5 = st.columns(5)
     i1.metric("Renglones interior", interior["envios_interior"])
     i2.metric("Con tarifa calculada", interior.get("con_tarifa", 0))
@@ -1441,19 +1596,19 @@ def pagina_dashboard() -> None:
     a1, a2, a3 = st.columns(3)
     cards = [
         (
-            "**Envíos interior** — planilla, cruce prefacturas y conciliación.",
-            "#E6C200",
-            "#FFF8DC",
+            "**Maestro** — planilla, cruce prefacturas y conciliación.",
+            MODULE_THEMES["MAESTRO"]["accent"],
+            MODULE_THEMES["MAESTRO"]["bg"],
         ),
         (
-            "**Fletes** — control CABA/GBA (en desarrollo).",
-            "#5B9BD5",
-            "#E3F0FF",
+            "**Fletes** — control CABA/GBA, km y tarifa sucursal.",
+            MODULE_THEMES["Fletes"]["accent"],
+            MODULE_THEMES["Fletes"]["bg"],
         ),
         (
             "**Configuración** — Excel Tango, tarifarios y plantillas.",
-            "#7CB89A",
-            "#E6F6EA",
+            MODULE_THEMES["Configuración"]["accent"],
+            MODULE_THEMES["Configuración"]["bg"],
         ),
     ]
     for col, (body, accent, bg) in zip((a1, a2, a3), cards):
@@ -1508,8 +1663,9 @@ def pagina_casos(
     modo_elegir_proveedor: bool = False,
     key_prefix: str = "casos",
 ) -> None:
-    st.title(etiqueta_pagina(titulo))
-    st.caption(subtitulo)
+    _render_page_header(etiqueta_pagina(titulo), subtitulo, titulo)
+    if not modo_elegir_proveedor:
+        _render_leyenda_operativa()
     sel_key = f"{key_prefix}_sel"
 
     if not check_health():
@@ -1908,11 +2064,12 @@ def pagina_envios_interior() -> None:
 
 
 def pagina_fletes() -> None:
-    st.title("Fletes")
-    st.caption(
-        "Entregas CABA/GBA y retiro en sucursal. "
-        "Tarifa de referencia: tarifario **fletes sucursales** (por zona km)."
+    _render_page_header(
+        "Fletes",
+        "Entregas CABA/GBA y retiro en sucursal. Tarifa ref.: fletes sucursales (zona km).",
+        "Fletes",
     )
+    _render_leyenda_operativa()
 
     if not check_health():
         st.warning("Ejecutá **Iniciar_Fletes.bat**.")
@@ -1933,11 +2090,13 @@ def pagina_fletes() -> None:
         st.error(f"No se pudo conectar al módulo Fletes: {exc}")
         st.stop()
 
+    st.markdown('<div class="module-metrics">', unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Casos fletes", stats.get("casos_fletes", 0))
     c2.metric("Renglones Amba/GBA", stats.get("renglones_fletes", stats.get("renglones_mundo2", 0)))
     c3.metric("Con km calculado", stats.get("con_km_calculado", 0))
     c4.metric("Pend. zona km", stats.get("pendiente_zona_km", 0))
+    st.markdown("</div>", unsafe_allow_html=True)
     if stats.get("envios_cargados") is not None:
         st.caption(
             f"Período filtrado: **{stats.get('envios_cargados', 0):,}** renglones Tango en memoria "
@@ -2288,8 +2447,11 @@ def _config_fleteros_locales() -> None:
 
 
 def pagina_configuracion() -> None:
-    st.title("Configuración")
-    st.caption("Carga de archivos, tarifarios y parámetros del sistema.")
+    _render_page_header(
+        "Configuración",
+        "Carga de archivos, tarifarios y parámetros del sistema.",
+        "Configuración",
+    )
 
     if not check_health():
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
@@ -2722,12 +2884,15 @@ if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
         pass
 
 st.sidebar.markdown(
-    '<p class="sidebar-brand">Control de Fletes</p>'
-    '<p class="sidebar-brand-caption">SommierCenter · Wamaro</p>',
+    '<div class="sidebar-brand-band">'
+    '<p class="sidebar-brand-title">Control de Fletes</p>'
+    '<p class="sidebar-brand-caption">SommierCenter · Wamaro</p>'
+    "</div>",
     unsafe_allow_html=True,
 )
 
 pagina = _sidebar_nav_tree()
+inject_module_accent(pagina)
 
 st.sidebar.markdown("---")
 if check_health():
