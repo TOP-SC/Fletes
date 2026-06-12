@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Envio, Tarifa
+from app.models import Envio, FleteSolicitud, Tarifa
 from app.services.fecha_utils import periodo_mes_solo, resolver_periodo_vista
 from app.services.fletes_internos_service import (
     ejecutar_macheo_solicitudes,
@@ -22,12 +22,13 @@ from app.services.fletes_km_service import (
     info_distancia_sucursal_destino,
     preparar_contexto_km,
 )
+from app.schemas import MaestroPaginaOut
 from app.services.mundo2_service import (
     FLETES_COLUMNAS,
     _agrupar_por_caso,
-    construir_fletes,
+    construir_fletes_pagina,
     es_envio_mundo2,
-    stats_mundo2,
+    stats_mundo2_liviano,
 )
 from app.api.routes.casos_filtros import build_filtros_casos
 
@@ -67,21 +68,56 @@ def get_stats_fletes(
     mes_control_anio: int | None = Query(None),
     mes_control_mes: int | None = Query(None, ge=1, le=12),
     campo_fecha: str = Query("entrega"),
+    fecha_desde: str | None = Query(None),
+    fecha_hasta: str | None = Query(None),
 ) -> dict:
     envios = _envios_para_fletes(
         db,
         mes_control_anio=mes_control_anio,
         mes_control_mes=mes_control_mes,
         campo_fecha=campo_fecha,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
     )
     from app.services.tarifario_version_service import TarifarioContext
 
-    out = stats_mundo2(envios, tarifario_ctx=TarifarioContext(db), db=db)
+    dist = preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
+    mapa_f = mapa_fletero_por_remito(db)
+    out = stats_mundo2_liviano(
+        envios,
+        distancias=dist,
+        mapa_fletero=mapa_f,
+    )
     out["envios_cargados"] = len(envios)
+    n_sol = db.scalar(
+        select(func.count(FleteSolicitud.id)).where(FleteSolicitud.estado != "Anulado")
+    ) or 0
+    n_match = db.scalar(
+        select(func.count(FleteSolicitud.id)).where(
+            FleteSolicitud.estado != "Anulado",
+            FleteSolicitud.match_estado.in_(
+                ("matcheado", "matcheado_pedido", "matcheado_cliente")
+            ),
+        )
+    ) or 0
+    out["fleteros_drive"] = {
+        "solicitudes": int(n_sol),
+        "matcheadas": int(n_match),
+        "pendientes_cruce": max(0, int(n_sol) - int(n_match)),
+    }
+    if mes_control_mes and mes_control_anio:
+        res_f = resumen_fleteros(
+            db, mes=mes_control_mes, anio=mes_control_anio
+        )
+        out["fleteros_periodo"] = {
+            "entregas": res_f.get("total_entregas", 0),
+            "total_pagar": res_f.get("total_pagar", 0),
+            "por_fletero": res_f.get("fleteros") or [],
+        }
     return out
 
 
-@router.get("/casos")
+@router.get("/casos", response_model=MaestroPaginaOut)
 def listar_casos_fletes(
     db: Session = Depends(get_db),
     origen: str | None = Query(None, description="tortuguitas | sa"),
@@ -93,7 +129,12 @@ def listar_casos_fletes(
     fletero: str | None = Query(None, description="Código corto: BLAS, GAMA, ARMANDO…"),
     mes_control_anio: int | None = Query(None),
     mes_control_mes: int | None = Query(None, ge=1, le=12),
-) -> list[dict]:
+    q: str | None = Query(None, description="Buscar remito, destinatario, localidad"),
+    solo_alerta: bool = Query(False),
+    solo_pendiente_zona_km: bool = Query(False),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(150, ge=1, le=500),
+) -> MaestroPaginaOut:
     filtros = build_filtros_casos(
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
@@ -113,10 +154,12 @@ def listar_casos_fletes(
     from app.services.tarifario_version_service import TarifarioContext
 
     tarifario_ctx = TarifarioContext(db)
-    dist = preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=30)
+    dist = preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=30)
     mapa_f = mapa_fletero_por_remito(db)
-    return construir_fletes(
+    filas, total = construir_fletes_pagina(
         envios,
+        page=page,
+        page_size=page_size,
         tarifario_ctx=tarifario_ctx,
         origen=origen,
         sucursal_cod=sucursal,
@@ -124,7 +167,18 @@ def listar_casos_fletes(
         db=db,
         mapa_fletero=mapa_f,
         fletero_corto=fletero,
+        q=q,
+        solo_alerta=solo_alerta,
+        solo_pendiente_zona_km=solo_pendiente_zona_km,
         **filtros,
+    )
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    return MaestroPaginaOut(
+        filas=filas,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
     )
 
 

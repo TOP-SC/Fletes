@@ -70,10 +70,9 @@ def _agrupar_por_caso(envios: list[Envio]) -> dict[str, list[Envio]]:
 
 
 def _bultos_grupo(lineas: list[Envio]) -> int:
-    total = int(sum(l.cantidad or 0 for l in lineas))
-    if total > 0:
-        return total
-    return sum(1 for l in lineas if l.descripcion or l.cod_articulo)
+    from app.services.bultos_service import bultos_grupo
+
+    return bultos_grupo(lineas)
 
 
 def _tarifas_zona_local(
@@ -342,6 +341,157 @@ def _fila_fletes_desde_grupo(
     return normalize_maestro_montos(fila)
 
 
+def _kwargs_filtro_fletes(**kwargs: Any) -> dict[str, Any]:
+    omit = {
+        "db",
+        "tarifario_ctx",
+        "tarifas",
+        "distancias",
+        "mapa_fletero",
+        "page",
+        "page_size",
+        "q",
+        "solo_alerta",
+        "solo_pendiente_zona_km",
+        "sucursal_cod",
+    }
+    return {k: v for k, v in kwargs.items() if k not in omit}
+
+
+def _grupos_fletes_ordenados(
+    envios: list[Envio],
+    *,
+    origen: str | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    campo_fecha: str = "cualquiera",
+    remito_estado: str = "todos",
+    fletero_corto: str | None = None,
+    mapa_fletero: dict[str, dict[str, Any]] | None = None,
+) -> list[tuple[str, list[Envio]]]:
+    from app.services.casos_filtro_service import aplicar_filtros_lista_envios
+
+    candidatos = [e for e in envios if es_envio_mundo2(e)]
+    candidatos = aplicar_filtros_lista_envios(
+        candidatos,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        campo_fecha=campo_fecha,
+    )
+    grupos: list[tuple[str, list[Envio]]] = []
+    for key, grupo in _agrupar_por_caso(candidatos).items():
+        if not grupo_pasa_filtro_remito(grupo, remito_estado):
+            continue
+        if origen and _origen_planilla(grupo[0].deposito, grupo[0].origen_cd) != origen:
+            continue
+        if fletero_corto and fletero_corto.upper() != "TODOS":
+            flet = ""
+            if mapa_fletero:
+                from app.services.remito_utils import normalizar_remito as _nr
+
+                rn = _nr(grupo[0].remito) or clave_agrupacion_caso(grupo[0])
+                info = mapa_fletero.get(rn or "") or {}
+                flet = (info.get("fletero_corto") or info.get("fletero") or "").upper()
+            if flet != fletero_corto.upper():
+                continue
+        grupos.append((key, grupo))
+    grupos.sort(
+        key=lambda kg: str(kg[1][0].fecha_entrega or kg[1][0].fecha_pedido or ""),
+        reverse=True,
+    )
+    return grupos
+
+
+def _fila_fletes_pasa_filtros(
+    fila: dict[str, Any],
+    *,
+    q: str | None = None,
+    solo_alerta: bool = False,
+    solo_pendiente_zona_km: bool = False,
+    sucursal_cod: str | None = None,
+) -> bool:
+    if sucursal_cod and fila.get("SUCURSAL") != sucursal_cod.upper():
+        return False
+    if solo_alerta and fila.get("_regla_color") != "alerta":
+        return False
+    if solo_pendiente_zona_km:
+        pend = bool(fila.get("_por_zona_tarifa") and not fila.get("_zona_km_asignada"))
+        if not pend:
+            tarifa = str(fila.get("TARIFA REF") or "").strip()
+            zona = str(fila.get("ZONA KM") or "").strip()
+            pend = bool(tarifa and (not zona or zona == "—"))
+        if not pend:
+            return False
+    if q:
+        qn = q.strip().upper()
+        if qn:
+            cols = ("REMITOS", "ENVIO", "DESTINATARIO", "LOCALIDAD", "FLETERO")
+            if not any(qn in str(fila.get(c) or "").upper() for c in cols):
+                return False
+    return True
+
+
+def construir_fletes_pagina(
+    envios: list[Envio],
+    *,
+    page: int = 1,
+    page_size: int = 150,
+    **kwargs: Any,
+) -> tuple[list[dict[str, Any]], int]:
+    """Casos Fletes paginados; evita construir filas fuera de la página cuando no hay filtros post-build."""
+    page = max(1, page)
+    page_size = max(1, min(page_size, 500))
+    filtros = _kwargs_filtro_fletes(**kwargs)
+    q = kwargs.get("q")
+    solo_alerta = bool(kwargs.get("solo_alerta"))
+    solo_pend = bool(kwargs.get("solo_pendiente_zona_km"))
+    sucursal_cod = kwargs.get("sucursal_cod")
+    post_build = bool(q or solo_alerta or solo_pend or sucursal_cod)
+
+    tarifas = kwargs.get("tarifas") or []
+    tarifario_ctx = kwargs.get("tarifario_ctx")
+    distancias = kwargs.get("distancias")
+    db = kwargs.get("db")
+    mapa_fletero = kwargs.get("mapa_fletero")
+
+    grupos = _grupos_fletes_ordenados(envios, mapa_fletero=mapa_fletero, **filtros)
+
+    def _build(key: str, grupo: list[Envio]) -> dict[str, Any]:
+        rn = clave_agrupacion_caso(grupo[0]) or key
+        dist = (distancias or {}).get(rn) if distancias else None
+        dist = _buscar_distancia_caso(grupo[0], key, distancias, dist, db=db)
+        return _fila_fletes_desde_grupo(
+            key,
+            grupo,
+            tarifas,
+            tarifario_ctx=tarifario_ctx,
+            dist=dist,
+            db=db,
+            mapa_fletero=mapa_fletero,
+        )
+
+    if not post_build:
+        total = len(grupos)
+        start = (page - 1) * page_size
+        filas = [_build(key, g) for key, g in grupos[start : start + page_size]]
+        return filas, total
+
+    filas_ok: list[dict[str, Any]] = []
+    for key, grupo in grupos:
+        fila = _build(key, grupo)
+        if _fila_fletes_pasa_filtros(
+            fila,
+            q=q,
+            solo_alerta=solo_alerta,
+            solo_pendiente_zona_km=solo_pend,
+            sucursal_cod=sucursal_cod,
+        ):
+            filas_ok.append(fila)
+    total = len(filas_ok)
+    start = (page - 1) * page_size
+    return filas_ok[start : start + page_size], total
+
+
 def construir_fletes(
     envios: list[Envio],
     *,
@@ -357,49 +507,74 @@ def construir_fletes(
     remito_estado: str = "todos",
     mapa_fletero: dict[str, dict[str, Any]] | None = None,
     fletero_corto: str | None = None,
+    q: str | None = None,
+    solo_alerta: bool = False,
+    solo_pendiente_zona_km: bool = False,
+    page: int | None = None,
+    page_size: int | None = None,
 ) -> list[dict[str, Any]]:
-    from app.services.casos_filtro_service import aplicar_filtros_lista_envios
-
-    tarifas = tarifas or []
-    candidatos = [e for e in envios if es_envio_mundo2(e)]
-    candidatos = aplicar_filtros_lista_envios(
-        candidatos,
-        fecha_desde=fecha_desde,
-        fecha_hasta=fecha_hasta,
-        campo_fecha=campo_fecha,
-    )
-    filas: list[dict[str, Any]] = []
-
-    for key, grupo in _agrupar_por_caso(candidatos).items():
-        if not grupo_pasa_filtro_remito(grupo, remito_estado):
-            continue
-        if origen and _origen_planilla(grupo[0].deposito, grupo[0].origen_cd) != origen:
-            continue
-        rn = clave_agrupacion_caso(grupo[0]) or key
-        dist = (distancias or {}).get(rn) if distancias else None
-        dist = _buscar_distancia_caso(grupo[0], key, distancias, dist, db=db)
-        fila = _fila_fletes_desde_grupo(
-            key,
-            grupo,
-            tarifas,
-            tarifario_ctx=tarifario_ctx,
-            dist=dist,
-            db=db,
-            mapa_fletero=mapa_fletero,
+    kwargs: dict[str, Any] = {
+        "tarifas": tarifas,
+        "tarifario_ctx": tarifario_ctx,
+        "origen": origen,
+        "sucursal_cod": sucursal_cod,
+        "distancias": distancias,
+        "db": db,
+        "fecha_desde": fecha_desde,
+        "fecha_hasta": fecha_hasta,
+        "campo_fecha": campo_fecha,
+        "remito_estado": remito_estado,
+        "mapa_fletero": mapa_fletero,
+        "fletero_corto": fletero_corto,
+        "q": q,
+        "solo_alerta": solo_alerta,
+        "solo_pendiente_zona_km": solo_pendiente_zona_km,
+    }
+    if page is not None and page_size is not None:
+        filas, _ = construir_fletes_pagina(
+            envios, page=page, page_size=page_size, **kwargs
         )
-        if sucursal_cod and fila.get("SUCURSAL") != sucursal_cod.upper():
-            continue
-        if fletero_corto and fletero_corto.upper() != "TODOS":
-            flet = (fila.get("FLETERO") or "").upper()
-            if flet != fletero_corto.upper():
-                continue
-        filas.append(fila)
+        return filas
 
-    filas.sort(
-        key=lambda r: str(r.get("FECHA ENTREGA") or r.get("FECHA PEDIDO") or ""),
-        reverse=True,
+    filas, _ = construir_fletes_pagina(
+        envios, page=1, page_size=10_000_000, **kwargs
     )
     return filas
+
+
+def stats_mundo2_liviano(
+    envios: list[Envio],
+    *,
+    distancias: dict[str, FleteDistancia] | None = None,
+    mapa_fletero: dict[str, dict[str, Any]] | None = None,
+    **filtros: Any,
+) -> dict[str, Any]:
+    """Métricas rápidas sin calcular tarifario fila a fila (para cabecera Fletes)."""
+    omit = {"db", "tarifario_ctx", "tarifas", "distancias", "mapa_fletero"}
+    f = {k: v for k, v in filtros.items() if k not in omit and v is not None}
+    grupos = _grupos_fletes_ordenados(envios, mapa_fletero=mapa_fletero, **f)
+    con_km = 0
+    casos_con_fletero = 0
+    for _key, grupo in grupos:
+        rn = clave_agrupacion_caso(grupo[0]) or _key
+        dist = (distancias or {}).get(rn)
+        if dist and dist.distance_km is not None:
+            con_km += 1
+        if mapa_fletero:
+            from app.services.remito_utils import normalizar_remito as _nr
+
+            rn2 = _nr(grupo[0].remito) or rn
+            if mapa_fletero.get(rn2 or ""):
+                casos_con_fletero += 1
+    return {
+        "casos_fletes": len(grupos),
+        "renglones_fletes": sum(1 for e in envios if es_envio_mundo2(e)),
+        "con_km_calculado": con_km,
+        "casos_con_fletero": casos_con_fletero,
+        "pendiente_zona_km": None,
+        "con_tarifa_referencia": None,
+        "por_color": {},
+    }
 
 
 def stats_mundo2(
@@ -409,18 +584,24 @@ def stats_mundo2(
     tarifario_ctx: Any = None,
     db: Any = None,
     distancias: dict[str, FleteDistancia] | None = None,
+    mapa_fletero: dict[str, dict[str, Any]] | None = None,
+    filas_precalculadas: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if db is not None and distancias is None:
         from app.services.fletes_km_service import preparar_contexto_km
 
         distancias = preparar_contexto_km(db, envios)
-    filas = construir_fletes(
-        envios,
-        tarifas=tarifas,
-        tarifario_ctx=tarifario_ctx,
-        db=db,
-        distancias=distancias,
-    )
+    if filas_precalculadas is not None:
+        filas = filas_precalculadas
+    else:
+        filas = construir_fletes(
+            envios,
+            tarifas=tarifas,
+            tarifario_ctx=tarifario_ctx,
+            db=db,
+            distancias=distancias,
+            mapa_fletero=mapa_fletero,
+        )
     por_color: dict[str, int] = defaultdict(int)
     for f in filas:
         por_color[f.get("_regla_color") or "sin_color"] += 1
@@ -434,4 +615,5 @@ def stats_mundo2(
             1 for f in filas if f.get("_por_zona_tarifa") and not f.get("_zona_km_asignada")
         ),
         "por_color": dict(por_color),
+        "casos_con_fletero": sum(1 for f in filas if f.get("FLETERO")),
     }

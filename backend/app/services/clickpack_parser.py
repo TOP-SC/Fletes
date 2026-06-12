@@ -33,6 +33,10 @@ def parse_clickpack_prefactura(content: bytes) -> list[dict[str, Any]]:
     )
     col_importe = find_column(
         list(df.columns),
+        "logistica",
+        "logística",
+        "precio neto",
+        "p. fact",
         "importe",
         "total",
         "costo",

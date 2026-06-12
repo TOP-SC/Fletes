@@ -412,13 +412,7 @@ def calcular_cobro_pedido(
 
     if base.regla_postventa:
 
-        from app.services.postventa_rules import (
-
-            postventa_bloquea_cobro,
-
-            postventa_usa_tarifario_fletes_amba,
-
-        )
+        from app.services.postventa_rules import postventa_bloquea_cobro
 
 
 
@@ -437,50 +431,6 @@ def calcular_cobro_pedido(
                 cobro_cliente_cero=cobro_al_cliente_es_cero(base),
 
             )
-
-
-
-        if (
-
-            es_amba_gba_envio(base)
-
-            and postventa_usa_tarifario_fletes_amba(base.regla_postventa)
-
-        ):
-
-            zona = zona_km or resolver_zona_km_pedido(lineas_pedido, db)
-
-            if zona:
-
-                r = calcular_cobro_flete_local(lineas_pedido, tarifas, zona)
-
-                if r.tiene_tarifa:
-
-                    r.modo = "postventa_flete_local"
-
-                    r.cobro_cliente_cero = cobro_al_cliente_es_cero(base)
-
-                    return r
-
-
-
-        ref = costo_referencia_linea(base) or 0.0
-
-        log = ref - settings.seguro_fijo if ref > settings.seguro_fijo else ref
-
-        return CobroPedidoResult(
-
-            "postventa",
-
-            round(log, 2),
-
-            tiene_tarifa=log > 0,
-
-            interpretacion=interp,
-
-            cobro_cliente_cero=cobro_al_cliente_es_cero(base),
-
-        )
 
 
 
@@ -511,6 +461,8 @@ def calcular_cobro_pedido(
         es_crossdock_operativo,
 
         _tramos_crossdock,
+
+        asignar_proveedor_envio,
 
     )
 
@@ -552,7 +504,11 @@ def calcular_cobro_pedido(
 
         )
 
-
+    # Grilla en vivo (maestro / modo Adrián): asignar proveedor si aún no se reaplicó en BD.
+    if tarifas:
+        for e in lineas_pedido:
+            if not e.proveedor_tarifa:
+                asignar_proveedor_envio(e, tarifas)
 
     prov = envio.proveedor_tarifa
 
@@ -675,7 +631,13 @@ def aplicar_cobro_todos_envios(
 
     for e in envios:
 
-        if not debe_calcular_costo_proveedor(e) or e.regla_postventa:
+        from app.services.postventa_rules import postventa_bloquea_cobro
+
+        if not debe_calcular_costo_proveedor(e) or postventa_bloquea_cobro(
+
+            e.regla_postventa
+
+        ):
 
             continue
 

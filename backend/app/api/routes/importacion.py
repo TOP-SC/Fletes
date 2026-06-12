@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,6 +13,10 @@ router = APIRouter(prefix="/import", tags=["importacion"])
 async def importar_tango(
     file: UploadFile = File(...),
     proveedor_tarifa: str = "CLICPAQ",
+    defer_recalc: bool = Query(
+        False,
+        description="Solo insertar filas; recalcular tarifas después (varios Excel grandes).",
+    ),
     db: Session = Depends(get_db),
 ) -> ImportResult:
     content = await file.read()
@@ -21,6 +25,7 @@ async def importar_tango(
         content,
         filename=file.filename or "exportacion.xlsx",
         proveedor_tarifa=proveedor_tarifa,
+        defer_recalc=defer_recalc,
     )
     msg = (
         f"Importación OK: {batch.rows_inserted} nuevos, "
@@ -28,6 +33,8 @@ async def importar_tango(
     )
     if rejected:
         msg += f" {rejected} filas rechazadas (sin remito ni artículo/destino)."
+    if defer_recalc and batch.rows_inserted:
+        msg += " Recálculo pendiente — usá «Reaplicar reglas» cuando termines de subir todos los archivos."
     return ImportResult(
         batch_id=batch.id,
         filename=batch.filename,

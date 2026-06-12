@@ -91,7 +91,9 @@ def requiere_elegir_proveedor(candidatos: list[dict[str, Any]]) -> bool:
 
 def es_planilla_interior(envio: Envio) -> bool:
     """Pedidos del maestro interior (no AMBA/GBA ni retiro en sucursal)."""
-    if envio.excluir_planilla or envio.regla_postventa:
+    from app.services.postventa_rules import postventa_bloquea_cobro
+
+    if envio.excluir_planilla or postventa_bloquea_cobro(envio.regla_postventa):
         return False
     if es_retiro_sucursal(envio.transporte_nombre, envio.transporte_cod):
         return False
@@ -317,7 +319,9 @@ def asignar_proveedor_envio(
 
 
 def aplicar_tarifa_proveedor_asignado(envio: Envio, tarifas: list[Tarifa]) -> None:
-    if envio.regla_postventa or not envio.proveedor_tarifa:
+    from app.services.postventa_rules import postventa_bloquea_cobro
+
+    if postventa_bloquea_cobro(envio.regla_postventa) or not envio.proveedor_tarifa:
         return
     if es_retiro_sin_flete_domicilio(envio):
         return
@@ -393,8 +397,10 @@ def precio_tarifa_linea(
     tipo_producto: str | None = None,
     medida_banda: str | None = None,
 ) -> float | None:
+    from app.services.postventa_rules import postventa_bloquea_cobro
+
     canon = normalizar_proveedor(proveedor)
-    if not canon or envio.regla_postventa:
+    if not canon or postventa_bloquea_cobro(envio.regla_postventa):
         return None
     if es_retiro_sin_flete_domicilio(envio):
         return None

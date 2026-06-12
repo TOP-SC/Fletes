@@ -9,12 +9,31 @@ from app.models import Envio, PrefacturaClickpac, PostventaRegistro
 from app.services.postventa_rules import aplicar_regla_postventa_a_envio
 from app.services.remito_utils import normalizar_remito
 from app.services.rules_service import aplicar_reglas_envio, costo_referencia_linea, recalcular_grupo
+from app.transporte_reglas import (
+    COD_CROSSDOCKING,
+    COD_EXPRESO_CLICPAQ,
+    normalizar_transporte_cod,
+)
+
+
+def _envio_indexable_macheo(envio: Envio) -> bool:
+    """
+    Envíos elegibles para cruce prefactura CLICPAQ.
+    Incluye canal red (51/82/83) aunque ``excluir_planilla`` esté mal marcado
+    (ej. Mar del Plata en Modo Adrián / LOG WAMARO).
+    """
+    if not envio.excluir_planilla:
+        return True
+    if envio.alerta_clickpack:
+        return True
+    cod = normalizar_transporte_cod(envio.transporte_cod, envio.transporte_nombre) or ""
+    return cod in (COD_EXPRESO_CLICPAQ, COD_CROSSDOCKING, "83")
 
 
 def _index_envios(envios: list[Envio]) -> dict[str, list[Envio]]:
     idx: dict[str, list[Envio]] = defaultdict(list)
     for e in envios:
-        if e.excluir_planilla:
+        if not _envio_indexable_macheo(e):
             continue
         key = e.remito_norm or normalizar_remito(e.remito)
         if key:

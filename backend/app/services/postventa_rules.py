@@ -1,4 +1,12 @@
-"""Reglas de postventa (grilla = misma base Tango en muchos casos)."""
+"""
+Postventa y reglas logísticas (Mantello Paso 4).
+
+- **Detalle postventa** (Tango TipoGestion / SubTipo): qué pasó con la mercadería.
+  Informativo; no bloquea el circuito de cobro por transporte.
+
+- **Regla logística** (``regla_postventa``): solo las que explícitamente ponen $0
+  o +25% gestión retiro bloquean o ajustan el cobro. El resto cotiza por 40/51/82.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +31,13 @@ AccionPostventa = Literal["aprobar_viaje", "no_pagar"]
 
 
 def postventa_bloquea_cobro(regla: str | None) -> bool:
+    """Solo estas reglas fuerzan LOG $0 (rotura expreso, duda pendiente)."""
     return regla in ("no_pagar_transporte", "costo_cero_pendiente")
+
+
+def postventa_es_solo_detalle(regla: str | None) -> bool:
+    """Clasificación informativa: no altera el circuito tarifario."""
+    return regla in ("cruce_medidas_aprobado", "viaje_aprobado", "revisar_manual")
 
 
 def postventa_usa_tarifario_fletes_amba(regla: str | None) -> bool:
@@ -71,6 +85,29 @@ def clasificar_postventa(motivo: str | None, tipo: str | None) -> str:
     return "revisar_manual"
 
 
+def clasificar_obs_adrian(obs: str | None) -> str | None:
+    """
+    Patrones del maestro manual (columna obs en LOG WAMARO abril 2026).
+    Complementa TipoGestion cuando el operador anotó la regla a mano.
+    """
+    text = (obs or "").strip().upper()
+    if not text:
+        return None
+    if "LOGISTICA EN ENTREGAS AMBA" in text:
+        return None
+    if any(k in text for k in ("REPO ROTURA", "RETIRO ROTURA", "RETIRO X ROTURA", "X ROTURA")):
+        return "no_pagar_transporte"
+    if "DUPLICA EL COSTO" in text or "ANULAR ENVIO" in text:
+        return "no_pagar_transporte"
+    if text.startswith("PRECIO 0") or "PRECIO 0?" in text:
+        return "costo_cero_pendiente"
+    if text.startswith("RETIRO ") or " GESTION DE RETIRO" in text or " GESTIÓN DE RETIRO" in text:
+        return "gestion_retiro_25"
+    if any(k in text for k in ("CRUCE DE MEDIDA", "CRUCE MEDIDA", "ERROR INTERNO")):
+        return "cruce_medidas_aprobado"
+    return None
+
+
 def _aplicar_regla_a_envio(envio: Envio, regla: str, motivo_texto: str) -> None:
     envio.motivo_postventa = motivo_texto
     envio.regla_postventa = regla
@@ -103,13 +140,19 @@ def _aplicar_regla_a_envio(envio: Envio, regla: str, motivo_texto: str) -> None:
 
 
 def aplicar_postventa_desde_tango(envio: Envio) -> None:
-    """Si el Excel Tango trae TipoGestion / SubTipo, aplicar reglas sin archivo aparte."""
-    if not envio.tipo_gestion and not envio.sub_tipo_gestion:
-        return
-    regla = clasificar_postventa(envio.tipo_gestion, envio.sub_tipo_gestion)
-    if regla == "revisar_manual" and not (envio.tipo_gestion or envio.sub_tipo_gestion):
-        return
+    """TipoGestion/SubTipo Tango + obs manual → regla logística Mantello."""
     motivo = f"{envio.tipo_gestion or ''} {envio.sub_tipo_gestion or ''}".strip()
+    regla = None
+    if envio.tipo_gestion or envio.sub_tipo_gestion:
+        regla = clasificar_postventa(envio.tipo_gestion, envio.sub_tipo_gestion)
+    if regla in (None, "revisar_manual"):
+        desde_obs = clasificar_obs_adrian(envio.observaciones)
+        if desde_obs:
+            regla = desde_obs
+    if not regla or (regla == "revisar_manual" and not motivo):
+        return
+    if not motivo and envio.observaciones:
+        motivo = envio.observaciones.strip()
     _aplicar_regla_a_envio(envio, regla, motivo)
 
 

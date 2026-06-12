@@ -5,6 +5,7 @@ from app.api.routes import (
     envios,
     importacion,
     maestro,
+    modo_adrian,
     mundo1,
     fletes,
     proveedores,
@@ -38,6 +39,7 @@ app.include_router(tarifas.router, prefix=prefix)
 app.include_router(mundo1.router, prefix=prefix)
 app.include_router(fletes.router, prefix=prefix)
 app.include_router(maestro.router, prefix=prefix)
+app.include_router(modo_adrian.router, prefix=prefix)
 app.include_router(proveedores.router, prefix=prefix)
 app.include_router(sistema.router, prefix=prefix)
 app.include_router(sucursales.router, prefix=prefix)

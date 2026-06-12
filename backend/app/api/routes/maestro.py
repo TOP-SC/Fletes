@@ -8,9 +8,10 @@ from app.models import Envio, Tarifa
 from app.services.export_service import export_maestro_wamaro
 from app.services.fecha_utils import periodo_mes_solo, resolver_periodo_vista
 from app.services.envio_query_service import cargar_envios_filtrados
+from app.schemas import MaestroPaginaOut
 from app.services.maestro_service import (
     MAESTRO_COLUMNAS,
-    construir_maestro,
+    construir_maestro_pagina,
     detalle_caso,
     obtener_lineas_caso,
 )
@@ -37,7 +38,13 @@ def listar_maestro(
     remito_estado: str = Query("todos"),
     mes_control_anio: int | None = Query(None, description="Año del mes a controlar"),
     mes_control_mes: int | None = Query(None, ge=1, le=12),
-) -> list[dict]:
+    page: int = Query(1, ge=1),
+    page_size: int = Query(150, ge=1, le=500),
+    q: str | None = Query(None, description="Buscar remito, pedido, destinatario, localidad"),
+    solo_alerta: bool = Query(False),
+    solo_macheo: bool = Query(False),
+    solo_con_dif: bool = Query(False),
+) -> MaestroPaginaOut:
     filtros = build_filtros_casos(
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
@@ -58,9 +65,9 @@ def listar_maestro(
     from app.services.fletes_km_service import preparar_contexto_km
     from app.services.tarifario_version_service import TarifarioContext
 
-    preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=0)
+    preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
     tarifario_ctx = TarifarioContext(db)
-    filas = construir_maestro(
+    filas, total = construir_maestro_pagina(
         envios,
         origen=origen,
         incluir_excluidos=incluir_excluidos,
@@ -68,13 +75,26 @@ def listar_maestro(
         solo_pendiente_proveedor=solo_pendiente_proveedor,
         tarifario_ctx=tarifario_ctx,
         db=db,
+        page=page,
+        page_size=page_size,
+        q=q,
+        solo_alerta=solo_alerta,
+        solo_macheo=solo_macheo,
+        solo_con_dif=solo_con_dif,
         **filtros,
     )
+    total_pages = max(1, (total + page_size - 1) // page_size)
     if vista:
         response.headers["X-Maestro-Filtro-Zona"] = vista
-        response.headers["X-Maestro-Count"] = str(len(filas))
+        response.headers["X-Maestro-Count"] = str(total)
         response.headers["X-Maestro-Envios-Cargados"] = str(len(envios))
-    return filas
+    return MaestroPaginaOut(
+        filas=filas,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
 
 
 @router.get("/periodo-control")

@@ -242,7 +242,7 @@ P1 — Completar cobertura:
 
 P2 — Evolutivo:
   [ ] M3 duplicados interior (spec + reglas).
-  [ ] Prefactura Gama/Blast en M2 (si negocio lo requiere).
+  [ ] Prefactura Gama/Blas en M2 (si negocio lo requiere).
 
 EXCLUIDO DEL ROADMAP:
   - Import Tango SA / Limansky depósito 12.

@@ -313,6 +313,8 @@
     <nav>
       <div class="nav-group">Ejecutivo</div>
       <a href="#resumen">Resumen ejecutivo</a>
+      <a href="COTIZACION_PROYECTO.html">Cotización comparativa ↗</a>
+      <a href="AVANCE_PROYECTO.html">Avance macro/micro ↗</a>
       <a href="#vision">Visión y alcance</a>
       <a href="#automation">Tipo de automatización</a>
       <a href="#equipo">Escala y liderazgo técnico</a>
@@ -334,7 +336,7 @@
       <a href="#roadmap">Roadmap futuro</a>
       <a href="#operacion">Operación y despliegue</a>
     </nav>
-    <div class="build-badge">Build API<br><strong>fletes-km-mantello-2026-06-04</strong></div>
+    <div class="build-badge">Build API<br><strong>modo-adrian-clp-2026-06-03</strong></div>
   </aside>
 
   <main class="main">
@@ -400,9 +402,10 @@
         </div>
 
         <div class="callout">
-          <p><strong>Avance global (jun 2026):</strong> ~<strong>70%</strong> desarrollo · ~<strong>58%</strong> operación lista.
-          Cross-docking <strong>solo interior</strong> (transporte 82); en AMBA/GBA no aplica — solo FLETES_SUC.
-          Regla cross corregida: ya no se infiere cross por destino + CLICPAQ 51/40.</p>
+          <p><strong>Avance global (jun 2026):</strong> ~<strong>95%</strong> desarrollo · ~<strong>86%</strong> operación lista.
+          Arquitectura <strong>macro (Maestro)</strong> + <strong>micro (Modo Adrián)</strong> sobre el mismo Tango.
+          Ver <a href="AVANCE_PROYECTO.html">AVANCE_PROYECTO.html</a> y
+          <a href="COTIZACION_PROYECTO.html">COTIZACION_PROYECTO.html</a>.</p>
         </div>
       </section>
 
@@ -449,7 +452,7 @@
                 <td><strong>55%</strong></td>
                 <td><strong>40%</strong></td>
                 <td><span class="badge badge-partial">Parcial</span></td>
-                <td>Export Tango con sucursal origen, prefactura Gama/Blast, conciliación $</td>
+                <td>Export Tango con sucursal origen, prefactura Gama/Blas, conciliación $</td>
               </tr>
               <tr>
                 <td><strong>Mundo 3</strong></td>
@@ -524,7 +527,7 @@
         <ul>
           <li><strong>Nivel 3 — Procesos definidos:</strong> reglas documentadas en código, tarifarios versionados, colores estandarizados.</li>
           <li><strong>Camino a Nivel 4 — Gestionado cuantitativamente:</strong> métricas dashboard, stats por color, pendientes prefactura.</li>
-          <li><strong>Objetivo Nivel 5 — Optimización:</strong> pipeline completo en UI, conciliación Gama/Blast, Mundo 3 crossdock.</li>
+          <li><strong>Objetivo Nivel 5 — Optimización:</strong> pipeline completo en UI, conciliación Gama/Blas, Mundo 3 crossdock.</li>
         </ul>
       </section>
 
@@ -746,7 +749,7 @@
             </tbody>
           </table>
         </div>
-        <p><strong>Pendiente Tango:</strong> exports Seguimientos Distribuidora, columna sucursal origen, km nativo Tango, prefacturas Gama/Blast/CF — documentado en <code>data/TANGO_PENDIENTE_MUNDO2.md</code>.</p>
+        <p><strong>Pendiente Tango:</strong> exports Seguimientos Distribuidora, columna sucursal origen, km nativo Tango, prefacturas Gama/Blas/CF — documentado en <code>data/TANGO_PENDIENTE_MUNDO2.md</code>.</p>
       </section>
 
       <!-- PROVEEDORES -->
@@ -806,7 +809,8 @@
             <thead><tr><th>Pantalla</th><th>Endpoint principal</th><th>Capacidades</th></tr></thead>
             <tbody>
               <tr><td>Dashboard</td><td><code>/envios/stats</code>, <code>/mundo1/stats</code></td><td>Métricas, chips por color, alertas datos</td></tr>
-              <tr><td>Maestro</td><td><code>/maestro</code></td><td>Grilla clic fila completa, filtros, export Excel, macheo</td></tr>
+              <tr><td>Maestro (macro)</td><td><code>/maestro</code></td><td>Grilla completa, quincena, export Excel, macheo CLP</td></tr>
+              <tr><td>Modo Adrián (micro)</td><td><code>/modo-adrian/*</code></td><td>LOG diario WAMARO TORTUGUITAS · canal 51/83 · export por día</td></tr>
               <tr><td>Proveedores (×4)</td><td><code>/maestro?vista_proveedor=</code></td><td>Filtro por zona tarifaria</td></tr>
               <tr><td>Proveedor a elegir</td><td><code>solo_pendiente_proveedor</code></td><td>Desplegable + fila clicable</td></tr>
               <tr><td>Fletes</td><td><code>/fletes/*</code></td><td>Calcular km batch, detalle inline</td></tr>
@@ -878,9 +882,15 @@
             <div class="tl-body">29 sucursales, fletes_km_service, alias localidad, grilla Fletes, batch calcular km, UI fila clicable.</div>
             <span class="tl-effort">~2 semanas</span>
           </div>
+          <div class="tl-item done">
+            <div class="tl-date">Fase 5b · Modo Adrián + hardening</div>
+            <div class="tl-title">Vista micro LOG diario + tarifario vivo + macheo CLP ampliado</div>
+            <div class="tl-body">API modo-adrian, filtros 51/83, comparativa carpeta Adrián, bultos definitivos, export diario.</div>
+            <span class="tl-effort">~2 semanas</span>
+          </div>
           <div class="tl-item future">
             <div class="tl-date">Fase 6 · Q3 2026</div>
-            <div class="tl-title">Completar Mundo 2 — conciliación Gama/Blast</div>
+            <div class="tl-title">Completar Mundo 2 — conciliación Gama/Blas</div>
             <div class="tl-body">Imports prefactura flete local, cruce $, exports Tango enriquecidos, pipeline UI completo.</div>
             <span class="tl-effort">~3–4 semanas</span>
           </div>
@@ -903,7 +913,7 @@
           <table>
             <thead><tr><th>Concepto</th><th>Semanas senior</th><th>Estado</th></tr></thead>
             <tbody>
-              <tr><td>Entregado hasta hoy (Fases 0–5)</td><td><strong>~14–16 semanas</strong></td><td><span class="badge badge-done">Hecho</span></td></tr>
+              <tr><td>Entregado hasta hoy (Fases 0–5b)</td><td><strong>~16–18 semanas</strong></td><td><span class="badge badge-done">Hecho</span></td></tr>
               <tr><td>Completar Fletes + Tango pendiente</td><td>~3–4 semanas</td><td><span class="badge badge-partial">En curso</span></td></tr>
               <tr><td>Mundo 3 crossdock</td><td>~4–6 semanas</td><td><span class="badge badge-pending">Planificado</span></td></tr>
               <tr><td>Total visión completa</td><td><strong>~22–26 semanas</strong> (1 senior) o <strong>~8–10 semanas</strong> (equipo 3)</td><td>—</td></tr>
@@ -921,7 +931,7 @@
             <tbody>
               <tr><td>1</td><td>Botón pipeline completo en UI</td><td>Alto — operación 1-click</td><td>0.5 sem</td><td><span class="badge badge-auto">Alta</span></td></tr>
               <tr><td>2</td><td>Export Tango Distribuidora + sucursal origen</td><td>Alto — datos Fletes reales</td><td>1 sem (datos) + 1 sem (código)</td><td><span class="badge badge-auto">Alta</span></td></tr>
-              <tr><td>3</td><td>Conciliación prefactura Gama/Blast</td><td>Alto — cierra Mundo 2 $</td><td>2–3 sem</td><td><span class="badge badge-auto">Alta</span></td></tr>
+              <tr><td>3</td><td>Conciliación prefactura Gama/Blas</td><td>Alto — cierra Mundo 2 $</td><td>2–3 sem</td><td><span class="badge badge-auto">Alta</span></td></tr>
               <tr><td>4</td><td>Geocoding async / cola (no bloquear UI)</td><td>Medio — velocidad batch km</td><td>1–2 sem</td><td>Media</td></tr>
               <tr><td>5</td><td>Ampliar alias localidad→sucursal</td><td>Medio — más verdes Fletes</td><td>0.5 sem</td><td>Media</td></tr>
               <tr><td>6</td><td>Mundo 3 cross-docking</td><td>Alto — duplicados regionales</td><td>4–6 sem</td><td>Media-larga</td></tr>

@@ -119,6 +119,14 @@ class ReaplicarReglasOut(BaseModel):
     cobro_pedidos: CobroPedidosReaplicarStats | None = None
 
 
+class MaestroPaginaOut(BaseModel):
+    filas: list[dict]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class Mundo1Stats(BaseModel):
     envios_interior: int
     prefacturas_clickpack: int

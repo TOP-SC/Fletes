@@ -18,10 +18,7 @@ from app.labels import MOTIVO_FALTA_PREF, MOTIVO_TARIFA_SIN_PREF
 from app.services.cobro_logistica_service import aplicar_cobro_todos_envios
 from app.services.costo_conceptos import es_retiro_sin_flete_domicilio
 from app.services.fecha_utils import parse_fecha_tango
-from app.services.proveedor_service import (
-    asignar_proveedor_envio,
-    procesar_proveedores_envios,
-)
+from app.services.proveedor_service import procesar_proveedores_envios
 from app.services.rules_service import (
     aplicar_reglas_envio,
     recalcular_grupo,
@@ -183,6 +180,9 @@ def _finalizar_color_interior(envio: Envio) -> None:
         envio.regla_motivo = "Interior — revisar tarifa o datos Tango"
 
 
+_IMPORT_FLUSH_EVERY = 400
+
+
 def import_excel_file(
     db: Session,
     content: bytes,
@@ -190,6 +190,7 @@ def import_excel_file(
     *,
     proveedor_tarifa: str = "CLICKPAC",
     recalc_tarifas: bool = True,
+    defer_recalc: bool = False,
 ) -> tuple[ImportBatch, int]:
     rows = parse_exportacion_excel(content)
     batch = ImportBatch(
@@ -203,10 +204,8 @@ def import_excel_file(
     db.flush()
 
     existing = set(db.scalars(select(Envio.fingerprint)).all())
-    from app.services.tarifario_version_service import TarifarioContext
-
-    tarifario_ctx = TarifarioContext(db) if recalc_tarifas else None
     rows_rejected = 0
+    pending_flush = 0
 
     for row in rows:
         if not fila_es_valida(row):
@@ -252,21 +251,18 @@ def import_excel_file(
         )
         aplicar_reglas_envio(envio)
         aplicar_postventa_desde_tango(envio)
-        if (
-            recalc_tarifas
-            and tarifario_ctx
-            and not es_retiro_sin_flete_domicilio(envio)
-        ):
-            asignar_proveedor_envio(envio, tarifario_ctx.tarifas_para_envio(envio))
-        _finalizar_color_interior(envio)
 
         db.add(envio)
         existing.add(fp)
         batch.rows_inserted += 1
+        pending_flush += 1
+        if pending_flush >= _IMPORT_FLUSH_EVERY:
+            db.flush()
+            pending_flush = 0
 
     db.commit()
 
-    if batch.rows_inserted:
+    if batch.rows_inserted and recalc_tarifas and not defer_recalc:
         reaplicar_envios_post_import(db, batch.id)
 
     db.refresh(batch)

@@ -18,9 +18,9 @@ Estos exports **mejoran** el módulo pero no bloquean la primera pantalla.
 ## Prioridad media
 
 3. **Km / distancia** (si existe reporte o columna en Tango).  
-   - **Para:** asignar Zona1_10km … Zona4_40+km y auditar Gama/Blast.
+   - **Para:** asignar Zona1_10km … Zona4_40+km y auditar Gama/Blas.
 
-4. **Prefactura o liquidación de flete local** (Gama, Blast, Cristian Fernández) — cuando tengan formato.  
+4. **Prefactura o liquidación de flete local** (Gama, Blas, Cristian Fernández) — cuando tengan formato.  
    - **Para:** cruce $ como Clickpaq en interior.
 
 ## Ya en la app (no hace falta bajar de nuevo)

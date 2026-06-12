@@ -39,7 +39,19 @@ def export_maestro_wamaro(
     incluir_excluidos: bool = True,
     db: Session | None = None,
 ) -> bytes:
-    filas = construir_maestro(envios, incluir_excluidos=incluir_excluidos, db=db)
+    tarifario_ctx = None
+    if db is not None:
+        from app.services.fletes_km_service import preparar_contexto_km
+        from app.services.tarifario_version_service import TarifarioContext
+
+        preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
+        tarifario_ctx = TarifarioContext(db)
+    filas = construir_maestro(
+        envios,
+        incluir_excluidos=incluir_excluidos,
+        db=db,
+        tarifario_ctx=tarifario_ctx,
+    )
     tort = [f for f in filas if f.get("_origen_planilla") == "tortuguitas"]
     sa = [f for f in filas if f.get("_origen_planilla") == "sa"]
 

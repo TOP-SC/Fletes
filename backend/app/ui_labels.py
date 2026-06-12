@@ -14,6 +14,7 @@ PROVEEDOR_DISPLAY: dict[str, str] = {
 MENU_DISPLAY: dict[str, str] = {
     "Dashboard": "Dashboard",
     "MAESTRO": "Maestro",
+    "Modo Adrián": "Modo Adrián",
     "Fletes": "Fletes",
     "Configuración": "Configuración",
     "CLICPAQ": "Clicpaq",

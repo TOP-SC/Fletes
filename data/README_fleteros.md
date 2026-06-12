@@ -6,6 +6,16 @@ Entregas **sucursal → domicilio** donde el cliente ve **$0** pero la empresa p
 
 Los vendedores cargan solicitudes en un Excel del Drive: **«Fletes solicitados sucursales»**.
 
+En la red operativa suele estar en:
+
+`S:\Administración\TOP\LOG -  Envios Fletes 200326\`
+
+(ej. `Copia de Fletes Solicitados sucursales MAYO 2 - Logística.xlsx`).  
+La carpeta mensual `4 ABR 2026` tiene LOG WAMARO / AMBA / CLP — **no** reemplaza este Excel.
+
+**Mirada macro:** menú **Fletes** + **Configuración → Fleteros locales**.  
+**Mirada micro (Modo Adrián):** no aplica — es LOG interior canal 51/83, sin fleteros locales.
+
 Columnas clave:
 
 | Columna | Uso |
@@ -17,7 +27,12 @@ Columnas clave:
 | `FechaEntrega` / `FechaSolicitado` | Período de control |
 | `EstadoFlete` | Se ignoran filas **Anulado** |
 
-Plantilla de referencia: `data/plantilla_fletes_solicitud.xlsx` (export mayo 2026).
+Plantilla de referencia: export Drive mayo 2026 en carpeta LOG **S:**.
+
+**Simulación abril (prueba de macheo):**  
+`data/Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx`  
+Generado con `backend/scripts/generar_fleteros_simulacion_abr.py` desde Tango abril importado.  
+100 filas · pedidos reales · fechas abril/26 · formato idéntico al Drive.
 
 ## Flujo en la app
 

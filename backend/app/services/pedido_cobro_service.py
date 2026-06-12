@@ -20,6 +20,7 @@ _ACCESORIO_KEYWORDS = (
     "PATAS",
     "PACK PAT",
     "ALMOH",
+    "ALM.",
     "FUNDA",
     "ACOLCH",
     "PROTECTOR",

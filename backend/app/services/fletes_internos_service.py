@@ -355,11 +355,25 @@ def resumen_fleteros(
     if mes and anio:
         fecha_desde, fecha_hasta = periodo_mes_solo(anio, mes)
 
-    envios = [e for e in db.scalars(select(Envio)).all() if es_envio_mundo2(e)]
+    from app.services.envio_query_service import cargar_envios_filtrados
+
+    if fecha_desde and fecha_hasta:
+        envios = [
+            e
+            for e in cargar_envios_filtrados(
+                db,
+                fecha_desde=fecha_desde,
+                fecha_hasta=fecha_hasta,
+                campo_fecha="entrega",
+            )
+            if es_envio_mundo2(e)
+        ]
+    else:
+        envios = [e for e in db.scalars(select(Envio)).all() if es_envio_mundo2(e)]
     from app.services.fletes_km_service import preparar_contexto_km
 
     tarifario_ctx = TarifarioContext(db)
-    dist = preparar_contexto_km(db, envios, enrich_limit=3000, auto_calc_limit=0)
+    dist = preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
     casos_fletes = {
         c.get("_caso_id") or c.get("REMITOS"): c
         for c in construir_fletes(

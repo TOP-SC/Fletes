@@ -17,4 +17,6 @@ def build_fingerprint(row: dict[str, Any]) -> str:
 
 
 def row_to_json(row: dict[str, Any]) -> str:
-    return json.dumps(row, ensure_ascii=False, default=str)
+    """Persiste solo campos de negocio (sin _excel_raw ni metadatos de parseo)."""
+    slim = {k: v for k, v in row.items() if not str(k).startswith("_")}
+    return json.dumps(slim, ensure_ascii=False, default=str)

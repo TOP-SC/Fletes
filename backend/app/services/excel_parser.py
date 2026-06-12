@@ -118,24 +118,22 @@ def fila_es_valida(row: dict[str, Any]) -> bool:
 
 def parse_exportacion_excel(content: bytes) -> list[dict[str, Any]]:
     df = read_first_sheet(content)
+    # Filas totalmente vacías y columnas sin datos reducen memoria en archivos grandes.
+    df = df.dropna(how="all")
+    df = df.dropna(axis=1, how="all")
     col_map = _map_columns(list(df.columns))
     rows: list[dict[str, Any]] = []
+    fields = [f for f, _ in FIELD_CANDIDATES if f != "remito"]
 
-    for _, series in df.iterrows():
+    for record in df.to_dict(orient="records"):
+        series = pd.Series(record)
         normalized = {
             field: (
                 _parse_float(_row_value(series, col_map, field))
                 if field in ("cantidad", "m3")
                 else _cell_str(_row_value(series, col_map, field))
             )
-            for field, _ in FIELD_CANDIDATES
-            if field != "remito"
-        }
-        # Conservar columnas originales para diagnóstico / re-proceso
-        excel_raw = {
-            str(k): (None if pd.isna(v) else v)
-            for k, v in series.items()
-            if not (isinstance(v, float) and pd.isna(v))
+            for field in fields
         }
         principal, entrega, transito = resolver_remitos_fila(series)
         if principal:
@@ -146,8 +144,6 @@ def parse_exportacion_excel(content: bytes) -> list[dict[str, Any]]:
             normalized["remito_entrega"] = entrega
         if transito:
             normalized["remito_transito"] = transito
-        normalized["_excel_raw"] = excel_raw
-        normalized["_col_map"] = col_map
         rows.append(normalized)
     return rows
 
@@ -171,6 +167,6 @@ def infer_tipo_producto(descripcion: str | None, cod_articulo: str | None) -> st
         return "SOMIER"
     if "BASE" in text or "BRDI" in text:
         return "BASE"
-    if "ALMOH" in text:
+    if "ALMOH" in text or "ALM." in text:
         return "ALMOHADA"
     return "OTRO"

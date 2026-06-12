@@ -15,6 +15,10 @@ import streamlit as st
 
 API_URL = os.getenv("FLETES_API_URL", "http://127.0.0.1:8000/api/v1")
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+# Carpeta LOG en red — Excel «Fletes solicitados sucursales» (Drive vendedores)
+FLETEROS_LOG_S_DIR = Path(
+    r"S:\Administración\TOP\LOG -  Envios Fletes 200326"
+)
 _BACKEND_DIR = Path(__file__).resolve().parents[1] / "backend"
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
@@ -57,12 +61,13 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "postventa-p0-2026-06-02"
+API_BUILD_ESPERADO = "modo-adrian-clp-2026-06-03"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
     "Dashboard": {"accent": "#1a365d", "accent2": "#3182ce", "bg": "#eef4fc", "icon": "◆"},
     "MAESTRO": {"accent": "#2b6cb0", "accent2": "#4299e1", "bg": "#ebf4ff", "icon": "▣"},
+    "Modo Adrián": {"accent": "#7c2d12", "accent2": "#c2410c", "bg": "#fff7ed", "icon": "◈"},
     "Fletes": {"accent": "#0f766e", "accent2": "#14b8a6", "bg": "#ecfdf5", "icon": "▶"},
     "Configuración": {"accent": "#475569", "accent2": "#64748b", "bg": "#f1f5f9", "icon": "⚙"},
     "CLICPAQ": {"accent": "#5b21b6", "accent2": "#7c3aed", "bg": "#f5f3ff", "icon": "◎"},
@@ -177,6 +182,7 @@ MAESTRO_COL_RATIOS: dict[str, float] = {
     "KM": 0.55,
     "ZONA KM": 0.8,
     "TARIFA REF": 1.15,
+    "FLETERO": 0.65,
 }
 
 
@@ -254,10 +260,40 @@ def df_campos_tango(tango: dict[str, Any]) -> pd.DataFrame:
 
 def df_detalle_renglon(ren: dict[str, Any]) -> pd.DataFrame:
     """Tabla campo/valor para el detalle de un renglón (sin bloques JSON)."""
+    bultos = ren.get("bultos")
+
+    def _fila_bultos() -> dict[str, str] | None:
+        if bultos is None:
+            return None
+        from app.services.bultos_service import etiqueta_bultos_detalle
+
+        txt = etiqueta_bultos_detalle(
+            tipo_linea=ren.get("tipo_linea"),
+            descripcion=ren.get("descripcion"),
+            cod_articulo=ren.get("cod_articulo"),
+            cantidad=ren.get("cantidad"),
+            bultos=int(bultos) if bultos else None,
+        )
+        if not txt:
+            return None
+        return {"campo": "Bultos", "valor": txt}
+
     tango = ren.get("tango_completo") or {}
     if tango:
-        return df_campos_tango(tango)
-    omitir = {"id", "tango_completo", "regla_color"}
+        df = df_campos_tango(tango)
+        fila_b = _fila_bultos()
+        if fila_b and not df.empty:
+            df = pd.concat([pd.DataFrame([fila_b]), df], ignore_index=True)
+        return df
+
+    omitir = {
+        "id",
+        "tango_completo",
+        "regla_color",
+        "cantidad_display",
+        "tipo_linea",
+        "bultos",
+    }
     filas = [
         {
             "campo": etiqueta_columna(str(k)),
@@ -266,6 +302,9 @@ def df_detalle_renglon(ren: dict[str, Any]) -> pd.DataFrame:
         for k, v in ren.items()
         if k not in omitir and v is not None and str(v).strip() != ""
     ]
+    fila_b = _fila_bultos()
+    if fila_b:
+        filas.insert(0, fila_b)
     return pd.DataFrame(filas)
 
 
@@ -596,7 +635,14 @@ def check_health() -> bool:
         return False
 
 
-def api_build_actual() -> str | None:
+@st.cache_data(ttl=30, show_spinner=False)
+def check_health_cached() -> bool:
+    """Evita ping HTTP en cada rerun / cambio de menú."""
+    return check_health()
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def api_build_cached() -> str | None:
     base = API_URL.removesuffix("/api/v1").rstrip("/")
     try:
         with httpx.Client(timeout=5.0) as c:
@@ -607,8 +653,12 @@ def api_build_actual() -> str | None:
         return None
 
 
+def api_build_actual() -> str | None:
+    return api_build_cached()
+
+
 def api_es_actual() -> bool:
-    return api_build_actual() == API_BUILD_ESPERADO
+    return api_build_cached() == API_BUILD_ESPERADO
 
 
 def filtrar_df_zona_proveedor(df: pd.DataFrame, proveedor: str | None) -> pd.DataFrame:
@@ -673,16 +723,21 @@ def _opciones_mes_control() -> list[tuple[int, int, str]]:
     return meses
 
 
+SESSION_MES_CONTROL_IDX = "global_mes_control_idx"
+
+
 def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
     """Filtros API: mes a controlar, campo fecha, estado remito."""
     opciones = _opciones_mes_control()
     labels = [o[2] for o in opciones]
+    if SESSION_MES_CONTROL_IDX not in st.session_state:
+        st.session_state[SESSION_MES_CONTROL_IDX] = 0
     c1, c2, c3 = st.columns([2, 1.4, 1.6])
     idx = c1.selectbox(
         "Mes a controlar",
         range(len(labels)),
         format_func=lambda i: labels[i],
-        key=f"{key_prefix}_mes_idx",
+        key=SESSION_MES_CONTROL_IDX,
     )
     anio, mes, label_mes = opciones[idx]
     campo_ui = c2.selectbox(
@@ -747,6 +802,181 @@ def _params_sin_mes_si_busca(params: dict[str, Any], buscar: str) -> dict[str, A
     return p
 
 
+def _rango_quincena_iso(anio: int, mes: int, quincena: int) -> tuple[str, str]:
+    from app.services.fecha_utils import rango_quincena
+
+    d1, d2 = rango_quincena(anio, mes, quincena)
+    return d1.isoformat(), d2.isoformat()
+
+
+def _etiqueta_quincena(anio: int, mes: int, quincena: int) -> str:
+    d1, d2 = _rango_quincena_iso(anio, mes, quincena)
+    from datetime import date
+
+    f1 = date.fromisoformat(d1).strftime("%d/%m")
+    f2 = date.fromisoformat(d2).strftime("%d/%m/%Y")
+    return f"{f1} – {f2}"
+
+
+def _firma_filtros_maestro_ui(
+    *,
+    origen_f: str,
+    incluir_excl: bool,
+    solo_alerta: bool,
+    solo_macheo: bool,
+    solo_diff: bool,
+    filtros_extra: dict[str, Any],
+) -> str:
+    return json.dumps(
+        {
+            "origen": origen_f,
+            "incluir_excl": incluir_excl,
+            "solo_alerta": solo_alerta,
+            "solo_macheo": solo_macheo,
+            "solo_diff": solo_diff,
+            "filtros_extra": filtros_extra,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def _gestionar_cambio_mes_quincena(
+    key_prefix: str,
+    anio: int,
+    mes: int,
+    *,
+    clear_cache_fn: Any,
+) -> str:
+    mes_sig = f"{anio}-{mes}"
+    modo_carga_key = f"{key_prefix}_modo_carga"
+    if st.session_state.get(f"{key_prefix}_mes_sig") != mes_sig:
+        st.session_state[f"{key_prefix}_mes_sig"] = mes_sig
+        st.session_state.pop(modo_carga_key, None)
+        clear_cache_fn()
+    return modo_carga_key
+
+
+def _invalidar_modo_quincena_si_cambian_filtros(
+    key_prefix: str,
+    firma_ui: str,
+    modo_carga_key: str,
+    *,
+    clear_cache_fn: Any,
+) -> None:
+    ui_sig_key = f"{key_prefix}_ui_sig"
+    if (
+        st.session_state.get(ui_sig_key) is not None
+        and st.session_state.get(ui_sig_key) != firma_ui
+        and st.session_state.get(modo_carga_key)
+    ):
+        st.session_state.pop(modo_carga_key, None)
+        clear_cache_fn()
+        st.warning(
+            "Cambiaste filtros — volvé a elegir **1ª quincena**, **2ª quincena** o **Buscar**."
+        )
+    st.session_state[ui_sig_key] = firma_ui
+
+
+def _render_botones_carga_quincena(
+    key_prefix: str,
+    anio: int,
+    mes: int,
+    buscar: str,
+    *,
+    clear_cache_fn: Any,
+    modulo: str,
+    page_state_key: str | None = None,
+) -> str | None:
+    """Botones 1ª/2ª quincena y buscar. Devuelve modo_carga o None."""
+    modo_carga_key = f"{key_prefix}_modo_carga"
+    st.markdown("##### Cargar período")
+    q1, q2, q3 = st.columns([1.3, 1.3, 2.4])
+    etiq_q1 = f"1ª quincena ({_etiqueta_quincena(anio, mes, 1)})"
+    etiq_q2 = f"2ª quincena ({_etiqueta_quincena(anio, mes, 2)})"
+    with q1:
+        if st.button(
+            etiq_q1,
+            key=f"{key_prefix}_btn_q1",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state[modo_carga_key] = "q1"
+            if page_state_key:
+                st.session_state[page_state_key] = 1
+            clear_cache_fn()
+            st.rerun()
+    with q2:
+        if st.button(
+            etiq_q2,
+            key=f"{key_prefix}_btn_q2",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state[modo_carga_key] = "q2"
+            if page_state_key:
+                st.session_state[page_state_key] = 1
+            clear_cache_fn()
+            st.rerun()
+    with q3:
+        if st.button(
+            "Buscar en toda la base",
+            key=f"{key_prefix}_btn_buscar",
+            disabled=not buscar.strip(),
+            use_container_width=True,
+        ):
+            st.session_state[modo_carga_key] = "buscar"
+            st.session_state[f"{key_prefix}_q_buscar"] = buscar.strip()
+            if page_state_key:
+                st.session_state[page_state_key] = 1
+            clear_cache_fn()
+            st.rerun()
+
+    modo_carga = st.session_state.get(modo_carga_key)
+    if not modo_carga:
+        st.info(
+            f"**{modulo}** no carga solo al entrar. Elegí **1ª quincena**, **2ª quincena** "
+            "o buscá un remito puntual — así se pide solo la mitad del mes (o un caso)."
+        )
+        return None
+    if modo_carga == "q1":
+        st.caption(
+            f"Cargando **1ª quincena** · entregas del **{_etiqueta_quincena(anio, mes, 1)}**"
+        )
+    elif modo_carga == "q2":
+        st.caption(
+            f"Cargando **2ª quincena** · entregas del **{_etiqueta_quincena(anio, mes, 2)}**"
+        )
+    else:
+        st.caption(
+            f"Búsqueda puntual: **{st.session_state.get(f'{key_prefix}_q_buscar', buscar.strip())}**"
+        )
+    return str(modo_carga)
+
+
+def _params_api_quincena(
+    params: dict[str, Any],
+    *,
+    key_prefix: str,
+    anio: int,
+    mes: int,
+    buscar: str,
+    modo_carga: str,
+) -> dict[str, Any]:
+    p = dict(params)
+    if modo_carga in ("q1", "q2"):
+        fd, fh = _rango_quincena_iso(anio, mes, 1 if modo_carga == "q1" else 2)
+        p["fecha_desde"] = fd
+        p["fecha_hasta"] = fh
+        p.pop("mes_control_anio", None)
+        p.pop("mes_control_mes", None)
+    elif modo_carga == "buscar":
+        qtxt = st.session_state.get(f"{key_prefix}_q_buscar", buscar.strip())
+        p["q"] = qtxt
+        p = _params_sin_mes_si_busca(p, qtxt)
+    return p
+
+
 def _filtrar_df_buscar(df: pd.DataFrame, buscar: str, columnas: tuple[str, ...]) -> pd.DataFrame:
     q = buscar.strip().upper()
     if not q:
@@ -758,31 +988,129 @@ def _filtrar_df_buscar(df: pd.DataFrame, buscar: str, columnas: tuple[str, ...])
     return _as_dataframe(df[mask])
 
 
-def get_maestro_filas(**params: Any) -> tuple[list[dict], bool]:
-    """GET /maestro; devuelve filas y si la API aplicó filtro de zona."""
+_MAESTRO_API_PAGE_SIZE = 150
+
+
+def get_maestro_filas(**params: Any) -> tuple[dict[str, Any], bool]:
+    """GET /maestro paginado; devuelve payload y si la API aplicó filtro de zona."""
     with api_client() as client:
         q = dict(params)
         if q.get("proveedor"):
             q["vista_proveedor"] = q["proveedor"]
-        r = client.get("/maestro", params=q, timeout=300.0)
+        q.setdefault("page_size", _MAESTRO_API_PAGE_SIZE)
+        r = client.get("/maestro", params=q, timeout=120.0)
         r.raise_for_status()
-        filas = r.json()
+        payload = r.json()
         vista = (params.get("proveedor") or "").strip().upper()
         if not vista:
-            return filas, True
+            return payload, True
         hdr = (r.headers.get("X-Maestro-Filtro-Zona") or "").upper()
-        return filas, hdr == vista
+        return payload, hdr == vista
 
 
-@st.cache_data(ttl=120, show_spinner=False)
-def get_maestro_filas_cached(params_key: str) -> tuple[list[dict], bool]:
+@st.cache_data(ttl=300, show_spinner=False)
+def get_maestro_filas_cached(params_key: str) -> tuple[dict[str, Any], bool]:
     """Cache corto por combinación de filtros (evita re-fetch en reruns)."""
     return get_maestro_filas(**json.loads(params_key))
 
 
-@st.cache_data(ttl=120, show_spinner=False)
-def get_fletes_casos_cached(params_key: str) -> list[dict]:
+def _reset_maestro_page_si_cambian_filtros(key_prefix: str, firma: str) -> int:
+    """Vuelve a página 1 cuando cambian filtros; devuelve página actual."""
+    page_key = f"{key_prefix}_maestro_page"
+    sig_key = f"{key_prefix}_maestro_sig"
+    if st.session_state.get(sig_key) != firma:
+        st.session_state[sig_key] = firma
+        st.session_state[page_key] = 1
+    page = int(st.session_state.get(page_key, 1) or 1)
+    st.session_state[page_key] = page
+    return page
+
+
+def _controles_paginacion_maestro_api(
+    key_prefix: str,
+    *,
+    total: int,
+    page: int,
+    page_size: int,
+    total_pages: int,
+) -> int:
+    """Controles Anterior/Siguiente contra la API; devuelve número de página (1-based)."""
+    page_key = f"{key_prefix}_maestro_page"
+    if total <= page_size:
+        return 1
+    c1, c2, c3 = st.columns([1.2, 2.6, 1.2])
+    with c1:
+        if st.button("← Anterior", key=f"{key_prefix}_api_prev", disabled=page <= 1):
+            st.session_state[page_key] = max(1, page - 1)
+            st.rerun()
+    fin = min(page * page_size, total)
+    inicio = (page - 1) * page_size + 1
+    with c2:
+        st.caption(
+            f"Casos **{inicio}–{fin}** de **{total}** · página **{page}/{total_pages}** "
+            f"({page_size} por carga)"
+        )
+    with c3:
+        if st.button(
+            "Siguiente →",
+            key=f"{key_prefix}_api_next",
+            disabled=page >= total_pages,
+        ):
+            st.session_state[page_key] = min(total_pages, page + 1)
+            st.rerun()
+    return page
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_fletes_pagina_cached(params_key: str) -> dict[str, Any]:
     return get_json("/fletes/casos", **json.loads(params_key))
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_fletes_stats_cached(params_key: str) -> dict:
+    return get_json("/fletes/stats", **json.loads(params_key))
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_fleteros_cached() -> list[dict]:
+    return get_json("/fletes/fleteros")
+
+
+def _clear_fletes_cache() -> None:
+    get_fletes_pagina_cached.clear()
+    get_fletes_stats_cached.clear()
+    get_fleteros_cached.clear()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_adrian_resumen_cached(params_key: str) -> dict:
+    return get_json("/modo-adrian/resumen", **json.loads(params_key))
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_adrian_dias_cached(params_key: str) -> dict:
+    return get_json("/modo-adrian/dias", **json.loads(params_key))
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_adrian_dia_cached(params_key: str) -> dict:
+    return get_json("/modo-adrian/dia", **json.loads(params_key))
+
+
+def _clear_adrian_cache() -> None:
+    get_adrian_resumen_cached.clear()
+    get_adrian_dias_cached.clear()
+    get_adrian_dia_cached.clear()
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_dashboard_stats_cached() -> tuple[dict, dict]:
+    return get_json("/envios/stats"), get_json("/mundo1/stats")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_fletes_stats_dashboard_cached(params_key: str) -> dict:
+    return get_json("/fletes/stats", **json.loads(params_key))
 
 
 def get_json(path: str, **params: Any) -> Any:
@@ -792,10 +1120,18 @@ def get_json(path: str, **params: Any) -> Any:
         return r.json()
 
 
-def post_file(path: str, file_name: str, content: bytes, **params: str) -> Any:
-    with api_client() as client:
+def post_file(
+    path: str,
+    file_name: str,
+    content: bytes,
+    *,
+    timeout: float = 600.0,
+    **params: str | bool,
+) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=timeout) as client:
         files = {"file": (file_name, content)}
-        r = client.post(path, files=files, params=params or None)
+        q = {k: v for k, v in params.items() if v is not None}
+        r = client.post(path, files=files, params=q or None)
         r.raise_for_status()
         return r.json()
 
@@ -994,10 +1330,19 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                     st.write(f"- {nom}: ${c.get('precio', 0):,.2f}")
             if det.get("cobro_renglones"):
                 st.markdown("#### Renglones del pedido")
+                from app.services.bultos_service import etiqueta_bultos_detalle
+
                 for cr in det["cobro_renglones"]:
+                    cant_txt = etiqueta_bultos_detalle(
+                        tipo_linea=cr.get("tipo_linea"),
+                        descripcion=cr.get("descripcion"),
+                        cod_articulo=None,
+                        cantidad=cr.get("cantidad"),
+                        bultos=cr.get("bultos"),
+                    ) or f"cant. {cr.get('cantidad')}"
                     st.write(
                         f"- `{cr.get('tipo_linea')}` — {cr.get('descripcion') or '—'} "
-                        f"(cant. {cr.get('cantidad')})"
+                        f"({cant_txt})"
                     )
             for pc in det.get("cobro_pedidos") or []:
                 for adv in pc.get("advertencias") or []:
@@ -1015,7 +1360,7 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                     with api_client() as c:
                         r = c.post(f"/fletes/caso/{caso_id}/calcular-km")
                         r.raise_for_status()
-                    get_fletes_casos_cached.clear()
+                    get_fletes_pagina_cached.clear()
                     get_maestro_filas_cached.clear()
                     st.success("Distancia calculada — actualizando detalle…")
                     st.rerun()
@@ -1028,13 +1373,15 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
         pv_regla = ren.get("regla_postventa") or pv_regla
         pv_motivo = ren.get("motivo_postventa") or ren.get("tipo_gestion") or pv_motivo
     if pv_regla or pv_motivo:
-        st.markdown("#### Postventa")
+        st.markdown("#### Postventa (detalle Tango)")
         if pv_motivo:
-            st.caption(str(pv_motivo))
+            st.caption(f"**Motivo / gestión:** {pv_motivo}")
+        if pv_regla and pv_regla != "revisar_manual":
+            st.caption(f"**Regla logística aplicada:** `{pv_regla}`")
         if pv_regla == "revisar_manual":
             st.warning(
-                "Postventa sin clasificar automáticamente. "
-                "Si el viaje se paga, aprobá; si no corresponde flete, marcá no pagar."
+                "Motivo postventa sin regla logística automática. "
+                "Definí si el viaje se paga o queda en $0 (Mantello Paso 4)."
             )
             c_ap, c_np = st.columns(2)
             with c_ap:
@@ -1046,7 +1393,7 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                                 json={"accion": "aprobar_viaje"},
                             )
                             r.raise_for_status()
-                        get_fletes_casos_cached.clear()
+                        get_fletes_pagina_cached.clear()
                         get_maestro_filas_cached.clear()
                         st.success("Viaje aprobado — actualizando…")
                         st.rerun()
@@ -1061,16 +1408,21 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                                 json={"accion": "no_pagar"},
                             )
                             r.raise_for_status()
-                        get_fletes_casos_cached.clear()
+                        get_fletes_pagina_cached.clear()
                         get_maestro_filas_cached.clear()
                         st.success("Marcado como no pago — actualizando…")
                         st.rerun()
                     except Exception as exc:
                         st.error(str(exc))
         elif pv_regla in ("cruce_medidas_aprobado", "viaje_aprobado"):
-            st.success("Viaje postventa aprobado — tarifario Fletes aplicado si hay km.")
+            st.info(
+                "Reclamo clasificado — el cobro sigue el circuito del transporte "
+                "(40/51/82 + tarifario)."
+            )
+        elif pv_regla == "gestion_retiro_25":
+            st.info("Gestión retiro: +25% sobre tarifa logística al cerrar cobro.")
         elif pv_regla in ("no_pagar_transporte", "costo_cero_pendiente"):
-            st.info("Transporte no se paga ($0) según regla postventa.")
+            st.info("Regla logística: transporte en $0 hasta validar con proveedor.")
 
     st.markdown("#### Resumen maestro")
     m_cols = [k for k in m.keys() if not k.startswith("_")]
@@ -1120,7 +1472,7 @@ def _render_panel_detalle(sel_key: str) -> None:
 
 
 def _cerrar_popup_detalle(sel_key: str) -> None:
-    """Limpia estado del popup de detalle."""
+    """Limpia estado del popup de detalle (no tocar sel_key: el widget aún no debe existir)."""
     st.session_state.pop(DETALLE_POPUP, None)
     st.session_state.pop("popup_caso_id", None)
     st.session_state.pop("mostrar_popup_caso", None)
@@ -1128,8 +1480,13 @@ def _cerrar_popup_detalle(sel_key: str) -> None:
     st.session_state.pop(f"{sel_key}_detalle_caso_id", None)
     st.session_state.pop(f"{sel_key}_detalle_titulo", None)
     st.session_state.pop(f"{sel_key}_abrir_caso", None)
-    if sel_key in st.session_state:
-        st.session_state[sel_key] = {"selection": {"rows": []}}
+    st.session_state[f"{sel_key}_limpiar_seleccion"] = True
+
+
+def _limpiar_seleccion_grilla_si_pendiente(sel_key: str) -> None:
+    """Borra selección del dataframe antes de crear el widget (evita error Streamlit)."""
+    if st.session_state.pop(f"{sel_key}_limpiar_seleccion", False):
+        st.session_state.pop(sel_key, None)
 
 
 def _abrir_detalle_por_id(caso_id: str, df: pd.DataFrame, sel_key: str) -> None:
@@ -1361,7 +1718,49 @@ def _celda_html(
 
 
 _COL_BOTON_DETALLE = 0.14
-_GRILLA_PAGE_SIZE = 50
+_GRILLA_PAGE_SIZE = 150
+
+
+def _df_grilla_rapida(df_page: pd.DataFrame, cols_grilla: list[str]) -> pd.DataFrame:
+    """Tabla ligera para st.dataframe (sin miles de widgets Streamlit)."""
+    filas: list[dict[str, str]] = []
+    for _, row in df_page.iterrows():
+        fila = row.to_dict()
+        out: dict[str, str] = {}
+        if fila.get("_regla_color") == "alerta":
+            out[" "] = "⚠"
+        else:
+            out[" "] = ""
+        for col in cols_grilla:
+            if col in df_page.columns:
+                out[etiqueta_columna(col)] = _texto_celda_grilla(fila, col)
+        filas.append(out)
+    return pd.DataFrame(filas)
+
+
+def _sincronizar_seleccion_grilla(df_page: pd.DataFrame, sel_key: str) -> None:
+    """Abre detalle al seleccionar fila en st.dataframe."""
+    sel = st.session_state.get(sel_key)
+    if not isinstance(sel, dict):
+        return
+    rows = (sel.get("selection") or {}).get("rows") or []
+    if not rows:
+        return
+    pos = int(rows[0])
+    if pos < 0 or pos >= len(df_page):
+        return
+    caso_id = df_page.iloc[pos].get("_caso_id")
+    if not caso_id:
+        return
+    popup = st.session_state.get(DETALLE_POPUP) or {}
+    if str(popup.get("caso_id")) == str(caso_id) and str(popup.get("sel_key")) == sel_key:
+        return
+    titulo = _etiqueta_caso(df_page.iloc[pos])
+    st.session_state[DETALLE_POPUP] = {
+        "caso_id": str(caso_id),
+        "titulo": titulo,
+        "sel_key": sel_key,
+    }
 
 
 def _controles_paginacion_grilla(total: int, sel_key: str) -> int:
@@ -1518,24 +1917,53 @@ def _render_grilla_con_detalle(
     sel_key: str,
     height: int = 480,
     key_prefix: str | None = None,
+    paginar_cliente: bool = True,
 ) -> None:
-    """Grilla maestro/fletes: icono lupa por fila (paginada si hay muchos casos)."""
+    """Grilla maestro/fletes/adrian: dataframe nativo + detalle al seleccionar fila."""
     _procesar_clic_grilla_pendiente(df, sel_key)
-    _render_panel_detalle(sel_key)
-    _css_grilla_detalle()
 
     cols_grilla = [c for c in show_df.columns if c not in _META_GRILLA]
     total = len(df)
-    offset = _controles_paginacion_grilla(total, sel_key)
-    df_page = df.iloc[offset : offset + _GRILLA_PAGE_SIZE]
-    _render_grilla_filas_click(
-        df_page,
-        cols_grilla,
-        sel_key=sel_key,
+    if paginar_cliente and total > _GRILLA_PAGE_SIZE:
+        offset = _controles_paginacion_grilla(total, sel_key)
+        df_page = df.iloc[offset : offset + _GRILLA_PAGE_SIZE]
+    else:
+        offset = 0
+        df_page = df
+
+    if key_prefix:
+        _render_panel_detalle(sel_key)
+        _css_grilla_detalle()
+        _render_grilla_filas_click(
+            df_page,
+            cols_grilla,
+            sel_key=sel_key,
+            height=height,
+            key_prefix=key_prefix,
+            row_offset=offset,
+        )
+        return
+
+    display = _df_grilla_rapida(df_page, cols_grilla)
+    if paginar_cliente and total > len(df_page):
+        st.caption(
+            "Seleccioná **una fila** para ver el detalle abajo. "
+            f"Mostrando **{len(df_page)}** de **{total}** casos."
+        )
+    else:
+        st.caption("Seleccioná **una fila** para ver el detalle abajo.")
+    _limpiar_seleccion_grilla_si_pendiente(sel_key)
+    st.dataframe(
+        display,
+        width="stretch",
         height=height,
-        key_prefix=key_prefix,
-        row_offset=offset,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key=sel_key,
     )
+    _sincronizar_seleccion_grilla(df_page, sel_key)
+    _render_panel_detalle(sel_key)
 
 
 def _texto_celda_grilla(fila: dict[str, Any], col_name: str) -> str:
@@ -1615,13 +2043,12 @@ def pagina_dashboard() -> None:
     )
     _css_dashboard()
 
-    if not check_health():
+    if not check_health_cached():
         st.warning("El servidor no está activo. Ejecutá **Iniciar_Fletes.bat** en la carpeta del proyecto.")
         return
 
     try:
-        general = get_json("/envios/stats")
-        interior = get_json("/mundo1/stats")
+        general, interior = get_dashboard_stats_cached()
     except Exception as exc:
         st.error(f"No se pudieron cargar estadísticas: {exc}")
         return
@@ -1666,6 +2093,56 @@ def pagina_dashboard() -> None:
         )
     elif pend:
         st.info(f"Hay **{pend}** envíos aún sin cruce con prefactura.")
+
+    flet_stats: dict[str, Any] = {}
+    fd: dict[str, Any] = {}
+    fp: dict[str, Any] = {}
+    try:
+        from datetime import date as _date_hoy
+
+        _hoy = _date_hoy.today()
+        flet_stats = get_fletes_stats_dashboard_cached(
+            json.dumps(
+                {"mes_control_mes": _hoy.month, "mes_control_anio": _hoy.year},
+                sort_keys=True,
+            )
+        )
+        fd = flet_stats.get("fleteros_drive") or {}
+        fp = flet_stats.get("fleteros_periodo") or {}
+    except Exception:
+        pass
+
+    st.subheader("Fletes locales — mirada macro (Mundo 2)")
+    st.caption(
+        "Entregas sucursal → domicilio (BLAS, GAMA, ARMANDO…). "
+        "Fuente operativa: Excel **Fletes solicitados sucursales** del Drive; "
+        "tarifa ref.: **FLETES_SUC**. No forma parte del LOG diario Modo Adrián."
+    )
+    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
+    f1, f2, f3, f4, f5 = st.columns(5)
+    f1.metric("Casos Amba/GBA", flet_stats.get("casos_fletes", 0))
+    f2.metric("Con fletero asignado", flet_stats.get("casos_con_fletero", 0))
+    f3.metric("Solicitudes Drive", fd.get("solicitudes", 0))
+    f4.metric("Matcheadas maestro", fd.get("matcheadas", 0))
+    f5.metric(
+        "Pend. cruce Drive",
+        fd.get("pendientes_cruce", 0),
+        help="Solicitudes sin remito en maestro Fletes.",
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if fd.get("solicitudes", 0) == 0:
+        st.info(
+            "Sin Excel de fleteros cargado. En **Configuración → Fleteros locales** "
+            "podés importar desde la carpeta LOG en **S:** o subir el archivo manualmente."
+        )
+    elif fp.get("por_fletero"):
+        filas_f = fp["por_fletero"][:6]
+        txt = " · ".join(
+            f"**{r.get('nombre_corto', '?')}**: {r.get('matcheadas', 0)}/{r.get('entregas', 0)}"
+            for r in filas_f
+        )
+        st.caption(f"Período actual en Fletes: {txt}")
 
     if general.get("ultimo_import"):
         st.caption(f"Última importación Tango: {general['ultimo_import']}")
@@ -1740,13 +2217,14 @@ def pagina_casos(
     solo_pendiente_proveedor: bool = False,
     modo_elegir_proveedor: bool = False,
     key_prefix: str = "casos",
+    carga_por_quincena: bool = False,
 ) -> None:
     _render_page_header(etiqueta_pagina(titulo), subtitulo, titulo)
     if not modo_elegir_proveedor:
         _render_leyenda_operativa()
     sel_key = f"{key_prefix}_sel"
 
-    if not check_health():
+    if not check_health_cached():
         st.stop()
 
     if not api_es_actual():
@@ -1807,11 +2285,51 @@ def pagina_casos(
         )
     buscar = f3.text_input(
         "Buscar remito o destinatario",
-        placeholder="Ej: 318022 — busca en toda la base",
+        placeholder="Ej: 318022 — luego «Buscar en toda la base»",
         key=f"{key_prefix}_buscar",
     )
 
     filtros_extra = _ui_filtros_fecha_remito(key_prefix)
+    anio_mes = int(filtros_extra["mes_control_anio"])
+    mes_num = int(filtros_extra["mes_control_mes"])
+    modo_carga_key = _gestionar_cambio_mes_quincena(
+        key_prefix,
+        anio_mes,
+        mes_num,
+        clear_cache_fn=get_maestro_filas_cached.clear,
+    )
+
+    firma_ui = _firma_filtros_maestro_ui(
+        origen_f=origen_f,
+        incluir_excl=incluir_excl,
+        solo_alerta=solo_alerta,
+        solo_macheo=solo_macheo,
+        solo_diff=solo_diff,
+        filtros_extra=filtros_extra,
+    )
+    if carga_por_quincena:
+        _invalidar_modo_quincena_si_cambian_filtros(
+            key_prefix,
+            firma_ui,
+            modo_carga_key,
+            clear_cache_fn=get_maestro_filas_cached.clear,
+        )
+    else:
+        st.session_state[f"{key_prefix}_ui_sig"] = firma_ui
+
+    modo_carga: str | None = None
+    if carga_por_quincena:
+        modo_carga = _render_botones_carga_quincena(
+            key_prefix,
+            anio_mes,
+            mes_num,
+            buscar,
+            clear_cache_fn=get_maestro_filas_cached.clear,
+            modulo="El maestro",
+            page_state_key=f"{key_prefix}_maestro_page",
+        )
+        if not modo_carga:
+            return
 
     if modo_elegir_proveedor:
         st.caption(
@@ -1835,7 +2353,31 @@ def pagina_casos(
         params["proveedor"] = proveedor
     if solo_pendiente_proveedor:
         params["solo_pendiente_proveedor"] = True
-    params_api = _params_sin_mes_si_busca(params, buscar)
+    if solo_alerta:
+        params["solo_alerta"] = True
+    if solo_macheo:
+        params["solo_macheo"] = True
+    if solo_diff:
+        params["solo_con_dif"] = True
+
+    if carga_por_quincena and modo_carga:
+        params_api = _params_api_quincena(
+            params,
+            key_prefix=key_prefix,
+            anio=anio_mes,
+            mes=mes_num,
+            buscar=buscar,
+            modo_carga=modo_carga,
+        )
+    else:
+        if buscar.strip():
+            params["q"] = buscar.strip()
+        params_api = _params_sin_mes_si_busca(params, buscar)
+
+    firma_filtros = json.dumps(params_api, sort_keys=True, default=str)
+    page = _reset_maestro_page_si_cambian_filtros(key_prefix, firma_filtros)
+    params_api["page"] = page
+    params_api["page_size"] = _MAESTRO_API_PAGE_SIZE
 
     try:
         spinner = (
@@ -1844,10 +2386,17 @@ def pagina_casos(
             else "Cargando maestro…"
         )
         with st.spinner(spinner):
-            filas, api_filtro_ok = get_maestro_filas_cached(
+            payload, api_filtro_ok = get_maestro_filas_cached(
                 json.dumps(params_api, sort_keys=True, default=str)
             )
-        if not filas:
+        filas = payload.get("filas") or []
+        total_maestro = int(payload.get("total") or 0)
+        page = int(payload.get("page") or page)
+        page_size = int(payload.get("page_size") or _MAESTRO_API_PAGE_SIZE)
+        total_pages = int(payload.get("total_pages") or 1)
+        st.session_state[f"{key_prefix}_maestro_page"] = page
+
+        if not filas and total_maestro == 0:
             if modo_elegir_proveedor:
                 st.success("No hay registros pendientes de elegir proveedor.")
             else:
@@ -1863,30 +2412,13 @@ def pagina_casos(
                     f"Filtro de zona aplicado en pantalla ({antes} → {len(df)}). "
                     "Reiniciá la API con **Iniciar_Fletes.bat** para tarifas correctas por proveedor."
                 )
-        total_maestro = len(df)
 
         if proveedor:
             st.metric(f"Registros en zona {etiqueta_proveedor(proveedor)}", total_maestro)
         elif solo_pendiente_proveedor or modo_elegir_proveedor:
             st.metric("Empates de proveedor", total_maestro)
 
-        if solo_alerta and "_regla_color" in df.columns:
-            df = _as_dataframe(df[df["_regla_color"] == "alerta"])
-
-        if solo_macheo and "PRECIO NETO" in df.columns:
-            pn = cast(pd.Series, pd.to_numeric(df["PRECIO NETO"], errors="coerce"))
-            df = _as_dataframe(df[pn.notna() & (pn > 0)])
-
-        if buscar.strip():
-            df = _filtrar_df_buscar(
-                df,
-                buscar,
-                ("REMITOS", "ENVIO", "DESTINATARIO", "LOCALIDAD", "PROVEEDOR"),
-            )
-
-        if solo_diff and "dif" in df.columns:
-            dif_num = cast(pd.Series, pd.to_numeric(df["dif"], errors="coerce"))
-            df = _as_dataframe(df[dif_num.notna() & (dif_num.abs() > 0.01)])
+        if solo_diff:
             st.warning(
                 "Filtro **Solo con dif.** activo: registros con prefactura OK (dif = 0) **no se muestran**."
             )
@@ -1894,10 +2426,16 @@ def pagina_casos(
         if buscar.strip():
             st.caption(
                 f"Búsqueda en **toda la base importada** (sin filtro de mes): "
-                f"**{len(df)}** de **{total_maestro}** registros."
+                f"**{total_maestro}** caso(s) encontrado(s)."
             )
-        else:
-            st.caption(f"Mostrando **{len(df)}** de **{total_maestro}** registros.")
+
+        page = _controles_paginacion_maestro_api(
+            key_prefix,
+            total=total_maestro,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
 
         cols_grilla = [c for c in MAESTRO_VISTA_GRILLA if c in df.columns]
         show_df = _as_dataframe(df[cols_grilla].copy())
@@ -1913,7 +2451,7 @@ def pagina_casos(
             )
             _render_grilla_elegir_proveedor(df, key_prefix, sel_key=sel_key)
         else:
-            _render_grilla_con_detalle(show_df, df, sel_key=sel_key)
+            _render_grilla_con_detalle(show_df, df, sel_key=sel_key, paginar_cliente=False)
 
         if not solo_pendiente_proveedor and not modo_elegir_proveedor:
             export_key = f"{key_prefix}_export_xlsx"
@@ -2071,7 +2609,7 @@ def _page_lbo() -> None:
     )
 
 
-MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Fletes", "Configuración"]
+MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Modo Adrián", "Fletes", "Configuración"]
 
 
 def _nav_on_principal() -> None:
@@ -2141,74 +2679,233 @@ def pagina_envios_interior() -> None:
     pagina_casos()
 
 
+def pagina_modo_adrian() -> None:
+    """Vista micro: LOG WAMARO diario (mecánica Adrián) vs maestro macro."""
+    _render_page_header(
+        etiqueta_pagina("Modo Adrián"),
+        "LOG WAMARO por día de entrega — interior y red Clickpack. "
+        "Misma planilla Tango, recorte operativo de Adrián.",
+        "Modo Adrián",
+    )
+
+    if not check_health_cached():
+        st.warning("Ejecutá **Iniciar_Fletes.bat**.")
+        st.stop()
+
+    if not api_es_actual():
+        st.error(
+            "La API es una versión anterior (falta **Modo Adrián**). "
+            "Reiniciá con **Iniciar_Fletes.bat**."
+        )
+
+    st.markdown(
+        "**Macro (Maestro / Fletes):** todos los casos Tango, tarifario completo, AMBA incluido. "
+        "Los **fleteros locales** (Blas, Gama, Armando…) se cargan desde el Excel Drive "
+        "y se ven en **Fletes** — no en esta planilla diaria.  \n"
+        "**Micro (Modo Adrián):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
+        "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
+        "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
+        "Adrián lo armaba a mano día a día."
+    )
+
+    filtros = _ui_filtros_fecha_remito("adrian")
+    params_mes = {
+        "mes_control_anio": filtros["mes_control_anio"],
+        "mes_control_mes": filtros["mes_control_mes"],
+    }
+
+    # Modo Adrián = planilla diaria WAMARO TORTUGUITAS (CD Tortuguitas). Limansky/Wamaro SA
+    # es otro depósito y otra planilla en el maestro macro; acá no aplica con el Tango actual.
+    planilla_api = "tortuguitas"
+
+    act1, act2, act3 = st.columns([1.4, 1.4, 2.2])
+    if act1.button("Cruce prefacturas CLICPAQ", key="adrian_macheo"):
+        with st.spinner("Cruzando prefacturas CLP con remitos…"):
+            with api_client() as c:
+                r = c.post("/mundo1/macheo/ejecutar")
+                r.raise_for_status()
+                st.toast(r.json())
+        _clear_adrian_cache()
+        get_maestro_filas_cached.clear()
+        st.rerun()
+    if act2.button("Reaplicar reglas y proveedores", key="adrian_reaplicar"):
+        with st.spinner("Reaplicando reglas y cobros…"):
+            with api_client() as c:
+                r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                r.raise_for_status()
+                st.toast(f"Procesados: {r.json().get('procesados', 0)}")
+        _clear_adrian_cache()
+        get_maestro_filas_cached.clear()
+        st.rerun()
+    act3.caption(
+        "Prefactura CLICPAQ **compartida** con el Maestro: importá en **Configuración** "
+        "y ejecutá **Cruce prefacturas** (acá o en Maestro)."
+    )
+
+    try:
+        with st.spinner("Cargando resumen Modo Adrián…"):
+            resumen = get_adrian_resumen_cached(json.dumps(params_mes, sort_keys=True))
+            dias_resp = get_adrian_dias_cached(
+                json.dumps({**params_mes, "planilla": planilla_api}, sort_keys=True)
+            )
+    except Exception as exc:
+        st.error(f"No se pudo cargar Modo Adrián: {exc}")
+        return
+
+    ref = resumen.get("referencia_adrian_abr_2026") or {}
+    pf = resumen.get("prefactura_clp") or {}
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Casos LOG (mes)", resumen.get("casos_tortuguitas", 0))
+    m2.metric("Con prefactura CLP", pf.get("con_prefactura_clp", 0))
+    m3.metric("Sin prefactura CLP", pf.get("sin_prefactura_clp", 0))
+    m4.metric("Días con entregas", len(dias_resp.get("dias") or []))
+    m5.metric(
+        "Ref. Adrián abr/26",
+        ref.get("log_tortuguitas_remitos", "—"),
+        help="Remitos dedup en carpeta 4 ABR 2026.",
+    )
+    if pf.get("con_diferencia_prefactura"):
+        st.caption(
+            f"**{pf['con_diferencia_prefactura']}** caso(s) con diferencia prefactura vs tarifario."
+        )
+
+    dias = dias_resp.get("dias") or []
+    if not dias:
+        st.info(
+            "Sin casos LOG en este mes con los filtros Adrián. "
+            "Probá otro mes o importá Tango desde **Configuración**."
+        )
+        return
+
+    labels_dia = [
+        f"{d['fecha']} — {d['casos']} caso(s)"
+        for d in dias
+    ]
+    if "adrian_dia_idx" not in st.session_state:
+        st.session_state.adrian_dia_idx = 0
+    idx_dia = st.selectbox(
+        "Día de entrega — WAMARO TORTUGUITAS",
+        range(len(labels_dia)),
+        format_func=lambda i: labels_dia[i],
+        key="adrian_dia_idx",
+    )
+    dia_iso = dias[idx_dia]["fecha"]
+
+    page_key = "adrian_maestro_page"
+    if st.session_state.get("adrian_dia_prev") != dia_iso:
+        st.session_state[page_key] = 1
+    st.session_state.adrian_dia_prev = dia_iso
+
+    page = int(st.session_state.get(page_key, 1))
+    page_size = 150
+
+    try:
+        with st.spinner(f"Cargando LOG del {dia_iso}…"):
+            payload = get_adrian_dia_cached(
+                json.dumps(
+                    {
+                        "dia": dia_iso,
+                        "planilla": planilla_api,
+                        "page": page,
+                        "page_size": page_size,
+                    },
+                    sort_keys=True,
+                )
+            )
+    except Exception as exc:
+        st.error(str(exc))
+        return
+
+    filas = payload.get("filas") or []
+    total = int(payload.get("total") or 0)
+    page = int(payload.get("page") or page)
+    total_pages = int(payload.get("total_pages") or 1)
+    st.session_state[page_key] = page
+
+    st.caption(
+        f"**{total}** caso(s) con entrega **{dia_iso}** · planilla **WAMARO TORTUGUITAS**. "
+        "Mismas 29 columnas que Adrián. Columna TRANSPORTE en formato operativo (CLICPAQ / LA COSTA)."
+    )
+
+    if not filas:
+        st.warning("Sin filas para este día.")
+        return
+
+    df = preparar_maestro_df(pd.DataFrame(filas))
+    page = _controles_paginacion_maestro_api(
+        "adrian",
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+    cols_grilla = [c for c in MAESTRO_VISTA_GRILLA if c in df.columns]
+    show_df = _as_dataframe(df[cols_grilla].copy())
+    for meta in _META_GRILLA:
+        if meta in df.columns:
+            show_df[meta] = df[meta]
+
+    st.caption(
+        "Tarifario y **prefactura CLICPAQ compartidos con el Maestro**. "
+        "PRECIO NETO / dif se cargan con el cruce CLP. "
+        "Fila roja solo si falta tarifa o hay diferencia real."
+    )
+    _render_grilla_con_detalle(show_df, df, sel_key="adrian_sel", paginar_cliente=False)
+
+    export_key = "adrian_export_xlsx"
+    from datetime import date as _date
+
+    d_obj = _date.fromisoformat(dia_iso)
+    fname = f"WAMARO TORTUGUITAS - {d_obj.day:02d}_{d_obj.month:02d}_{d_obj.year}.xlsx"
+
+    if st.button("Generar Excel del día (formato Adrián)", key="adrian_export_btn"):
+        try:
+            with st.spinner("Generando Excel…"):
+                with httpx.Client(base_url=API_URL, timeout=120.0) as c:
+                    r = c.get(
+                        "/modo-adrian/export-dia",
+                        params={"dia": dia_iso, "planilla": planilla_api},
+                    )
+                    r.raise_for_status()
+                st.session_state[export_key] = r.content
+            st.success("Planilla lista — descargá abajo.")
+        except Exception as exc:
+            st.error(f"No se pudo exportar: {exc}")
+
+    if st.session_state.get(export_key):
+        st.download_button(
+            f"Descargar {fname}",
+            st.session_state[export_key],
+            file_name=fname,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="adrian_export_dl",
+        )
+
+
 def pagina_fletes() -> None:
     _render_page_header(
         "Fletes",
-        "Entregas CABA/GBA y retiro en sucursal. Tarifa ref.: fletes sucursales (zona km).",
+        "Mirada macro Mundo 2 — entregas CABA/GBA, fleteros locales (Blas, Gama…) "
+        "y tarifa ref. fletes sucursales (zona km).",
         "Fletes",
     )
     _render_leyenda_operativa()
 
-    if not check_health():
+    if not check_health_cached():
         st.warning("Ejecutá **Iniciar_Fletes.bat**.")
         st.stop()
 
     filtros_extra = _ui_filtros_fecha_remito("fletes")
-
-    stats_params: dict[str, Any] = {}
-    if filtros_extra.get("mes_control_anio") and filtros_extra.get("mes_control_mes"):
-        stats_params["mes_control_anio"] = filtros_extra["mes_control_anio"]
-        stats_params["mes_control_mes"] = filtros_extra["mes_control_mes"]
-        stats_params["campo_fecha"] = filtros_extra.get("campo_fecha", "entrega")
-
-    try:
-        with st.spinner("Calculando métricas Fletes…"):
-            stats = get_json("/fletes/stats", **stats_params)
-    except Exception as exc:
-        st.error(f"No se pudo conectar al módulo Fletes: {exc}")
-        st.stop()
-
-    pend_zona = int(stats.get("pendiente_zona_km", 0) or 0)
-    filtro_pendiente = bool(st.session_state.get("fletes_solo_pendiente_zona", False))
-    metrics_cls = "module-metrics pend-filter-on" if filtro_pendiente else "module-metrics"
-
-    st.markdown(f'<div class="{metrics_cls}">', unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Casos fletes", stats.get("casos_fletes", 0))
-    c2.metric("Renglones Amba/GBA", stats.get("renglones_fletes", stats.get("renglones_mundo2", 0)))
-    c3.metric("Con km calculado", stats.get("con_km_calculado", 0))
-    with c4:
-        c4.metric("Pend. zona km", pend_zona)
-        if pend_zona > 0:
-            btn_label = "Ver todos" if filtro_pendiente else "Ver pendientes"
-            if st.button(
-                btn_label,
-                key="fletes_toggle_pend_zona",
-                type="secondary" if filtro_pendiente else "primary",
-                use_container_width=True,
-            ):
-                st.session_state["fletes_solo_pendiente_zona"] = not filtro_pendiente
-                st.rerun()
-        elif filtro_pendiente:
-            st.session_state["fletes_solo_pendiente_zona"] = False
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if stats.get("envios_cargados") is not None:
-        st.caption(
-            f"Período filtrado: **{stats.get('envios_cargados', 0):,}** renglones Tango en memoria "
-            f"(no se carga toda la base si elegiste mes a controlar)."
-        )
-
-    with st.expander("Qué falta bajar de Tango (cuando puedas)"):
-        st.markdown(
-            """
-            - Export del tablero **Seguimientos centralizados** para entregas locales (Distribuidora / sucursales).
-            - Que el Excel traiga **código de sucursal** (AV, BE, CA…) si existe.
-            - Km o prefactura **Gama / Blast** cuando tengan el formato.
-
-            Detalle: `data/TANGO_PENDIENTE_MUNDO2.md`
-            """
-        )
+    anio_mes = int(filtros_extra["mes_control_anio"])
+    mes_num = int(filtros_extra["mes_control_mes"])
+    key_prefix = "fletes"
+    modo_carga_key = _gestionar_cambio_mes_quincena(
+        key_prefix,
+        anio_mes,
+        mes_num,
+        clear_cache_fn=_clear_fletes_cache,
+    )
 
     f1, f2, f3, f4 = st.columns([2, 2, 2, 2])
     origen_f = f1.selectbox(
@@ -2224,24 +2921,224 @@ def pagina_fletes() -> None:
     solo_alerta_f = f2.checkbox("Solo con alerta", value=False, key="fletes_solo_alerta")
     buscar = f3.text_input(
         "Buscar remito o destinatario",
-        placeholder="Ej: 318022 — busca en toda la base",
+        placeholder="Ej: 318022 — luego «Buscar en toda la base»",
         key="fletes_buscar",
     )
     try:
-        fleteros_api = get_json("/fletes/fleteros")
+        fleteros_api = get_fleteros_cached()
         opciones_f = ["Todos"] + [f["nombre_corto"] for f in fleteros_api]
     except Exception:
         opciones_f = ["Todos"]
     fletero_f = f4.selectbox("Fletero local", opciones_f, key="fletes_fletero")
 
-    if not st.session_state.get("fletes_preview_ok"):
+    firma_ui = json.dumps(
+        {
+            "origen": origen_f,
+            "solo_alerta": solo_alerta_f,
+            "fletero": fletero_f,
+            "pend_zona": bool(st.session_state.get("fletes_solo_pendiente_zona", False)),
+            "filtros_extra": filtros_extra,
+        },
+        sort_keys=True,
+        default=str,
+    )
+    _invalidar_modo_quincena_si_cambian_filtros(
+        key_prefix,
+        firma_ui,
+        modo_carga_key,
+        clear_cache_fn=_clear_fletes_cache,
+    )
+
+    modo_carga = _render_botones_carga_quincena(
+        key_prefix,
+        anio_mes,
+        mes_num,
+        buscar,
+        clear_cache_fn=_clear_fletes_cache,
+        modulo="Fletes",
+        page_state_key=f"{key_prefix}_maestro_page",
+    )
+    if not modo_carga:
+        return
+
+    params_base: dict[str, Any] = dict(filtros_extra)
+    if origen_f == "Tortuguitas":
+        params_base["origen"] = "tortuguitas"
+    elif origen_f == "SA / Limansky":
+        params_base["origen"] = "sa"
+    if fletero_f and fletero_f != "Todos":
+        params_base["fletero"] = fletero_f
+    if solo_alerta_f:
+        params_base["solo_alerta"] = True
+    if st.session_state.get("fletes_solo_pendiente_zona"):
+        params_base["solo_pendiente_zona_km"] = True
+
+    params_api = _params_api_quincena(
+        params_base,
+        key_prefix=key_prefix,
+        anio=anio_mes,
+        mes=mes_num,
+        buscar=buscar,
+        modo_carga=modo_carga,
+    )
+
+    firma_filtros = json.dumps(params_api, sort_keys=True, default=str)
+    page = _reset_maestro_page_si_cambian_filtros(key_prefix, firma_filtros)
+    params_api["page"] = page
+    params_api["page_size"] = _MAESTRO_API_PAGE_SIZE
+
+    params_api["page"] = page
+    params_api["page_size"] = _MAESTRO_API_PAGE_SIZE
+
+    stats_params = {
+        k: params_api[k]
+        for k in ("fecha_desde", "fecha_hasta", "campo_fecha", "mes_control_anio", "mes_control_mes")
+        if k in params_api
+    }
+
+    try:
+        spinner = (
+            "Buscando en toda la base importada…"
+            if modo_carga == "buscar"
+            else "Cargando casos Fletes…"
+        )
+        with st.spinner(spinner):
+            payload = get_fletes_pagina_cached(
+                json.dumps(params_api, sort_keys=True, default=str)
+            )
+        filas = payload.get("filas") or []
+        total_fletes = int(payload.get("total") or 0)
+        page = int(payload.get("page") or page)
+        page_size = int(payload.get("page_size") or _MAESTRO_API_PAGE_SIZE)
+        total_pages = int(payload.get("total_pages") or 1)
+        st.session_state[f"{key_prefix}_maestro_page"] = page
+
+        if not filas and total_fletes == 0:
+            st.info(
+                "No hay casos de flete en la base. Si ya importaste Tango, "
+                "revisá que haya pedidos Amba/GBA o ejecutá **Reaplicar reglas** en Maestro."
+            )
+            return
+
+        df = preparar_maestro_df(pd.DataFrame(filas))
+
+        if st.session_state.get("fletes_solo_pendiente_zona"):
+            st.info(
+                f"Grilla filtrada: **{total_fletes}** casos **pendientes de zona km** "
+                "(tienen tarifario local pero falta asignar zona / calcular km)."
+            )
+        elif modo_carga == "buscar":
+            st.caption(
+                f"Búsqueda en **toda la base importada** (sin filtro de mes): "
+                f"**{total_fletes}** caso(s) encontrado(s)."
+            )
+        elif solo_alerta_f:
+            st.caption(f"**{total_fletes}** casos con alerta en el período.")
+        else:
+            st.caption(
+                f"**{total_fletes}** casos en el período. "
+                "Seleccioná una fila para ver el detalle."
+            )
+
+        page = _controles_paginacion_maestro_api(
+            key_prefix,
+            total=total_fletes,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+        cols = [c for c in FLETES_VISTA_GRILLA if c in df.columns]
+        show_df = _as_dataframe(df[cols].copy())
+        for meta in _META_GRILLA:
+            if meta in df.columns:
+                show_df[meta] = df[meta]
+
+        _render_grilla_con_detalle(show_df, df, sel_key="fletes_sel", paginar_cliente=False)
+    except Exception as exc:
+        st.error(str(exc))
+        return
+
+    try:
+        with st.spinner("Métricas del período…"):
+            stats = get_fletes_stats_cached(
+                json.dumps(stats_params, sort_keys=True, default=str)
+            )
+    except Exception as exc:
+        st.warning(f"Métricas no disponibles: {exc}")
+        stats = {}
+
+    pend_zona_raw = stats.get("pendiente_zona_km")
+    pend_zona = int(pend_zona_raw) if pend_zona_raw is not None else 0
+    filtro_pendiente = bool(st.session_state.get("fletes_solo_pendiente_zona", False))
+    metrics_cls = "module-metrics pend-filter-on" if filtro_pendiente else "module-metrics"
+
+    st.markdown("---")
+    st.markdown(f'<div class="{metrics_cls}">', unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Casos fletes", stats.get("casos_fletes", total_fletes))
+    c2.metric("Renglones Amba/GBA", stats.get("renglones_fletes", stats.get("renglones_mundo2", 0)))
+    c3.metric("Con km calculado", stats.get("con_km_calculado", 0))
+    with c4:
+        if pend_zona_raw is None:
+            c4.metric("Pend. zona km", "—")
+        else:
+            c4.metric("Pend. zona km", pend_zona)
+            if pend_zona > 0:
+                btn_label = "Ver todos" if filtro_pendiente else "Ver pendientes"
+                if st.button(
+                    btn_label,
+                    key="fletes_toggle_pend_zona",
+                    type="secondary" if filtro_pendiente else "primary",
+                    use_container_width=True,
+                ):
+                    st.session_state["fletes_solo_pendiente_zona"] = not filtro_pendiente
+                    st.rerun()
+            elif filtro_pendiente:
+                st.session_state["fletes_solo_pendiente_zona"] = False
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if stats.get("envios_cargados") is not None:
+        st.caption(
+            f"Período cargado: **{stats.get('envios_cargados', 0):,}** renglones Tango en memoria."
+        )
+
+    _render_panel_fleteros_macro(stats, mes=mes_num, anio=anio_mes)
+
+    with st.expander("Qué falta bajar de Tango (cuando puedas)"):
+        st.markdown(
+            """
+            - Export del tablero **Seguimientos centralizados** para entregas locales (Distribuidora / sucursales).
+            - Que el Excel traiga **código de sucursal** (AV, BE, CA…) si existe.
+            - Km o prefactura **Gama / Blas** cuando tengan el formato.
+
+            Detalle: `data/TANGO_PENDIENTE_MUNDO2.md`
+            """
+        )
+
+    if (
+        fletero_f
+        and fletero_f != "Todos"
+        and modo_carga in ("q1", "q2")
+        and not buscar.strip()
+    ):
         try:
-            with api_client() as c:
-                r = c.post("/fletes/enriquecer-preview")
-                r.raise_for_status()
-                st.session_state["fletes_preview_ok"] = True
-                st.session_state["fletes_preview_stats"] = r.json()
-                get_fletes_casos_cached.clear()
+            res_f = get_json(
+                "/fletes/internos/resumen",
+                mes=mes_num,
+                anio=anio_mes,
+                fletero=fletero_f,
+            )
+            for row in res_f.get("fleteros") or []:
+                if row.get("nombre_corto") == fletero_f:
+                    st.info(
+                        f"**{fletero_f}** en el mes: "
+                        f"{row.get('entregas', 0)} entregas Drive · "
+                        f"{row.get('matcheadas', 0)} en maestro Fletes · "
+                        f"total a pagar **{fmt_pesos_ar(row.get('total_pagar', 0))}** "
+                        f"(resumen mensual; la grilla respeta la quincena elegida)."
+                    )
+                    break
         except Exception:
             pass
 
@@ -2252,7 +3149,7 @@ def pagina_fletes() -> None:
                 r = c.post("/fletes/enriquecer-preview")
                 r.raise_for_status()
                 st.session_state["fletes_preview_stats"] = r.json()
-                get_fletes_casos_cached.clear()
+                get_fletes_pagina_cached.clear()
             st.rerun()
         except Exception as exc:
             st.error(str(exc))
@@ -2264,7 +3161,7 @@ def pagina_fletes() -> None:
                     r = c.post("/fletes/calcular-km", params={"limit": limite})
                     r.raise_for_status()
                     st.session_state["fletes_km_stats"] = r.json()
-                get_fletes_casos_cached.clear()
+                get_fletes_pagina_cached.clear()
             st.rerun()
         except Exception as exc:
             st.error(str(exc))
@@ -2289,101 +3186,92 @@ def pagina_fletes() -> None:
         )
 
     st.caption(
-        "Al abrir Fletes: **sucursal** por localidad/barrio, **reuso por domicilio** si ya se geocodificó "
-        "la misma dirección, y hasta **30 km reales** automáticos por carga. "
-        "**Km reales (500/1000)** procesa el resto. Con zona km, **total** pasa a importe exacto."
+        "Tras elegir quincena: hasta **30 km reales** automáticos por carga. "
+        "**Actualizar preview** asigna sucursal/km estimado; **Km reales (500/1000)** geocodifica el resto."
     )
 
-    params: dict[str, Any] = {}
-    params.update(filtros_extra)
-    if origen_f == "Tortuguitas":
-        params["origen"] = "tortuguitas"
-    elif origen_f == "SA / Limansky":
-        params["origen"] = "sa"
-    if fletero_f and fletero_f != "Todos":
-        params["fletero"] = fletero_f
-        if (
-            not buscar.strip()
-            and params.get("mes_control_mes")
-            and params.get("mes_control_anio")
-        ):
-            try:
-                res_f = get_json(
-                    "/fletes/internos/resumen",
-                    mes=int(params["mes_control_mes"]),
-                    anio=int(params["mes_control_anio"]),
-                    fletero=fletero_f,
-                )
-                for row in res_f.get("fleteros") or []:
-                    if row.get("nombre_corto") == fletero_f:
-                        st.info(
-                            f"**{fletero_f}** en el período: "
-                            f"{row.get('entregas', 0)} entregas Drive · "
-                            f"{row.get('matcheadas', 0)} en maestro Fletes · "
-                            f"total a pagar **{fmt_pesos_ar(row.get('total_pagar', 0))}** "
-                            f"(detalle en grilla; carga del Excel en Configuración → Fleteros locales)."
-                        )
-                        break
-            except Exception:
-                pass
 
-    params_api = _params_sin_mes_si_busca(params, buscar)
+def _archivos_fleteros_red() -> list[Path]:
+    """Excels «Fletes solicitados sucursales» en carpeta LOG (S:)."""
+    base = FLETEROS_LOG_S_DIR
+    if not base.is_dir():
+        return []
+    found: list[Path] = []
+    seen: set[str] = set()
+    for pat in (
+        "*Fletes Solicitados*Log*.xlsx",
+        "*Copia de Fletes Solicitados*.xlsx",
+    ):
+        for p in sorted(base.glob(pat), key=lambda x: -x.stat().st_mtime):
+            if p.name not in seen:
+                seen.add(p.name)
+                found.append(p)
+    return found
 
-    try:
-        spinner = (
-            "Buscando en toda la base importada…"
-            if buscar.strip()
-            else "Cargando casos Fletes…"
+
+def _importar_fleteros_desde_path(path: Path, *, matchear: bool = False) -> dict[str, Any]:
+    return post_file(
+        "/fletes/internos/import",
+        path.name,
+        path.read_bytes(),
+        matchear="true" if matchear else "false",
+    )
+
+
+def _render_panel_fleteros_macro(
+    stats: dict[str, Any] | None,
+    *,
+    mes: int,
+    anio: int,
+) -> None:
+    """Resumen fleteros Drive + maestro Fletes (mirada macro Mundo 2)."""
+    fd = (stats or {}).get("fleteros_drive") or {}
+    fp = (stats or {}).get("fleteros_periodo") or {}
+    if not fd.get("solicitudes"):
+        st.info(
+            "Sin solicitudes de fleteros en la base. Importá el Excel del Drive en "
+            "**Configuración → Fleteros locales** (archivos en carpeta LOG **S:**)."
         )
-        with st.spinner(spinner):
-            filas = get_fletes_casos_cached(
-                json.dumps(params_api, sort_keys=True, default=str)
-            )
-        if not filas:
-            st.info(
-                "No hay casos de flete en la base. Si ya importaste Tango, "
-                "revisá que haya pedidos Amba/GBA o ejecutá **Reaplicar reglas** en Maestro."
-            )
-            return
+        return
 
-        df = preparar_maestro_df(pd.DataFrame(filas))
-        if solo_alerta_f and "_regla_color" in df.columns:
-            df = _as_dataframe(df[df["_regla_color"] == "alerta"])
-        if st.session_state.get("fletes_solo_pendiente_zona"):
-            df = _filtrar_pendiente_zona_km(df)
-
-        if buscar.strip():
-            df = _filtrar_df_buscar(
-                df,
-                buscar,
-                ("REMITOS", "ENVIO", "DESTINATARIO", "LOCALIDAD", "FLETERO"),
+    st.markdown("**Fleteros locales (Drive → maestro)**")
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("Solicitudes Drive", fd.get("solicitudes", 0))
+    r2.metric("Matcheadas", fd.get("matcheadas", 0))
+    r3.metric("Casos con fletero", (stats or {}).get("casos_con_fletero", 0))
+    r4.metric(
+        "Total a pagar (mes)",
+        fmt_pesos_ar(fp.get("total_pagar", 0)),
+        help="Tarifario FLETES_SUC sobre casos matcheados en el mes de control.",
+    )
+    por_f = fp.get("por_fletero") or []
+    if por_f:
+        df_f = pd.DataFrame(por_f)
+        show = [
+            c
+            for c in (
+                "nombre_corto",
+                "entregas",
+                "matcheadas",
+                "total_pagar",
+                "sin_tarifa",
             )
-
-        if st.session_state.get("fletes_solo_pendiente_zona"):
-            st.info(
-                f"Grilla filtrada: **{len(df)}** casos **pendientes de zona km** "
-                "(tienen tarifario local pero falta asignar zona / calcular km)."
-            )
-        elif buscar.strip():
-            st.caption(
-                f"Búsqueda en **toda la base importada** (sin filtro de mes): "
-                f"**{len(df)}** casos. Usá la **lupa** a la izquierda de cada fila."
-            )
-        else:
-            st.caption(
-                f"Mostrando **{len(df)}** casos. "
-                "Usá la **lupa** a la izquierda de cada fila (mismo popup que en Maestro). "
-            )
-
-        cols = [c for c in FLETES_VISTA_GRILLA if c in df.columns]
-        show_df = _as_dataframe(df[cols].copy())
-        for meta in _META_GRILLA:
-            if meta in df.columns:
-                show_df[meta] = df[meta]
-
-        _render_grilla_con_detalle(show_df, df, sel_key="fletes_sel")
-    except Exception as exc:
-        st.error(str(exc))
+            if c in df_f.columns
+        ]
+        rename = {
+            "nombre_corto": "Fletero",
+            "entregas": "Drive",
+            "matcheadas": "En maestro",
+            "total_pagar": "Total $",
+            "sin_tarifa": "Sin tarifa",
+        }
+        df_show = df_f[show].copy()
+        df_show.columns = [rename.get(str(c), str(c)) for c in df_show.columns]
+        if "Total $" in df_show.columns:
+            df_show["Total $"] = [
+                fmt_pesos_ar(v) for v in df_show["Total $"].tolist()
+            ]
+        st.dataframe(df_show, width="stretch", hide_index=True, height=min(220, 38 + 35 * len(df_show)))
 
 
 def _config_fleteros_locales() -> None:
@@ -2392,9 +3280,18 @@ def _config_fleteros_locales() -> None:
 
     st.subheader("Fleteros locales (AMBA / GBA)")
     st.caption(
-        "Entregas sucursal → domicilio con fleteros de confianza (BLAS, GAMA, ARMANDO…). "
-        "El cliente puede ver **$0**; acá cargás el Excel del Drive y lo cruzás con el **maestro Fletes**. "
-        "El resultado se ve en **Fletes** (columna y filtro Fletero)."
+        "**Mirada macro (Mundo 2 / Fletes):** entregas sucursal → domicilio con fleteros "
+        "de confianza (**Blas**, Gama, Armando…). El cliente puede ver **$0**; "
+        "acá cargás el Excel del Drive y lo cruzás con el **maestro Fletes**. "
+        "**No aplica** al LOG diario Modo Adrián (micro — interior canal 51/83)."
+    )
+    plantilla_download(
+        "Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx",
+        "Descargar simulación ABR 2026 (prueba macheo)",
+    )
+    st.caption(
+        "La simulación usa **100 pedidos reales de abril** en formato Drive. "
+        "Regenerar: `python backend/scripts/generar_fleteros_simulacion_abr.py`"
     )
     plantilla_download(
         "plantilla_fletes_solicitud.xlsx",
@@ -2416,6 +3313,64 @@ def _config_fleteros_locales() -> None:
     c1.metric("Registros cargados", n_sol)
     c2.metric("Matcheados con maestro", n_match)
     c3.metric("Pendientes de cruce", max(0, n_sol - n_match))
+
+    archivos_red = _archivos_fleteros_red()
+    with st.expander("Importar desde carpeta LOG (S:)", expanded=not n_sol and bool(archivos_red)):
+        st.markdown(
+            f"Carpeta: `{FLETEROS_LOG_S_DIR}`  \n"
+            "Archivos detectados (export Drive «Fletes solicitados sucursales»):"
+        )
+        if not archivos_red:
+            st.warning(
+                "No se encontró la carpeta de red o no hay Excels de fleteros. "
+                "Usá el uploader manual abajo."
+            )
+        else:
+            for p in archivos_red:
+                kb = max(1, p.stat().st_size // 1024)
+                bc1, bc2 = st.columns([3, 1])
+                bc1.caption(f"**{p.name}** ({kb} KB)")
+                if bc2.button("Importar", key=f"cfg_flet_s_{p.name}"):
+                    try:
+                        with st.spinner(f"Importando {p.name}…"):
+                            r = _importar_fleteros_desde_path(p, matchear=False)
+                        st.success(
+                            f"{p.name}: {r.get('insertados', 0)} nuevos · "
+                            f"{r.get('actualizados', 0)} actualizados"
+                        )
+                        if r.get("fleteros"):
+                            st.caption(f"Fleteros: {', '.join(r['fleteros'])}")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(str(exc))
+            if st.button(
+                "Importar todos + machear",
+                type="primary",
+                key="cfg_flet_s_todos",
+                disabled=not archivos_red,
+            ):
+                try:
+                    total_ins = total_upd = 0
+                    fleteros_v: set[str] = set()
+                    with st.spinner("Importando desde S:…"):
+                        for p in archivos_red:
+                            r = _importar_fleteros_desde_path(p, matchear=False)
+                            total_ins += int(r.get("insertados") or 0)
+                            total_upd += int(r.get("actualizados") or 0)
+                            fleteros_v.update(r.get("fleteros") or [])
+                        with api_client() as c:
+                            m = c.post("/fletes/internos/matchear")
+                            m.raise_for_status()
+                            match = m.json()
+                    st.success(
+                        f"Importados: {total_ins} nuevos · {total_upd} actualizados · "
+                        f"macheo {match.get('matcheadas', 0)}/{match.get('procesadas', 0)}"
+                    )
+                    if fleteros_v:
+                        st.caption(f"Fleteros: {', '.join(sorted(fleteros_v))}")
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
 
     upl = st.file_uploader(
         "Excel «Fletes solicitados sucursales»",
@@ -2544,8 +3499,10 @@ def _config_fleteros_locales() -> None:
             st.error(str(exc))
     else:
         st.info(
-            "Sin datos de fleteros locales. Subí el Excel del Drive "
-            "(ej. «Fletes Solicitados sucursales MAYO») y luego ejecutá el macheo."
+            "Sin datos de fleteros locales. Importá desde la carpeta LOG en **S:** "
+            "(«Fletes Solicitados sucursales MAYO»), el archivo de **simulación abril** en "
+            "`data/Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx`, "
+            "o subí un Excel manualmente."
         )
 
 
@@ -2556,7 +3513,7 @@ def pagina_configuracion() -> None:
         "Configuración",
     )
 
-    if not check_health():
+    if not check_health_cached():
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
         st.stop()
 
@@ -2591,11 +3548,39 @@ def pagina_configuracion() -> None:
             """
         )
         tango = st.file_uploader("Archivo Tango", type=["xlsx"], key="cfg_tango")
+        import_rapido = st.checkbox(
+            "Importación rápida (varios archivos grandes)",
+            value=True,
+            help=(
+                "Solo carga filas en la base. Al terminar de subir distri, LMK, Salta, etc., "
+                "ejecutá «Reaplicar reglas» una vez. Evita timeout y recálculos repetidos."
+            ),
+            key="cfg_tango_rapido",
+        )
+        if tango is not None:
+            mb = len(tango.getvalue()) / (1024 * 1024)
+            if mb > 8:
+                st.caption(
+                    f"Archivo ~{mb:.1f} MB — activá importación rápida si tarda o da error."
+                )
         if st.button("Importar Tango", type="primary", disabled=tango is None):
             try:
                 if tango is None:
                     raise RuntimeError("Seleccioná un archivo Tango.")
-                r = post_file("/import/tango", tango.name, tango.getvalue())
+                data = tango.getvalue()
+                mb = len(data) / (1024 * 1024)
+                timeout = max(600.0, 120.0 + mb * 45.0)
+                with st.spinner(
+                    f"Importando {tango.name} (~{mb:.1f} MB)… "
+                    f"{'solo filas' if import_rapido else 'filas + tarifas'}"
+                ):
+                    r = post_file(
+                        "/import/tango",
+                        tango.name,
+                        data,
+                        timeout=timeout,
+                        defer_recalc=import_rapido,
+                    )
                 msg = r["message"]
                 if r.get("rows_rejected"):
                     st.warning(msg)
@@ -2605,8 +3590,38 @@ def pagina_configuracion() -> None:
                     f"Archivo: {r['rows_in_file']} filas · "
                     f"{r['rows_inserted']} nuevas · {r['rows_skipped']} omitidas"
                 )
+                if import_rapido and r.get("rows_inserted"):
+                    st.info(
+                        "Cuando subas todos los seguimientos del mes, andá a "
+                        "**Envíos interior → Reaplicar reglas** (o el botón en esta pantalla)."
+                    )
                 get_maestro_filas_cached.clear()
-                get_fletes_casos_cached.clear()
+                get_fletes_pagina_cached.clear()
+                get_fletes_stats_cached.clear()
+                _clear_adrian_cache()
+                get_dashboard_stats_cached.clear()
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
+
+        st.markdown("---")
+        st.subheader("Después de importar varios Excel")
+        st.caption(
+            "Un solo recálculo de reglas, proveedores y tarifas para toda la base "
+            "(usalo tras importación rápida)."
+        )
+        if st.button("Reaplicar reglas en toda la base", type="secondary", key="cfg_reaplicar_todo"):
+            try:
+                with st.spinner("Recalculando reglas, proveedores y cobros… puede tardar varios minutos."):
+                    with httpx.Client(base_url=API_URL, timeout=900.0) as c:
+                        resp = c.post("/envios/reaplicar-reglas")
+                        resp.raise_for_status()
+                        st.success(resp.json())
+                get_maestro_filas_cached.clear()
+                get_fletes_pagina_cached.clear()
+                get_fletes_stats_cached.clear()
+                _clear_adrian_cache()
+                get_dashboard_stats_cached.clear()
                 st.rerun()
             except Exception as exc:
                 st.error(str(exc))
@@ -2663,10 +3678,10 @@ def pagina_configuracion() -> None:
     with tab_pv:
         st.subheader("Grillas postventa")
         st.info(
-            "La grilla de postventa suele ser **la misma exportación de Tango**. "
-            "Si el Excel trae columnas **TipoGestion** y **SubTipo**, las reglas se aplican "
-            "al importar o al **Reaplicar reglas** en Envíos interior. "
-            "También podés cargar motivos en un archivo aparte."
+            "El **detalle postventa** viene del seguimiento Tango (**TipoGestion** / **SubTipo**). "
+            "La app lo muestra en cada caso; las **reglas logísticas** (+25%, $0, pagar viaje) "
+            "se aplican al importar o con **Aplicar reglas postventa**. "
+            "En el maestro manual de Adrián también aparecen en la columna **obs**."
         )
         plantilla_download("plantilla_postventa.xlsx", "Plantilla postventa")
         pv = st.file_uploader("Excel postventa", type=["xlsx"], key="cfg_pv")
@@ -2928,23 +3943,28 @@ def pagina_configuracion() -> None:
         st.markdown("---")
         st.subheader("Cierre mensual")
         st.caption(
-            "Al finalizar el mes, vaciá los datos operativos para cargar el nuevo Excel de Tango. "
-            "Los **tarifarios se conservan** (salvo que marques la opción)."
+            "Borra **todos** los envíos Tango importados (no filtra por mes), prefacturas CLP, "
+            "postventa, liquidación, cache de km y solicitudes de fleteros. "
+            "**Conserva** tarifarios, transportes, sucursales y catálogo de fleteros "
+            "(salvo que marques vaciar tarifarios)."
         )
 
         try:
             conteo = get_json("/sistema/conteo")
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("Envíos", conteo["envios"])
-            c2.metric("Prefacturas", conteo["prefacturas_clickpack"])
-            c3.metric("Postventa", conteo["postventa"])
-            c4.metric("Liquidación", conteo["liquidacion"])
-            c5.metric("Tarifas", conteo["tarifas"])
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Envíos (renglones Tango)", conteo["envios"])
+            c2.metric("Prefacturas CLP", conteo["prefacturas_clickpack"])
+            c3.metric("Cache km", conteo.get("flete_distancias", 0))
+            c4.metric("Tarifas", conteo["tarifas"])
+            c5, c6, c7 = st.columns(3)
+            c5.metric("Lotes importación", conteo["importaciones"])
+            c6.metric("Solicitudes fletero", conteo.get("flete_solicitudes", 0))
+            c7.metric("Postventa / Liq.", (conteo.get("postventa") or 0) + (conteo.get("liquidacion") or 0))
         except Exception:
             conteo = None
 
         borrar_tarifas = st.checkbox("También vaciar tarifarios cargados", value=False)
-        confirmar = st.checkbox("Confirmo que quiero vaciar los datos del período", value=False)
+        confirmar = st.checkbox("Confirmo que quiero vaciar todos los datos operativos", value=False)
         texto = st.text_input('Escribí CIERRE para habilitar el botón', max_chars=10)
 
         if st.button(
@@ -2998,8 +4018,8 @@ pagina = _sidebar_nav_tree()
 inject_module_accent(pagina)
 
 st.sidebar.markdown("---")
-if check_health():
-    build = api_build_actual()
+if check_health_cached():
+    build = api_build_cached()
     if build == API_BUILD_ESPERADO:
         st.sidebar.markdown(
             '<p class="nav-status-ok">Servidor conectado</p>',
@@ -3019,7 +4039,9 @@ else:
 if pagina == "Dashboard":
     pagina_dashboard()
 elif pagina == "MAESTRO":
-    pagina_casos(titulo="MAESTRO", key_prefix="maestro")
+    pagina_casos(titulo="MAESTRO", key_prefix="maestro", carga_por_quincena=True)
+elif pagina == "Modo Adrián":
+    pagina_modo_adrian()
 elif pagina == "CLICPAQ":
     _page_clicpaq()
 elif pagina == "FRANSOF":

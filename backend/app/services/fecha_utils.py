@@ -61,6 +61,14 @@ def periodo_mes_solo(anio: int, mes: int) -> tuple[date, date]:
     return date(anio, mes, 1), date(anio, mes, ultimo)
 
 
+def rango_quincena(anio: int, mes: int, quincena: int) -> tuple[date, date]:
+    """Quincena 1: día 1–15; quincena 2: día 16–último del mes."""
+    ultimo = calendar.monthrange(anio, mes)[1]
+    if quincena <= 1:
+        return date(anio, mes, 1), date(anio, mes, min(15, ultimo))
+    return date(anio, mes, min(16, ultimo)), date(anio, mes, ultimo)
+
+
 def resolver_periodo_vista(anio: int, mes: int) -> tuple[date, date]:
     """Rango del mes elegido (día 1 → último día)."""
     return periodo_mes_solo(anio, mes)

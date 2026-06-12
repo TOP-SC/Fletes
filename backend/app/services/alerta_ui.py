@@ -71,6 +71,30 @@ def _diferencia_prefactura(envio: Envio) -> bool:
     return abs(diff) > 0.01
 
 
+def _canal_red_sin_prefactura(lineas: list[Envio]) -> bool:
+    """51/82 (o 40 interior): pendiente prefactura Clickpac — no alertar como falta tarifa."""
+    if not lineas:
+        return False
+    if any(l.prefactura_proveedor is not None for l in lineas):
+        return False
+    if not any(l.alerta_clickpack for l in lineas):
+        return False
+    base = lineas[0]
+    cod = normalizar_transporte_cod(base.transporte_cod, base.transporte_nombre)
+    if cod in (COD_EXPRESO_CLICPAQ, COD_CROSSDOCKING):
+        return True
+    if cod == COD_ENTREGA_CLIENTE:
+        circuito = resolver_circuito_logistico(
+            base.transporte_cod,
+            base.transporte_nombre,
+            provincia=base.provincia,
+            localidad=base.localidad,
+            cp=base.cp,
+        )
+        return circuito["modo"] == "red_clicpaq"
+    return False
+
+
 def _falta_cotizar_provincia(
     lineas: list[Envio],
     *,
@@ -79,7 +103,11 @@ def _falta_cotizar_provincia(
 ) -> bool:
     if total_logistica > 0:
         return False
-    if any(l.regla_postventa == "revisar_manual" for l in lineas):
+    from app.services.postventa_rules import postventa_bloquea_cobro
+
+    if any(postventa_bloquea_cobro(l.regla_postventa) for l in lineas):
+        return False
+    if _canal_red_sin_prefactura(lineas):
         return False
     if lineas_sin_tarifa > 0:
         return True
@@ -89,9 +117,12 @@ def _falta_cotizar_provincia(
 
 
 def _postventa_pendiente_amba(lineas: list[Envio], *, total_logistica: float) -> bool:
+    """Solo AMBA sin km cuando la regla logística aún no está cerrada."""
     if total_logistica > 0:
         return False
     if not any(l.regla_postventa == "revisar_manual" for l in lineas):
+        return False
+    if _canal_red_sin_prefactura(lineas):
         return False
     return any(es_amba_gba_envio(l) for l in lineas)
 

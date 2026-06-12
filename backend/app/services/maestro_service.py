@@ -131,11 +131,9 @@ def _agrupar_por_caso(envios: list[Envio]) -> dict[str, list[Envio]]:
 
 
 def _bultos_grupo(lineas: list[Envio]) -> int:
-    """Suma cantidades Tango; si vinieron en 0 por columna mal mapeada, cuenta renglones."""
-    total = int(sum(l.cantidad or 0 for l in lineas))
-    if total > 0:
-        return total
-    return sum(1 for l in lineas if l.descripcion or l.cod_articulo)
+    from app.services.bultos_service import bultos_grupo
+
+    return bultos_grupo(lineas)
 
 
 def _fila_maestro_desde_grupo(
@@ -179,11 +177,9 @@ def _fila_maestro_desde_grupo(
     elif base.diferencia is not None:
         dif = base.diferencia
 
-    articulos = " | ".join(
-        f"{(l.descripcion or l.cod_articulo or '').strip()} x{int(l.cantidad or 1)}"
-        for l in lineas
-        if l.descripcion or l.cod_articulo
-    )
+    from app.services.bultos_service import articulos_grupo_texto
+
+    articulos = articulos_grupo_texto(lineas)
 
     obs_parts = []
     for l in lineas:
@@ -335,7 +331,63 @@ def insertar_marcadores_cambio_tarifario(filas: list[dict[str, Any]]) -> list[di
     return out
 
 
-def construir_maestro(
+def _grupo_coincide_busqueda(grupo: list[Envio], q: str) -> bool:
+    needle = q.strip().upper()
+    if not needle:
+        return True
+    for linea in grupo:
+        for val in (
+            linea.remito,
+            linea.nro_pedido,
+            linea.razon_social,
+            linea.localidad,
+            linea.provincia,
+            linea.proveedor_tarifa,
+        ):
+            if val and needle in str(val).upper():
+                return True
+    return False
+
+
+def _grupo_tiene_alerta_maestro(grupo: list[Envio]) -> bool:
+    from app.services.alerta_ui import alertas_maestro_grilla
+    from app.services.costo_conceptos import debe_calcular_costo_proveedor
+
+    lineas_sin_tarifa = sum(
+        1
+        for l in grupo
+        if debe_calcular_costo_proveedor(l) and not (l.costo_tarifario or 0)
+    )
+    total_log = sum(l.costo_tarifario or 0 for l in grupo)
+    return bool(
+        alertas_maestro_grilla(
+            grupo,
+            lineas_sin_tarifa=lineas_sin_tarifa,
+            total_logistica=total_log,
+        )
+    )
+
+
+def _grupo_pasa_filtros_ui(
+    grupo: list[Envio],
+    *,
+    solo_alerta: bool = False,
+    solo_macheo: bool = False,
+    solo_con_dif: bool = False,
+) -> bool:
+    base = grupo[0]
+    if solo_macheo and not base.prefactura_proveedor:
+        return False
+    if solo_con_dif:
+        diff = base.diferencia if base.diferencia is not None else 0.0
+        if abs(diff) <= 0.01:
+            return False
+    if solo_alerta and not _grupo_tiene_alerta_maestro(grupo):
+        return False
+    return True
+
+
+def _grupos_maestro_ordenados(
     envios: list[Envio],
     *,
     origen: str | None = None,
@@ -344,12 +396,15 @@ def construir_maestro(
     solo_pendiente_proveedor: bool = False,
     tarifas: list[Tarifa] | None = None,
     tarifario_ctx: Any = None,
-    db: Any = None,
     fecha_desde: date | None = None,
     fecha_hasta: date | None = None,
     campo_fecha: str = "cualquiera",
     remito_estado: str = "todos",
-) -> list[dict[str, Any]]:
+    q: str | None = None,
+    solo_alerta: bool = False,
+    solo_macheo: bool = False,
+    solo_con_dif: bool = False,
+) -> list[tuple[str, list[Envio]]]:
     from app.services.casos_filtro_service import aplicar_filtros_lista_envios
     from app.services.remito_maestro import grupo_pasa_filtro_remito
 
@@ -364,11 +419,20 @@ def construir_maestro(
     )
 
     vista = normalizar_proveedor(proveedor) if proveedor else None
+    candidatos: list[tuple[str, list[Envio], str]] = []
 
-    filas = []
     for key, grupo in _agrupar_por_caso(envios).items():
         base = grupo[0]
         if not grupo_pasa_filtro_remito(grupo, remito_estado):
+            continue
+        if q and not _grupo_coincide_busqueda(grupo, q):
+            continue
+        if not _grupo_pasa_filtros_ui(
+            grupo,
+            solo_alerta=solo_alerta,
+            solo_macheo=solo_macheo,
+            solo_con_dif=solo_con_dif,
+        ):
             continue
         if solo_pendiente_proveedor:
             if not any(l.requiere_elegir_proveedor for l in grupo):
@@ -402,7 +466,63 @@ def construir_maestro(
             ):
                 continue
 
-        fila = _fila_maestro_desde_grupo(
+        origen_key = _origen_planilla(base.deposito, base.origen_cd)
+        if origen and origen_key != origen:
+            continue
+
+        fecha_ord = str(base.fecha_entrega or base.fecha_pedido or "")
+        candidatos.append((key, grupo, fecha_ord))
+
+    candidatos.sort(key=lambda x: x[2], reverse=True)
+    return [(k, g) for k, g, _ in candidatos]
+
+
+def construir_maestro(
+    envios: list[Envio],
+    *,
+    origen: str | None = None,
+    incluir_excluidos: bool = True,
+    proveedor: str | None = None,
+    solo_pendiente_proveedor: bool = False,
+    tarifas: list[Tarifa] | None = None,
+    tarifario_ctx: Any = None,
+    db: Any = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
+    campo_fecha: str = "cualquiera",
+    remito_estado: str = "todos",
+    q: str | None = None,
+    solo_alerta: bool = False,
+    solo_macheo: bool = False,
+    solo_con_dif: bool = False,
+    page: int | None = None,
+    page_size: int | None = None,
+) -> list[dict[str, Any]]:
+    grupos = _grupos_maestro_ordenados(
+        envios,
+        origen=origen,
+        incluir_excluidos=incluir_excluidos,
+        proveedor=proveedor,
+        solo_pendiente_proveedor=solo_pendiente_proveedor,
+        tarifas=tarifas,
+        tarifario_ctx=tarifario_ctx,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        campo_fecha=campo_fecha,
+        remito_estado=remito_estado,
+        q=q,
+        solo_alerta=solo_alerta,
+        solo_macheo=solo_macheo,
+        solo_con_dif=solo_con_dif,
+    )
+
+    if page is not None and page_size is not None:
+        start = max(0, (page - 1) * page_size)
+        grupos = grupos[start : start + page_size]
+
+    vista = normalizar_proveedor(proveedor) if proveedor else None
+    filas = [
+        _fila_maestro_desde_grupo(
             key,
             grupo,
             proveedor_vista=vista,
@@ -410,14 +530,44 @@ def construir_maestro(
             tarifario_ctx=tarifario_ctx,
             db=db,
         )
-        if origen and fila["_origen_planilla"] != origen:
-            continue
-        filas.append(fila)
+        for key, grupo in grupos
+    ]
 
-    filas.sort(key=lambda r: str(r.get("FECHA") or ""), reverse=True)
-    if tarifario_ctx:
+    if tarifario_ctx and page is None:
         filas = insertar_marcadores_cambio_tarifario(filas)
     return filas
+
+
+def _kwargs_filtro_grupos(**kwargs: Any) -> dict[str, Any]:
+    omit = {"db", "tarifario_ctx", "tarifas", "page", "page_size"}
+    return {k: v for k, v in kwargs.items() if k not in omit}
+
+
+def contar_grupos_maestro(envios: list[Envio], **kwargs: Any) -> int:
+    return len(_grupos_maestro_ordenados(envios, **_kwargs_filtro_grupos(**kwargs)))
+
+
+def construir_maestro_pagina(
+    envios: list[Envio],
+    *,
+    page: int = 1,
+    page_size: int = 150,
+    **kwargs: Any,
+) -> tuple[list[dict[str, Any]], int]:
+    page = max(1, page)
+    page_size = max(1, min(page_size, 500))
+    filtros = _kwargs_filtro_grupos(**kwargs)
+    total = contar_grupos_maestro(envios, **filtros)
+    filas = construir_maestro(
+        envios,
+        page=page,
+        page_size=page_size,
+        **filtros,
+        db=kwargs.get("db"),
+        tarifario_ctx=kwargs.get("tarifario_ctx"),
+        tarifas=kwargs.get("tarifas"),
+    )
+    return filas, total
 
 
 def obtener_lineas_caso(
@@ -448,6 +598,9 @@ def detalle_caso(
         return None
     caso_id, lineas = found
 
+    from app.services.bultos_service import bultos_de_linea, etiqueta_cantidad_logistica
+    from app.services.pedido_cobro_service import clasificar_linea
+
     renglones = []
     for l in lineas:
         raw = {}
@@ -464,6 +617,9 @@ def detalle_caso(
                 "cod_articulo": l.cod_articulo,
                 "descripcion": l.descripcion,
                 "cantidad": l.cantidad,
+                "tipo_linea": clasificar_linea(l).tipo_linea,
+                "bultos": bultos_de_linea(l),
+                "cantidad_display": etiqueta_cantidad_logistica(l),
                 "fecha_pedido": l.fecha_pedido,
                 "fecha_entrega": l.fecha_entrega,
                 "domicilio": l.domicilio,
@@ -521,6 +677,8 @@ def detalle_caso(
                 "tipo_linea": r.tipo_linea,
                 "descripcion": r.envio.descripcion,
                 "cantidad": r.cantidad,
+                "bultos": bultos_de_linea(r.envio),
+                "cantidad_display": etiqueta_cantidad_logistica(r.envio),
             }
             for r in interp.renglones
         ]

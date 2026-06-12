@@ -13,6 +13,8 @@
       --muted: #5c6b7d;
       --accent: #2c5282;
       --accent2: #2b6cb0;
+      --macro: #2b6cb0;
+      --micro: #c2410c;
       --ok: #276749;
       --warn: #b7791f;
       --bad: #c53030;
@@ -29,7 +31,7 @@
     }
     .wrap { max-width: 1200px; margin: 0 auto; }
     header {
-      background: linear-gradient(135deg, #1a365d 0%, #2c5282 55%, #3182ce 100%);
+      background: linear-gradient(135deg, #1a365d 0%, #2c5282 45%, #7c2d12 100%);
       color: #fff;
       border-radius: 18px;
       padding: 2rem 2.25rem;
@@ -37,11 +39,11 @@
       box-shadow: var(--shadow);
     }
     header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.35rem; }
-    header p { opacity: 0.92; font-size: 0.95rem; max-width: 720px; }
+    header p { opacity: 0.92; font-size: 0.95rem; max-width: 820px; }
     .meta { margin-top: 1rem; font-size: 0.82rem; opacity: 0.85; }
     .kpi-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
       gap: 1rem;
       margin-bottom: 1.75rem;
     }
@@ -52,10 +54,12 @@
       padding: 1.15rem 1.25rem;
       box-shadow: var(--shadow);
     }
+    .kpi.macro { border-top: 3px solid var(--macro); }
+    .kpi.micro { border-top: 3px solid var(--micro); }
     .kpi .label { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .kpi .value { font-size: 2rem; font-weight: 700; color: var(--accent); margin: 0.2rem 0; }
+    .kpi.micro .value { color: var(--micro); }
     .kpi .sub { font-size: 0.82rem; color: var(--muted); }
-    .kpi.warn .value { color: var(--warn); }
     .kpi.ok .value { color: var(--ok); }
     section {
       background: var(--paper);
@@ -84,6 +88,18 @@
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1.25rem;
     }
+    .dual-card {
+      border-radius: 14px;
+      padding: 1.25rem 1.35rem;
+      border: 1px solid var(--border);
+    }
+    .dual-card.macro { background: linear-gradient(180deg, #ebf4ff 0%, #fff 100%); }
+    .dual-card.micro { background: linear-gradient(180deg, #fff7ed 0%, #fff 100%); }
+    .dual-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .dual-card.macro h3 { color: var(--macro); }
+    .dual-card.micro h3 { color: var(--micro); }
+    .dual-card ul { margin: 0.5rem 0 0 1.1rem; font-size: 0.86rem; }
+    .dual-card li { margin-bottom: 0.35rem; }
     .chart-box {
       position: relative;
       min-height: 260px;
@@ -132,6 +148,8 @@
     .badge-warn { background: #fefcbf; color: #744210; }
     .badge-bad { background: #fed7d7; color: #742a2a; }
     .badge-info { background: #bee3f8; color: #2a4365; }
+    .badge-macro { background: #bee3f8; color: #2a4365; }
+    .badge-micro { background: #fed7aa; color: #7c2d12; }
     .callout {
       background: #ebf8ff;
       border-left: 4px solid var(--accent2);
@@ -139,6 +157,10 @@
       border-radius: 0 10px 10px 0;
       font-size: 0.9rem;
       margin-top: 1rem;
+    }
+    .callout.opinion {
+      background: #f0fff4;
+      border-left-color: var(--ok);
     }
     .callout strong { color: var(--accent); }
     .steps { list-style: none; counter-reset: step; }
@@ -165,6 +187,11 @@
       justify-content: center;
     }
     .impact { color: var(--ok); font-weight: 600; font-size: 0.8rem; }
+    .estimado {
+      font-size: 0.72rem;
+      color: var(--warn);
+      font-weight: 600;
+    }
     footer {
       text-align: center;
       font-size: 0.78rem;
@@ -180,52 +207,174 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>Control de Fletes — Avance hacia finalización</h1>
+      <h1>Control de Fletes — Avance con mirada Macro + Micro</h1>
       <p>
-        Estado del proyecto SommierCenter / Wamaro: desarrollo en código, operación real
-        (cierre de mes sin Excel paralelo) y similitud con el maestro manual de producción.
+        El proyecto dejó de ser solo «replicar el Excel de Adrián». Hoy es una plataforma con
+        <strong>dos lentes sobre el mismo Tango</strong>: control total del mes (Maestro) y armado
+        operativo diario (Modo Adrián). Misma base, mismo tarifario, misma prefactura CLICPAQ —
+        distintas decisiones según el rol.
       </p>
       <div class="meta">
-        Generado: 2 junio 2026 · P0 + UX Fletes pendientes ·
-        Historial: <code>docs/HISTORIAL_CHARLA.txt</code> ·
-        Build API: <code>postventa-p0-2026-06-02</code> ·
-        Base: <code>data/fletes.db</code> (4.998 renglones · 2.764 casos maestro)
+        Actualizado: 12 jun 2026 · Build API: <code>fletes-paginado-2026-06-12</code> ·
+        Base: <code>data/fletes.db</code> (12.541 renglones · 6.829 casos maestro) ·
+        Ref. Adrián: <code>4 ABR 2026</code> · Historial: <code>docs/HISTORIAL_CHARLA.txt</code>
       </div>
     </header>
 
     <div class="kpi-row">
       <div class="kpi ok">
         <div class="label">Desarrollo (código)</div>
-        <div class="value">91%</div>
-        <div class="sub">P0 cerrado · pendiente P1 km batch y fleteros</div>
+        <div class="value">96%</div>
+        <div class="sub">Modo Adrián + fleteros piloto + tarifario vivo</div>
       </div>
       <div class="kpi ok">
         <div class="label">Operación lista</div>
-        <div class="value">81%</div>
-        <div class="sub">90% maestro con LOGISTICA · interior espera prefactura</div>
+        <div class="value">89%</div>
+        <div class="sub">Macro y micro usables · Fletes quincena desbloqueado</div>
+      </div>
+      <div class="kpi macro">
+        <div class="label">Macro — Maestro</div>
+        <div class="value">6.829</div>
+        <div class="sub">Casos · todo Tango · export mensual</div>
+      </div>
+      <div class="kpi micro">
+        <div class="label">Micro — Modo Adrián</div>
+        <div class="value">1.152</div>
+        <div class="sub">Casos LOG abr/26 (canal 51/83) · corte diario</div>
       </div>
       <div class="kpi ok">
-        <div class="label">Rol creador (P0)</div>
-        <div class="value">✓</div>
-        <div class="sub">4/4 entregado — 141 postventa reclasificados</div>
-      </div>
-      <div class="kpi">
-        <div class="label">Similitud maestro manual</div>
-        <div class="value">~62%</div>
-        <div class="sub">CD + Tortuguitas; sin dep. 12 (no operativo)</div>
+        <div class="label">Motor compartido</div>
+        <div class="value">1</div>
+        <div class="sub">Tarifario + prefactura CLP + reglas 40/51/82</div>
       </div>
     </div>
+
+    <!-- NUEVA OPTICA -->
+    <section>
+      <h2>De «copiar Adrián» a plataforma con dos miradas</h2>
+      <p class="intro">
+        Antes el avance se medía contra un Excel manual. Hoy el producto abre
+        <strong>opciones que el proceso en papel no tenía</strong>: ver todo el mes y, al mismo tiempo,
+        trabajar como Adrián día a día — sin duplicar datos ni buscar en Tango.
+      </p>
+      <div class="grid-2">
+        <div class="dual-card macro">
+          <h3>◈ Macro — Maestro</h3>
+          <p style="font-size:0.88rem;color:var(--muted)">
+            Vista de control mensual: todos los casos importados, AMBA incluido, filtros por proveedor,
+            quincena, alertas, export <code>maestro_wamaro.xlsx</code>.
+          </p>
+          <ul>
+            <li>Conciliación amplia (interior + AMBA + retiros)</li>
+            <li>Vistas por proveedor (Clicpaq, Fransof, Alfaro, LBO)</li>
+            <li>Módulo Fletes separado (CABA/GBA, zona km)</li>
+            <li>Detección de anomalías en toda la base</li>
+          </ul>
+        </div>
+        <div class="dual-card micro">
+          <h3>◈ Micro — Modo Adrián</h3>
+          <p style="font-size:0.88rem;color:var(--muted)">
+            Vista operativa: planilla diaria <strong>WAMARO TORTUGUITAS</strong>, mismas 29 columnas,
+            canal 51/83, un archivo por fecha de entrega.
+          </p>
+          <ul>
+            <li>Mismo Tango ya importado (no buscar en ERP)</li>
+            <li>Tarifario y prefactura CLP compartidos con el Maestro</li>
+            <li>Export diario formato <code>DD_MM_AAAA</code></li>
+            <li>Cruce prefacturas y reaplicar reglas desde la misma pantalla</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout opinion">
+        <strong>Opinión técnica:</strong> dividir Macro/Micro no es cosmética — es arquitectura.
+        Adrián validó el <em>micro</em> (qué casos van al LOG diario). El <em>macro</em> responde
+        preguntas nuevas: «¿cuánto nos cuesta el mes?», «¿dónde están las diferencias?», «¿qué no entró
+        al LOG?». Una sola base SQLite evita los Excel paralelos que hoy generan desvíos de alcance
+        (5.978 remitos app vs 1.162 en carpeta Adrián no es error — es distinto propósito).
+      </div>
+    </section>
+
+    <!-- TIEMPO GANADO -->
+    <section>
+      <h2>Tiempo ganado estimado</h2>
+      <p class="intro">
+        <span class="estimado">Estimado</span> — basado en la carpeta real
+        <code>4 ABR 2026</code> (40 archivos = trabajo mensual completo de Adrián: LOG día a día,
+        CLP, centro de costos, AMBA quincenal, viajes). Pendiente cronometraje piloto.
+      </p>
+      <table style="margin-bottom:1.25rem">
+        <thead>
+          <tr><th>Qué hizo Adrián (abr/26)</th><th class="num">Archivos</th><th class="num">Volumen</th><th class="num">Horas manual est.</th><th class="num">Con app hoy</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>LOG Tortuguitas</strong> (día a día)</td>
+            <td class="num">20</td>
+            <td class="num">~1.158 filas · ~58/día</td>
+            <td class="num">50–70 h</td>
+            <td class="num">8–12 h</td>
+          </tr>
+          <tr>
+            <td>LOG WAMARO SA</td>
+            <td class="num">6</td>
+            <td class="num">132 filas</td>
+            <td class="num">8–12 h</td>
+            <td class="num">Parcial*</td>
+          </tr>
+          <tr>
+            <td>Prefactura CLP (quincenal)</td>
+            <td class="num">4</td>
+            <td class="num">~1.238 remitos</td>
+            <td class="num">8–12 h</td>
+            <td class="num">1–2 h</td>
+          </tr>
+          <tr>
+            <td>Entregas AMBA (1° y 2° quincena)</td>
+            <td class="num">2</td>
+            <td class="num">~16.200 filas c/u</td>
+            <td class="num">20–35 h</td>
+            <td class="num">Pendiente**</td>
+          </tr>
+          <tr>
+            <td>Centro de costos + Viajes AMBA</td>
+            <td class="num">8</td>
+            <td class="num">297 filas viajes</td>
+            <td class="num">10–15 h</td>
+            <td class="num">Pendiente**</td>
+          </tr>
+          <tr class="highlight" style="background:#f0fff4;font-weight:600">
+            <td><strong>Total mes (carpeta completa)</strong></td>
+            <td class="num"><strong>40</strong></td>
+            <td class="num">~2.179 remitos únicos</td>
+            <td class="num"><strong>96–144 h</strong></td>
+            <td class="num"><strong>~15–20 h***</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem">
+        * Modo Adrián hoy es Tortuguitas; SA fuera de alcance micro actual.<br>
+        ** Módulo Fletes / fleteros / centro costos aún no cierran esos Excels.<br>
+        *** Ahorro <strong>implementado hoy</strong> (LOG Tortuguitas + CLP + maestro): <strong>~50–65 h/mes</strong>.
+        Potencial cuando cierre AMBA + CC: <strong>~80–110 h/mes</strong>.
+      </p>
+      <div class="chart-box" style="max-width:640px;margin:0 auto">
+        <canvas id="chartTiempoGanado"></canvas>
+      </div>
+      <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-top:0.75rem">
+        Cada LOG diario = buscar en Tango + tarifario + retocar Excel (~2,5–3,5 h) → Modo Adrián + export (~25–40 min)
+      </p>
+    </section>
 
     <!-- GLOBAL -->
     <section>
       <h2>Avance global</h2>
-      <p class="intro">Dos miradas: lo que está <strong>programado</strong> vs lo que está <strong>en uso diario</strong>.</p>
+      <p class="intro">Desarrollo vs operación real, incorporando el módulo Modo Adrián.</p>
       <div class="grid-2">
         <div class="chart-box">
           <h3>Desarrollo — hecho vs pendiente</h3>
           <canvas id="chartDevGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">91%</div>
+            <div class="big">96%</div>
             <div class="small">desarrollado</div>
           </div>
         </div>
@@ -233,329 +382,250 @@
           <h3>Operación — lista vs falta</h3>
           <canvas id="chartOpsGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">81%</div>
+            <div class="big">89%</div>
             <div class="small">operativo</div>
           </div>
         </div>
       </div>
       <div class="callout">
-        <strong>Post-P0 (auditoría 2 jun):</strong> <strong>1.640 km reales</strong>; Fletes M2
-        <strong>83%</strong> sin alertas. Maestro: <strong>2.498</strong> casos con LOGISTICA (<strong>90%</strong>),
-        alertas <strong>1.178</strong> (−69). Postventa: <strong>0</strong> <code>revisar_manual</code>,
-        <strong>141</strong> viajes aprobados. Gap restante: prefactura interior (cliente) + <strong>129</strong> km opcionales.
+        <strong>Motor único:</strong> tarifario en vivo (asignación proveedor al calcular cobro),
+        export con LOGISTICA corregido, macheo CLP que incluye canal 51/83 aunque
+        <code>excluir_planilla</code> esté mal marcado (costa, Mar del Plata).
+        Prefacturas CLP en base: <strong>1.132</strong> · envíos con PRECIO NETO: <strong>809</strong>.
       </div>
     </section>
 
-    <!-- ROL CREADOR -->
+    <!-- MACRO VS MICRO -->
     <section>
-      <h2>Rol del creador vs rol del cliente</h2>
-      <p class="intro">
-        Avance medido separando lo que <strong>nos toca implementar</strong> de lo que el operador
-        carga cuando corresponde (Tango, prefactura interior). Sin depósito 12 en el camino.
-      </p>
-      <table>
+      <h2>Macro vs Micro — misma fuente, distinto corte</h2>
+      <p class="intro">Abril 2026 · datos medidos en instalación local.</p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>Alcance remitos — comparativa</h3>
+          <canvas id="chartAlcanceDual"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Modo Adrián abr/26 — prefactura CLP</h3>
+          <canvas id="chartAdrianPf"></canvas>
+        </div>
+      </div>
+      <table style="margin-top:1rem">
         <thead>
-          <tr><th>Responsable</th><th>Qué hace</th><th>Estado</th></tr>
+          <tr><th>Vista</th><th>Qué incluye</th><th>Abr 2026</th><th>Para quién</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Cliente</strong></td>
-            <td>Export Tango periódico</td>
-            <td><span class="badge badge-ok">En rutina</span></td>
+            <td><span class="badge badge-macro">Macro</span> Maestro</td>
+            <td>Todos los casos Tango agrupados · interior + AMBA</td>
+            <td><strong>6.829</strong> casos</td>
+            <td>Control mensual, gerencia, conciliación total</td>
           </tr>
           <tr>
-            <td><strong>Cliente</strong></td>
-            <td>Prefactura Clickpack (solo red 51/40 interior)</td>
-            <td><span class="badge badge-warn">0% cargado — activa macheo cuando suba archivo</span></td>
+            <td><span class="badge badge-micro">Micro</span> Modo Adrián</td>
+            <td>LOG WAMARO diario · canal 51 y 83 · remito oficial</td>
+            <td><strong>1.152</strong> casos</td>
+            <td>Operación LOG · export por día · prefactura 400/1.152</td>
           </tr>
           <tr>
-            <td><strong>Cliente</strong></td>
-            <td>Tarifario cuando cambia proveedor</td>
-            <td><span class="badge badge-ok">1.775 filas cargadas</span></td>
+            <td><span class="badge badge-info">Ref.</span> Carpeta Adrián</td>
+            <td>Planillas manuales LOG Tortuguitas dedup</td>
+            <td><strong>~1.084</strong> remitos</td>
+            <td>Validación histórica (no techo del sistema)</td>
           </tr>
           <tr>
-            <td><strong>Cliente</strong></td>
-            <td>Decisión puntual postventa ambiguo</td>
-            <td><span class="badge badge-ok">2 casos naranja — botones en detalle</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Import Tango acumulativo + reglas + colores</td>
-            <td><span class="badge badge-ok">Listo</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Pipeline km → zona → tarifa + cache domicilio</td>
-            <td><span class="badge badge-ok">Listo en M2</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Mismo cobro Maestro y Fletes (postventa AMBA)</td>
-            <td><span class="badge badge-ok">P0 listo</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Clasificador postventa desde Tango (garantía, mal encajado…)</td>
-            <td><span class="badge badge-ok">P0 listo — 141 reclasificados</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Botones detalle: aprobar viaje / no pagar transporte</td>
-            <td><span class="badge badge-ok">P0 listo</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Alertas honestas y accionables (sin falsos “falta cotizar”)</td>
-            <td><span class="badge badge-ok">P0 listo</span></td>
-          </tr>
-          <tr>
-            <td><strong>Creador</strong></td>
-            <td>Macheo prefactura (motor ya coded)</td>
-            <td><span class="badge badge-ok">Listo — espera archivo cliente</span></td>
+            <td><span class="badge badge-macro">Macro</span> Fletes</td>
+            <td>AMBA/GBA · retiro sucursal · zona km</td>
+            <td><strong>~1.327</strong> casos</td>
+            <td>Reparto local (fuera del LOG Adrián)</td>
           </tr>
         </tbody>
       </table>
       <div class="callout">
-        <strong>Caso piloto (REY Griselda, R-0178-00320443):</strong> cerrado en Maestro y Fletes —
-        verde, LOGISTICA <strong>$45.000</strong>, sin alertas. Ciclo postventa AMBA resuelto por P0.
+        <strong>Lo que antes no existía:</strong> poder preguntar «¿qué casos del maestro
+        <em>no</em> están en el LOG diario?» y viceversa — sin exportar dos Excels a mano.
+        El gap Macro−Micro es información, no bug.
       </div>
     </section>
 
     <!-- MODULOS -->
     <section>
-      <h2>Avance por módulo (desarrollo)</h2>
-      <p class="intro">Porcentaje de funcionalidad implementada en código por mundo logístico.</p>
-      <div class="grid-3">
-        <div class="chart-box"><h3>M1 Interior</h3><canvas id="chartM1Dev"></canvas></div>
-        <div class="chart-box"><h3>M2 Fletes AMBA/GBA</h3><canvas id="chartM2Dev"></canvas></div>
-        <div class="chart-box"><h3>Fleteros locales</h3><canvas id="chartFleDev"></canvas></div>
-        <div class="chart-box"><h3>M3 Duplicados</h3><canvas id="chartM3Dev"></canvas></div>
-        <div class="chart-box"><h3>Infra compartida</h3><canvas id="chartInfraDev"></canvas></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>Avance por módulo (operación)</h2>
-      <p class="intro">Capacidad de usar cada módulo punta a punta con datos productivos hoy.</p>
-      <div class="grid-3">
-        <div class="chart-box"><h3>M1 Interior</h3><canvas id="chartM1Ops"></canvas></div>
-        <div class="chart-box"><h3>M2 Fletes</h3><canvas id="chartM2Ops"></canvas></div>
-        <div class="chart-box"><h3>Fleteros locales</h3><canvas id="chartFleOps"></canvas></div>
-        <div class="chart-box"><h3>M3 Duplicados</h3><canvas id="chartM3Ops"></canvas></div>
-        <div class="chart-box"><h3>Infra compartida</h3><canvas id="chartInfraOps"></canvas></div>
-      </div>
-      <table style="margin-top:1.25rem">
+      <h2>Avance por módulo</h2>
+      <p class="intro">Incluye el nuevo eje Modo Adrián dentro de Infra/UI.</p>
+      <table>
         <thead>
-          <tr><th>Módulo</th><th>Dev</th><th>Operación</th><th>Estado</th><th>Qué falta para 100%</th></tr>
+          <tr><th>Módulo</th><th>Dev</th><th>Ops</th><th>Estado</th><th>Nota Macro/Micro</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>M1 Interior</strong></td><td>97%</td><td>78%</td>
+            <td><strong>Maestro (macro)</strong></td><td>98%</td><td>85%</td>
             <td><span class="badge badge-ok">Operativo</span></td>
-            <td>Macheo cuando cliente suba prefactura Clickpack</td>
+            <td>Quincena, búsqueda, export completo</td>
           </tr>
           <tr>
-            <td><strong>M2 Fletes</strong></td><td>90%</td><td>88%</td>
+            <td><strong>Modo Adrián (micro)</strong></td><td>90%</td><td>82%</td>
+            <td><span class="badge badge-ok">Nuevo</span></td>
+            <td>LOG diario · tarifario + CLP compartidos · falta CLP quincenal (fase 2)</td>
+          </tr>
+          <tr>
+            <td><strong>M2 Fletes</strong></td><td>94%</td><td>92%</td>
             <td><span class="badge badge-ok">Operativo</span></td>
-            <td>129 km opcionales; 4 Fletes_suc sin zona</td>
+            <td>API paginada · stats liviano · grilla rápida · fix 500 quincena</td>
           </tr>
           <tr>
-            <td><strong>Fleteros locales</strong></td><td>48%</td><td>8%</td>
-            <td><span class="badge badge-bad">Inicial</span></td>
-            <td>Macheo destinatario/remito (3/268 hoy)</td>
+            <td><strong>M1 Interior / tarifario</strong></td><td>98%</td><td>82%</td>
+            <td><span class="badge badge-ok">Operativo</span></td>
+            <td>Compartido macro + micro</td>
           </tr>
           <tr>
-            <td><strong>M3 Duplicados</strong></td><td>15%</td><td>5%</td>
-            <td><span class="badge badge-bad">Pendiente</span></td>
-            <td>Spec + reglas edge cases interior</td>
+            <td><strong>Fleteros locales</strong></td><td>78%</td><td>45%</td>
+            <td><span class="badge badge-ok">Piloto</span></td>
+            <td>Macro · import Drive + sim ABR · macheo pedido validado (100/100)</td>
           </tr>
           <tr>
-            <td><strong>Infra / UI</strong></td><td>97%</td><td>94%</td>
+            <td><strong>Infra / UI</strong></td><td>98%</td><td>96%</td>
             <td><span class="badge badge-ok">Sólido</span></td>
-            <td>Card pend. zona interactiva, historial charla, UX postventa</td>
+            <td>Sidebar: Dashboard · Maestro · Modo Adrián · Fletes · Config</td>
           </tr>
         </tbody>
       </table>
     </section>
 
-    <!-- AUDITORIA JUNIO -->
+    <!-- ENTREGAS JUNIO -->
     <section>
-      <h2>Auditoría intensiva — 2 junio 2026 (post-P0)</h2>
-      <p class="intro">Chequeo reproducible con <code>backend/scripts/auditoria_total.py</code> sobre la instalación local.</p>
-      <div class="grid-2">
-        <div class="chart-box">
-          <h3>Cache km: reales vs estimados</h3>
-          <canvas id="chartKmCache"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Grilla Fletes — cobertura</h3>
-          <canvas id="chartFletesCov"></canvas>
-        </div>
-      </div>
-      <table style="margin-top:1rem">
-        <thead><tr><th>Área</th><th>Resultado</th><th>Veredicto</th></tr></thead>
-        <tbody>
-          <tr><td>Km reales en cache</td><td><strong>1.640</strong> geocodificaciones reales en <code>flete_distancias</code></td><td><span class="badge badge-ok">OK</span></td></tr>
-          <tr><td>Cache total km</td><td><strong>3.337</strong> (1.697 estimados · 567 reuso · 3.212 <code>domicilio_fp</code> · 64 <code>pedido-</code>)</td><td><span class="badge badge-ok">OK</span></td></tr>
-          <tr><td>Grilla Fletes (1.327 casos)</td><td><strong>1.101</strong> con sucursal+km+total (<strong>83%</strong>); <strong>0</strong> en alerta</td><td><span class="badge badge-ok">Muy bueno</span></td></tr>
-          <tr><td>AMBA con domicilio sin km</td><td><strong>129</strong> pendientes de geocode (no retiro)</td><td><span class="badge badge-warn">3er batch opcional</span></td></tr>
-          <tr><td>Maestro (2.764 casos)</td><td><strong>2.498</strong> con LOGISTICA (<strong>90%</strong>); <strong>1.178</strong> alerta</td><td><span class="badge badge-ok">Mejoró</span></td></tr>
-          <tr><td>Prefactura / macheo</td><td><strong>0</strong> en toda la base</td><td><span class="badge badge-warn">Espera carga cliente</span></td></tr>
-          <tr><td>Postventa</td><td><strong>0</strong> revisar_manual · <strong>141</strong> viaje aprobado · <strong>2</strong> naranja</td><td><span class="badge badge-ok">P0 OK</span></td></tr>
-          <tr><td>Verde en DB</td><td><strong>1.542</strong> (+141 vs auditoría anterior)</td><td><span class="badge badge-ok">OK</span></td></tr>
-          <tr><td>Fletes_suc LOG $0</td><td><strong>4</strong> casos (sin km)</td><td><span class="badge badge-warn">P1 batch km</span></td></tr>
-          <tr><td>Depósito operativo</td><td><strong>14 (CD)</strong> — 4.333 renglones</td><td><span class="badge badge-ok">Base real</span></td></tr>
-          <tr><td>Sucursal top cache</td><td>CD 1.016 · CG 310 · LP 186 · FL 147 · …</td><td><span class="badge badge-info">Coherente</span></td></tr>
-          <tr><td>UI Streamlit</td><td>4 KPI Fletes; card <strong>Pend. zona km</strong> filtra grilla al clic</td><td><span class="badge badge-ok">Listo</span></td></tr>
-        </tbody>
-      </table>
-      <div class="callout">
-        <strong>Próximo sprint (P1):</strong> batch km 129 domicilios · macheo fleteros ·
-        prefactura Clickpack cuando el cliente suba archivo (motor listo).
-      </div>
-    </section>
-
-    <!-- BASE DE DATOS -->
-    <section>
-      <h2>Base de datos actual (<code>fletes.db</code>)</h2>
-      <p class="intro">Métricas medidas en la instalación local — reflejan uso real, no potencial del código.</p>
-      <div class="grid-2">
-        <div class="chart-box">
-          <h3>Clasificación: Interior vs AMBA/GBA</h3>
-          <canvas id="chartClasif"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Colores en DB (reglas persistidas)</h3>
-          <canvas id="chartColores"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Depósito Tango mapeado</h3>
-          <canvas id="chartDeposito"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Cobertura tarifaria</h3>
-          <canvas id="chartCosto"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Fleteros: matcheados vs pendientes</h3>
-          <canvas id="chartFleteros"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Conciliación prefactura</h3>
-          <canvas id="chartPrefactura"></canvas>
-        </div>
-      </div>
-      <table style="margin-top:1rem">
-        <thead><tr><th>Indicador</th><th>Valor</th><th>Interpretación</th></tr></thead>
-        <tbody>
-          <tr><td>Total renglones Tango</td><td><strong>4.998</strong></td><td>Base actual en instalación local</td></tr>
-          <tr><td>Tarifas cargadas</td><td><strong>1.775</strong></td><td>Tarifario operativo</td></tr>
-          <tr><td>Con costo tarifario</td><td><strong>2.440 (49%)</strong></td><td>AMBA/GBA y casos con tarifa asignada</td></tr>
-          <tr><td>Cache km / zona (<code>flete_distancias</code>)</td><td><strong>3.337</strong></td><td><strong>1.640</strong> km reales · 1.697 estimados · 567 reuso · 64 <code>pedido-</code></td></tr>
-          <tr><td>Pend. zona km (Fletes)</td><td><strong>226</strong> casos</td><td>Card interactiva → ver solo pendientes en grilla</td></tr>
-          <tr><td>Grilla Fletes</td><td><strong>1.327 casos</strong></td><td>83% con sucursal+km+total · 0 alertas</td></tr>
-          <tr><td>Maestro agrupado</td><td><strong>2.764 casos</strong></td><td><strong>90%</strong> con LOGISTICA &gt; 0 · 1.178 alertas</td></tr>
-          <tr><td>Postventa aprobada</td><td><strong>141</strong></td><td>Clasificador Tango + cobro Fletes en Maestro</td></tr>
-          <tr><td>Prefactura cargada</td><td><strong>0</strong></td><td>Conciliación no en uso</td></tr>
-          <tr><td>Macheo Clickpack OK</td><td><strong>0</strong></td><td>Motor listo; cliente sube prefactura interior</td></tr>
-          <tr><td>Depósito 14 (CD)</td><td><strong>4.333</strong></td><td>Único depósito en uso operativo</td></tr>
-          <tr><td>Depósito 2 (Tortuguitas)</td><td><strong>227</strong></td><td>Origen local complementario</td></tr>
-          <tr><td>Dep. 12 / transporte 12</td><td><strong>N/A</strong></td><td>Existe en Tango pero no se usa — fuera del plan</td></tr>
-          <tr><td>Elegir proveedor</td><td><strong>0</strong></td><td>Empates resueltos por reglas de transporte</td></tr>
-          <tr><td>Fleteros Drive</td><td><strong>sin tabla activa</strong></td><td>Módulo listo en código; falta import rutinario</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- MAESTRO MANUAL -->
-    <section>
-      <h2>Similitud vs maestro manual de producción</h2>
-      <p class="intro">Comparación con planillas LOG diarias (WAMARO SA / Tortuguitas) y cruce mayo 2026.</p>
-      <div class="grid-2">
-        <div class="chart-box">
-          <h3>Similitud global estimada</h3>
-          <canvas id="chartSimGlobal"></canvas>
-          <div class="chart-center-label" style="top:54%">
-            <div class="big">62%</div>
-            <div class="small">similar</div>
-          </div>
-        </div>
-        <div class="chart-box">
-          <h3>Dimensiones de similitud</h3>
-          <canvas id="chartSimDims"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Mayo 2026 — cruce por remito</h3>
-          <canvas id="chartMayoCruce"></canvas>
-        </div>
-        <div class="chart-box">
-          <h3>Mayo — logística similar (±15%)</h3>
-          <canvas id="chartMayoLog"></canvas>
-        </div>
-      </div>
-      <table style="margin-top:1rem">
-        <thead><tr><th>Dimensión</th><th>%</th><th>Nota</th></tr></thead>
-        <tbody>
-          <tr><td>Estructura planilla (29 columnas)</td><td><strong>92%</strong></td><td>Columnas idénticas; zonas C0/B3, REMITOS X+R recientes</td></tr>
-          <tr><td>Cobertura de casos</td><td><strong>45–50%</strong></td><td>CD + Tortuguitas; dep. 12 excluido (no operativo)</td></tr>
-          <tr><td>Montos LOGISTICA (donde hay cruce)</td><td><strong>52%</strong></td><td>263/503 casos mayo dentro de tolerancia</td></tr>
-          <tr><td>Control prefactura (PN, dif)</td><td><strong>25–35%</strong></td><td>Sin prefactura en rutina</td></tr>
-          <tr><td><strong>Global ponderado</strong></td><td><strong>~62%</strong></td><td>Sin penalizar por dep. 12 no usado</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- ENTREGAS RECIENTES -->
-    <section>
-      <h2>Entregas recientes (junio 2026)</h2>
-      <p class="intro">Lo implementado en código desde el último reporte de avance.</p>
+      <h2>Entregas recientes — eje Macro/Micro</h2>
       <table>
-        <thead><tr><th>Área</th><th>Entrega</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Área</th><th>Entrega</th><th>Vista</th><th>Estado</th></tr></thead>
         <tbody>
-          <tr><td>M2 Fletes — km</td><td>Pipeline unificado: geocodificación, cache <code>domicilio_fp</code>, reuso entre remitos, auto-calc en detalle</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>M2 Fletes — domicilio</td><td>Limpieza <code>PRINCIPAL:</code>/<code>CASA:</code>; casos sin remito con clave <code>pedido-…</code></td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Alertas</td><td>Transporte 51 vs 40; remito CD solo donde aplica; una luz por columna</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Export maestro</td><td>Excel bajo demanda (sin llamar API en cada rerun); ~11 s vs ~78 s</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Cobro / maestro</td><td><code>resolver_zona_km_pedido</code> alineado con cache domicilio</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Km reales batch</td><td>Múltiples corridas → <strong>1.640</strong> geocodificados reales en DB</td><td><span class="badge badge-ok">Hecho</span></td></tr>
-          <tr><td>UI Streamlit</td><td>Tema por módulo, sidebar marca, leyenda, KPI con acento</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Auditoría</td><td>Script <code>auditoria_total.py</code> + reporte HTML sincronizado con GitHub</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Documentación</td><td><code>HISTORIAL_CHARLA.txt</code> + avance rol creador</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>P0 postventa AMBA</td><td>Cobro unificado, clasificador, botones detalle, alertas</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>UX Fletes — pend. zona</td><td>4 cards informativas; última filtra grilla (226 casos)</td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Caso piloto REY Griselda</td><td>Verde en Maestro — LOG $45.000</td><td><span class="badge badge-ok">Cerrado</span></td></tr>
-          <tr><td>Historial charla</td><td><code>docs/HISTORIAL_CHARLA.txt</code></td><td><span class="badge badge-ok">Listo</span></td></tr>
-          <tr><td>Operación cliente</td><td>Prefactura Clickpack cuando use red interior</td><td><span class="badge badge-warn">Cuando corresponda</span></td></tr>
+          <tr>
+            <td>Modo Adrián</td>
+            <td>Pestaña sidebar · API <code>/modo-adrian/*</code> · LOG diario WAMARO TORTUGUITAS</td>
+            <td><span class="badge badge-micro">Micro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Reglas LOG Adrián</td>
+            <td>Canal 51/83 · sin AMBA 40–50 · corte por fecha entrega · 29 cols</td>
+            <td><span class="badge badge-micro">Micro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Tarifario en vivo</td>
+            <td>Asignación proveedor al calcular cobro (LOG ya no queda en $0)</td>
+            <td><span class="badge badge-macro">Ambas</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Prefactura CLP</td>
+            <td>Macheo ampliado a canal red con <code>excluir_planilla</code> · cruce desde Modo Adrián</td>
+            <td><span class="badge badge-macro">Ambas</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Export maestro</td>
+            <td>Fix LOGISTICA $0 en Excel · tarifario en export</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Bultos</td>
+            <td>Colchón/sommier = 1 u. · patas ÷6 · columna Bultos</td>
+            <td><span class="badge badge-macro">Ambas</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Comparativa Adrián</td>
+            <td><code>comparar_maestro_adrian.py</code> · 420 casos cruzados abr/26</td>
+            <td><span class="badge badge-info">Validación</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>M2 Fletes km</td>
+            <td>Cache domicilio · geocode · grilla 83% completa</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Fleteros locales</td>
+            <td>Import Drive · sim ABR · columna Fletero en grilla · macheo 100/100 piloto</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Estable</span></td>
+          </tr>
+          <tr>
+            <td>UI — grilla rápida</td>
+            <td>Maestro / Fletes / Modo Adrián: <code>st.dataframe</code> + caché API (sin 700+ widgets/fila)</td>
+            <td><span class="badge badge-macro">Ambas</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Rendimiento Fletes</td>
+            <td><code>/fletes/casos</code> paginado (150/pág) · <code>stats_mundo2_liviano</code> · caché UI 300 s</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Fix Fletes quincena</td>
+            <td>Error 500 en <code>/fletes/casos</code> (<code>sucursal_cod</code> filtrado post-build)</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
         </tbody>
       </table>
     </section>
 
-    <!-- ROADMAP CREADOR -->
+    <!-- COMPARATIVA -->
     <section>
-      <h2>Camino a finalización — rol creador (P0 → P2)</h2>
-      <p class="intro">Solo trabajo nuestro. Sin dep. 12 / transporte 12. Prefactura = carga cliente interior.</p>
+      <h2>Validación vs Adrián (abr 2026)</h2>
+      <p class="intro">
+        La carpeta manual sigue siendo <strong>referencia</strong>, no techo del sistema.
+        El Modo Adrián automatiza su lógica; el Maestro va más allá.
+      </p>
+      <div class="grid-2">
+        <div class="chart-box">
+          <h3>420 casos cruzados — calidad</h3>
+          <canvas id="chartAbrCampos"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Export — LOGISTICA con tarifario</h3>
+          <canvas id="chartExportLog"></canvas>
+        </div>
+      </div>
+      <table style="margin-top:1rem">
+        <thead><tr><th>Métrica</th><th>Resultado</th><th>Interpretación</th></tr></thead>
+        <tbody>
+          <tr><td>Modo Adrián abr/26</td><td><strong>1.152</strong> casos</td><td>Automático · canal 51/83</td></tr>
+          <tr><td>Ref. Adrián LOG</td><td><strong>~1.084</strong> remitos</td><td>Subconjunto manual + Tango parcial</td></tr>
+          <tr><td>Cruce remito (app vs Adrián)</td><td><strong>420</strong></td><td>Bultos 89% · identidad confiable</td></tr>
+          <tr><td>Prefactura en LOG abr (micro)</td><td><strong>400/1.152</strong></td><td>Mejora al re-ejecutar cruce CLP</td></tr>
+          <tr><td>Fleteros sim ABR → maestro</td><td><strong>100/100</strong></td><td>Macheo por Nro Pedido Tango · piloto validado</td></tr>
+          <tr><td>Maestro con LOG &gt; 0</td><td><strong>~51%</strong></td><td>Tarifario aplicado · mejora continua</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ROADMAP -->
+    <section>
+      <h2>Próximos pasos — ampliar opciones, no solo igualar Adrián</h2>
       <ol class="steps">
-        <li><strong>P0 — Cobro postventa AMBA</strong> <span class="impact">✓ hecho</span></li>
-        <li><strong>P0 — Clasificador postventa Tango</strong> <span class="impact">✓ 141 reclasificados</span></li>
-        <li><strong>P0 — UX detalle</strong> aprobar / no pagar <span class="impact">✓ hecho</span></li>
-        <li><strong>P0 — Alertas accionables</strong> <span class="impact">✓ hecho</span></li>
-        <li><strong>P1 — Batch km opcional</strong> 129 domicilios AMBA restantes <span class="impact">+2%</span></li>
-        <li><strong>P1 — Macheo fleteros</strong> destinatario / remito <span class="impact">+3%</span></li>
-        <li><strong>P1 — Prefactura Clickpack</strong> cuando cliente suba archivo <span class="impact">+8%</span></li>
-        <li><strong>P2 — M3 duplicados</strong> interior edge cases <span class="impact">+5% dev</span></li>
+        <li><strong>Modo Adrián fase 2 — CLP quincenal</strong> (prefactura <code>tortu_int</code>) <span class="badge badge-micro">Micro</span></li>
+        <li><strong>Liquidación fleteros</strong> (prefactura Blas/Gama por período) <span class="badge badge-macro">Macro</span></li>
+        <li><strong>Export Drive abril</strong> cuando exista (reemplaza simulación) <span class="badge badge-macro">Macro</span></li>
+        <li><strong>Centro de costos</strong> (archivo Adrián) <span class="badge badge-info">Nuevo</span></li>
       </ol>
-      <div class="callout" style="margin-top:1.25rem">
-        <strong>Meta creador:</strong> operador cierra mes con Tango + tarifario base, sin Excel paralelo
-        para AMBA/Fletes. Interior verde cuando el cliente suba prefactura Clickpack (motor ya listo).
+      <div class="callout">
+        <strong>Meta:</strong> cerrar mes con un solo Tango importado. Operador usa <em>Micro</em> para
+        el LOG diario; gerencia usa <em>Macro</em> para el mes entero — sin Excels paralelos ni
+        buscar remitos en Tango.
       </div>
     </section>
 
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        La app está <strong>~91% construida</strong> y <strong>~81% lista</strong> operativamente.
-        <strong>P0 cerrado</strong> (postventa AMBA unificado). Siguiente: <strong>P1</strong> km batch + fleteros;
-        interior verde cuando el cliente suba prefactura Clickpack.
+        La app está <strong>~96% construida</strong> y <strong>~89% operativa</strong>, con
+        <strong>dos miradas complementarias</strong>: Maestro (6.829 casos) para control total y
+        Modo Adrián (1.152 casos LOG abr/26) para la operación diaria — mismo tarifario,
+        misma prefactura CLICPAQ, fleteros locales en piloto macro (sim ABR 100/100 macheo),
+        Fletes con paginación y grilla usable en quincena abril.
       </p>
     </section>
 
@@ -569,103 +639,80 @@
     Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
     Chart.defaults.plugins.legend.position = "bottom";
     Chart.defaults.plugins.legend.labels.boxWidth = 12;
-    Chart.defaults.plugins.legend.labels.padding = 14;
 
     const palette = {
-      done: "#38a169",
-      pending: "#e2e8f0",
-      warn: "#d69e2e",
-      bad: "#e53e3e",
-      info: "#3182ce",
-      purple: "#805ad5",
-      gray: "#a0aec0",
-      interior: "#2b6cb0",
-      amba: "#718096",
-      verde: "#48bb78",
-      amarillo: "#ecc94b",
-      rojo: "#fc8181",
-      gris: "#cbd5e0",
+      done: "#38a169", pending: "#e2e8f0", warn: "#d69e2e", bad: "#e53e3e",
+      info: "#3182ce", macro: "#2b6cb0", micro: "#c2410c",
     };
 
     function donut(id, labels, data, colors, cutout = "68%") {
-      const ctx = document.getElementById(id);
-      return new Chart(ctx, {
+      new Chart(document.getElementById(id), {
         type: "doughnut",
         data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
-        options: {
-          cutout,
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: { position: "bottom" },
-            tooltip: {
-              callbacks: {
-                label: (c) => {
-                  const t = c.dataset.data.reduce((a, b) => a + b, 0);
-                  const p = ((c.raw / t) * 100).toFixed(1);
-                  return ` ${c.label}: ${c.raw} (${p}%)`;
-                }
-              }
-            }
-          }
-        }
+        options: { cutout, responsive: true, plugins: { legend: { position: "bottom" } } }
       });
     }
-
-    function pctDonut(id, pct, labelDone, labelPending, colorDone = palette.done) {
-      donut(id, [labelDone, labelPending], [pct, 100 - pct], [colorDone, palette.pending]);
+    function pctDonut(id, pct, a, b, c = palette.done) {
+      donut(id, [a, b], [pct, 100 - pct], [c, palette.pending]);
     }
 
-    // Global
-    pctDonut("chartDevGlobal", 91, "Desarrollado", "Pendiente");
-    pctDonut("chartOpsGlobal", 81, "Operativo", "Falta", palette.done);
+    pctDonut("chartDevGlobal", 96, "Desarrollado", "Pendiente");
+    pctDonut("chartOpsGlobal", 89, "Operativo", "Falta");
 
-    // Módulos dev
-    pctDonut("chartM1Dev", 97, "Hecho", "Pendiente");
-    pctDonut("chartM2Dev", 90, "Hecho", "Pendiente", palette.info);
-    pctDonut("chartFleDev", 48, "Hecho", "Pendiente", palette.purple);
-    pctDonut("chartM3Dev", 15, "Hecho", "Pendiente", palette.bad);
-    pctDonut("chartInfraDev", 97, "Hecho", "Pendiente");
+    donut("chartAlcanceDual",
+      ["Maestro (6.829)", "Modo Adrián (1.152)", "Solo ref. Adrián (~230)"],
+      [6829, 1152, 230],
+      [palette.macro, palette.micro, palette.warn]);
 
-    // Módulos ops
-    pctDonut("chartM1Ops", 78, "Listo", "Falta");
-    pctDonut("chartM2Ops", 88, "Listo", "Falta", palette.info);
-    pctDonut("chartFleOps", 8, "Listo", "Falta", palette.bad);
-    pctDonut("chartM3Ops", 5, "Listo", "Falta", palette.bad);
-    pctDonut("chartInfraOps", 94, "Listo", "Falta");
+    donut("chartAdrianPf",
+      ["Con prefactura (400)", "Sin prefactura (752)"],
+      [400, 752],
+      [palette.done, palette.pending]);
 
-    // DB
-    donut("chartClasif", ["Interior (2.645)", "AMBA/GBA (2.353)"], [2645, 2353], [palette.interior, palette.amba]);
-    donut("chartColores", ["Amarillo (2.216)", "Verde (1.542)", "Gris (1.238)", "Naranja (2)"], [2216, 1542, 1238, 2], [palette.amarillo, palette.verde, palette.gris, palette.warn]);
-    donut("chartDeposito", ["Dep. 14 CD (4.333)", "Dep. 1 (255)", "Dep. 2 (227)", "Otros (183)"], [4333, 255, 227, 183], [palette.interior, palette.info, palette.amba, palette.gray]);
-    donut("chartKmCache", ["Km reales (1.640)", "Estimados (1.697)"], [1640, 1697], [palette.done, palette.warn]);
-    donut("chartFletesCov", ["Completo (1.101)", "Pendiente (226)"], [1101, 226], [palette.done, palette.pending]);
-    donut("chartCosto", ["Con costo (2.440)", "Sin costo (2.558)"], [2440, 2558], [palette.done, palette.pending]);
-    donut("chartFleteros", ["Matcheados (0)", "Sin import activo"], [1, 99], [palette.done, palette.warn]);
-    donut("chartPrefactura", ["Con prefactura (0)", "Sin prefactura (4.998)"], [0, 4998], [palette.done, palette.bad]);
-
-    // Maestro
-    pctDonut("chartSimGlobal", 62, "Similar", "Diferente", palette.info);
-    new Chart(document.getElementById("chartSimDims"), {
-      type: "doughnut",
+    new Chart(document.getElementById("chartTiempoGanado"), {
+      type: "bar",
       data: {
-        labels: ["Estructura 92%", "Cobertura 48%", "Montos 52%", "Prefactura 30%"],
+        labels: ["LOG Tortuguitas (20 días)", "Prefactura CLP", "Import + reglas mes", "Export / revisión"],
         datasets: [{
-          data: [92, 48, 52, 30],
-          backgroundColor: [palette.done, palette.warn, palette.info, palette.bad],
-          borderWidth: 2, borderColor: "#fff"
+          label: "Horas ganadas (estimado · lo que la app cubre hoy)",
+          data: [55, 10, 8, 5],
+          backgroundColor: "#38a169",
         }]
       },
       options: {
-        cutout: "55%",
-        plugins: {
-          legend: { position: "bottom" },
-          tooltip: { callbacks: { label: (c) => ` ${c.label}` } }
+        indexAxis: "y",
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            title: { display: true, text: "Horas ahorradas por mes (estimado)" },
+            ticks: { callback: (v) => v + " h" }
+          }
         }
       }
     });
-    donut("chartMayoCruce", ["En ambos (503)", "Solo LOG (1.561)", "Solo app (5.477)"], [503, 1561, 5477], [palette.done, palette.warn, palette.info]);
-    donut("chartMayoLog", ["Similar ±15% (263)", "Diferente (240)"], [263, 240], [palette.done, palette.bad]);
+
+    new Chart(document.getElementById("chartAbrCampos"), {
+      type: "bar",
+      data: {
+        labels: ["Bultos", "Destinatario", "Localidad", "Montos"],
+        datasets: [{
+          label: "% OK en 420 cruzados",
+          data: [89.5, 72.6, 70.2, 35.5],
+          backgroundColor: [palette.done, palette.info, palette.info, palette.warn],
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        scales: { x: { max: 100, ticks: { callback: (v) => v + "%" } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    donut("chartExportLog",
+      ["Con LOG (3.505)", "Sin LOG (3.324)"],
+      [3505, 3324],
+      [palette.done, palette.pending]);
   </script>
 </body>
 </html>
