@@ -27,12 +27,7 @@ Columnas clave:
 | `FechaEntrega` / `FechaSolicitado` | Período de control |
 | `EstadoFlete` | Se ignoran filas **Anulado** |
 
-Plantilla de referencia: export Drive mayo 2026 en carpeta LOG **S:**.
-
-**Simulación abril (prueba de macheo):**  
-`data/Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx`  
-Generado con `backend/scripts/generar_fleteros_simulacion_abr.py` desde Tango abril importado.  
-100 filas · pedidos reales · fechas abril/26 · formato idéntico al Drive.
+Plantilla de referencia: export Drive del mes en curso en carpeta LOG **S:**.
 
 ## Flujo en la app
 

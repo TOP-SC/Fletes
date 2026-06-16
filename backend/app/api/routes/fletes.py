@@ -11,6 +11,7 @@ from app.services.fletes_internos_service import (
     listar_detalle_internos,
     listar_fleteros,
     listar_solicitudes,
+    limpiar_solicitudes_fletes,
     mapa_fletero_por_remito,
     resumen_fleteros,
 )
@@ -273,6 +274,11 @@ async def importar_fletes_internos(
 @router.get("/internos/solicitudes")
 def solicitudes_fletes_internos(db: Session = Depends(get_db)) -> list[dict]:
     return listar_solicitudes(db)
+
+
+@router.delete("/internos/solicitudes")
+def vaciar_solicitudes_fletes_internos(db: Session = Depends(get_db)) -> dict:
+    return limpiar_solicitudes_fletes(db)
 
 
 @router.post("/internos/matchear")

@@ -61,7 +61,7 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "modo-adrian-clp-2026-06-03"
+API_BUILD_ESPERADO = "prod-2026-06-12"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
@@ -3286,16 +3286,12 @@ def _config_fleteros_locales() -> None:
         "**No aplica** al LOG diario Modo Adrián (micro — interior canal 51/83)."
     )
     plantilla_download(
-        "Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx",
-        "Descargar simulación ABR 2026 (prueba macheo)",
+        "plantilla_fletes_solicitud.xlsx",
+        "Descargar plantilla Excel (formato Drive)",
     )
     st.caption(
-        "La simulación usa **100 pedidos reales de abril** en formato Drive. "
-        "Regenerar: `python backend/scripts/generar_fleteros_simulacion_abr.py`"
-    )
-    plantilla_download(
-        "plantilla_fletes_solicitud.xlsx",
-        "Descargar plantilla / ejemplo (Drive)",
+        "Mismo formato que el Excel compartido en Drive "
+        "«Fletes solicitados sucursales»."
     )
 
     try:
@@ -3497,11 +3493,30 @@ def _config_fleteros_locales() -> None:
                 st.dataframe(df_resumen, width="stretch", hide_index=True)
         except Exception as exc:
             st.error(str(exc))
+
+        with st.expander("Mantenimiento", expanded=False):
+            st.caption(
+                "Vaciar solicitudes importadas del Drive. **No afecta** envíos Tango, "
+                "tarifarios ni el maestro Fletes."
+            )
+            if st.button("Vaciar solicitudes cargadas", key="cfg_flet_vaciar"):
+                try:
+                    with api_client() as c:
+                        r = c.delete("/fletes/internos/solicitudes")
+                        r.raise_for_status()
+                        msg = r.json()
+                    st.success(msg.get("message", "Listo"))
+                    get_fleteros_cached.clear()
+                    get_fletes_pagina_cached.clear()
+                    get_fletes_stats_cached.clear()
+                    get_dashboard_stats_cached.clear()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
     else:
         st.info(
             "Sin datos de fleteros locales. Importá desde la carpeta LOG en **S:** "
-            "(«Fletes Solicitados sucursales MAYO»), el archivo de **simulación abril** en "
-            "`data/Fletes Solicitados sucursales ABR 2026 - Simulacion Logistica.xlsx`, "
+            "(archivos «Fletes Solicitados sucursales» del mes en curso) "
             "o subí un Excel manualmente."
         )
 
@@ -3644,15 +3659,16 @@ def pagina_configuracion() -> None:
 
     with tab_cp:
         st.subheader("Prefactura diaria del proveedor Clicpaq")
-        plantilla_download("plantilla_clickpack.xlsx", "Plantilla prefactura")
-        plantilla_download(
-            "prefactura_clickpack_prueba.xlsx",
-            "Descargar prefactura ficticia de prueba (3 remitos)",
-        )
-        st.caption(
-            "La prefactura de prueba trae importes para remitos en canal red (transporte 51/40) "
-            "que ya tienen tarifa. **No sirve** si el costo tarifario es $0."
-        )
+        plantilla_download("plantilla_clickpack.xlsx", "Descargar plantilla prefactura")
+        with st.expander("Material de capacitación interna", expanded=False):
+            plantilla_download(
+                "prefactura_clickpack_prueba.xlsx",
+                "Ejemplo prefactura (3 remitos)",
+            )
+            st.caption(
+                "Solo para pruebas de cruce en entorno de desarrollo. "
+                "Requiere Tango importado con tarifario aplicado en esos remitos."
+            )
         cp = st.file_uploader("Excel prefactura", type=["xlsx"], key="cfg_cp")
         if st.button("Importar prefactura", disabled=cp is None):
             try:

@@ -8,7 +8,7 @@ from datetime import date
 from difflib import SequenceMatcher
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.fleteros import nombre_corto_fletero, normalizar_nombre_fletero
@@ -495,3 +495,11 @@ def listar_detalle_internos(
         fila["NRO PEDIDO"] = sol.nro_pedido
         out.append(fila)
     return out
+
+
+def limpiar_solicitudes_fletes(db: Session) -> dict[str, Any]:
+    """Elimina solicitudes Drive importadas (no toca Tango ni tarifarios)."""
+    n = int(db.scalar(select(func.count()).select_from(FleteSolicitud)) or 0)
+    db.execute(delete(FleteSolicitud))
+    db.commit()
+    return {"eliminadas": n, "message": f"Se eliminaron {n} solicitud(es) de fleteros."}
