@@ -1117,10 +1117,16 @@ def get_adrian_dia_cached(params_key: str) -> dict:
     return get_json("/modo-adrian/dia", **json.loads(params_key))
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def get_adrian_mes_cached(params_key: str) -> dict:
+    return get_json("/modo-adrian/casos", **json.loads(params_key))
+
+
 def _clear_adrian_cache() -> None:
     get_adrian_resumen_cached.clear()
     get_adrian_dias_cached.clear()
     get_adrian_dia_cached.clear()
+    get_adrian_mes_cached.clear()
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -2798,41 +2804,65 @@ def pagina_modo_adrian() -> None:
         )
         return
 
-    labels_dia = [
-        f"{d['fecha']} — {d['casos']} caso(s)"
-        for d in dias
-    ]
-    if "adrian_dia_idx" not in st.session_state:
-        st.session_state.adrian_dia_idx = 0
-    idx_dia = st.selectbox(
+    total_mes = int(resumen.get("casos_tortuguitas") or 0)
+    opciones_dia = ["__todos__"] + [d["fecha"] for d in dias]
+    labels_dia: dict[str, str] = {
+        "__todos__": f"Mostrar todo — {total_mes} caso(s)",
+    }
+    for d in dias:
+        labels_dia[d["fecha"]] = f"{d['fecha']} — {d['casos']} caso(s)"
+
+    mes_key = f"{params_mes['mes_control_anio']}-{params_mes['mes_control_mes']}"
+    if st.session_state.get("adrian_mes_prev") != mes_key:
+        st.session_state.adrian_dia_sel = "__todos__"
+        st.session_state.adrian_mes_prev = mes_key
+    elif st.session_state.get("adrian_dia_sel") not in opciones_dia:
+        st.session_state.adrian_dia_sel = "__todos__"
+
+    sel_dia = st.selectbox(
         "Día de entrega — WAMARO TORTUGUITAS",
-        range(len(labels_dia)),
-        format_func=lambda i: labels_dia[i],
-        key="adrian_dia_idx",
+        opciones_dia,
+        format_func=lambda k: labels_dia[k],
+        key="adrian_dia_sel",
     )
-    dia_iso = dias[idx_dia]["fecha"]
+    ver_todo = sel_dia == "__todos__"
 
     page_key = "adrian_maestro_page"
-    if st.session_state.get("adrian_dia_prev") != dia_iso:
+    if st.session_state.get("adrian_dia_prev") != sel_dia:
         st.session_state[page_key] = 1
-    st.session_state.adrian_dia_prev = dia_iso
+    st.session_state.adrian_dia_prev = sel_dia
 
     page = int(st.session_state.get(page_key, 1))
     page_size = 150
 
     try:
-        with st.spinner(f"Cargando LOG del {dia_iso}…"):
-            payload = get_adrian_dia_cached(
-                json.dumps(
-                    {
-                        "dia": dia_iso,
-                        "planilla": planilla_api,
-                        "page": page,
-                        "page_size": page_size,
-                    },
-                    sort_keys=True,
+        if ver_todo:
+            with st.spinner("Cargando LOG del mes…"):
+                payload = get_adrian_mes_cached(
+                    json.dumps(
+                        {
+                            "mes_control_anio": params_mes["mes_control_anio"],
+                            "mes_control_mes": params_mes["mes_control_mes"],
+                            "planilla": planilla_api,
+                            "page": page,
+                            "page_size": page_size,
+                        },
+                        sort_keys=True,
+                    )
                 )
-            )
+        else:
+            with st.spinner(f"Cargando LOG del {sel_dia}…"):
+                payload = get_adrian_dia_cached(
+                    json.dumps(
+                        {
+                            "dia": sel_dia,
+                            "planilla": planilla_api,
+                            "page": page,
+                            "page_size": page_size,
+                        },
+                        sort_keys=True,
+                    )
+                )
     except Exception as exc:
         st.error(str(exc))
         return
@@ -2843,13 +2873,19 @@ def pagina_modo_adrian() -> None:
     total_pages = int(payload.get("total_pages") or 1)
     st.session_state[page_key] = page
 
-    st.caption(
-        f"**{total}** caso(s) con entrega **{dia_iso}** · planilla **WAMARO TORTUGUITAS**. "
-        "Mismas 29 columnas que Adrián. Columna TRANSPORTE en formato operativo (CLICPAQ / LA COSTA)."
-    )
+    if ver_todo:
+        st.caption(
+            f"**{total}** caso(s) con entrega en el mes · planilla **WAMARO TORTUGUITAS**. "
+            "Elegí un día arriba para ver el corte diario o exportar la planilla Adrián."
+        )
+    else:
+        st.caption(
+            f"**{total}** caso(s) con entrega **{sel_dia}** · planilla **WAMARO TORTUGUITAS**. "
+            "Mismas 29 columnas que Adrián. Columna TRANSPORTE en formato operativo (CLICPAQ / LA COSTA)."
+        )
 
     if not filas:
-        st.warning("Sin filas para este día.")
+        st.warning("Sin filas para esta vista.")
         return
 
     df = preparar_maestro_df(pd.DataFrame(filas))
@@ -2874,34 +2910,35 @@ def pagina_modo_adrian() -> None:
     )
     _render_grilla_con_detalle(show_df, df, sel_key="adrian_sel", paginar_cliente=False)
 
-    export_key = "adrian_export_xlsx"
-    from datetime import date as _date
+    if not ver_todo:
+        export_key = "adrian_export_xlsx"
+        from datetime import date as _date
 
-    d_obj = _date.fromisoformat(dia_iso)
-    fname = f"WAMARO TORTUGUITAS - {d_obj.day:02d}_{d_obj.month:02d}_{d_obj.year}.xlsx"
+        d_obj = _date.fromisoformat(sel_dia)
+        fname = f"WAMARO TORTUGUITAS - {d_obj.day:02d}_{d_obj.month:02d}_{d_obj.year}.xlsx"
 
-    if st.button("Generar Excel del día (formato Adrián)", key="adrian_export_btn"):
-        try:
-            with st.spinner("Generando Excel…"):
-                with httpx.Client(base_url=API_URL, timeout=120.0) as c:
-                    r = c.get(
-                        "/modo-adrian/export-dia",
-                        params={"dia": dia_iso, "planilla": planilla_api},
-                    )
-                    r.raise_for_status()
-                st.session_state[export_key] = r.content
-            st.success("Planilla lista — descargá abajo.")
-        except Exception as exc:
-            st.error(f"No se pudo exportar: {exc}")
+        if st.button("Generar Excel del día (formato Adrián)", key="adrian_export_btn"):
+            try:
+                with st.spinner("Generando Excel…"):
+                    with httpx.Client(base_url=API_URL, timeout=120.0) as c:
+                        r = c.get(
+                            "/modo-adrian/export-dia",
+                            params={"dia": sel_dia, "planilla": planilla_api},
+                        )
+                        r.raise_for_status()
+                    st.session_state[export_key] = r.content
+                st.success("Planilla lista — descargá abajo.")
+            except Exception as exc:
+                st.error(f"No se pudo exportar: {exc}")
 
-    if st.session_state.get(export_key):
-        st.download_button(
-            f"Descargar {fname}",
-            st.session_state[export_key],
-            file_name=fname,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="adrian_export_dl",
-        )
+        if st.session_state.get(export_key):
+            st.download_button(
+                f"Descargar {fname}",
+                st.session_state[export_key],
+                file_name=fname,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="adrian_export_dl",
+            )
 
 
 def pagina_fletes() -> None:

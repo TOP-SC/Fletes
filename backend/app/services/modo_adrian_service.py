@@ -330,17 +330,27 @@ def listar_dias_modo_adrian(
     ]
 
 
-def construir_log_dia_adrian(
+def construir_log_adrian_pagina(
     envios: list[Envio],
     *,
-    dia: date,
     planilla: str = "tortuguitas",
+    dia: date | None = None,
+    fecha_desde: date | None = None,
+    fecha_hasta: date | None = None,
     db: Any = None,
     tarifario_ctx: Any = None,
     page: int | None = None,
     page_size: int | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    keys_grupos = _grupos_modo_adrian(envios, planilla=planilla, dia=dia)
+    if dia is not None:
+        keys_grupos = _grupos_modo_adrian(envios, planilla=planilla, dia=dia)
+    else:
+        keys_grupos = _grupos_modo_adrian(
+            envios,
+            planilla=planilla,
+            fecha_desde=fecha_desde,
+            fecha_hasta=fecha_hasta,
+        )
     total = len(keys_grupos)
 
     if page is not None and page_size is not None:
@@ -354,6 +364,27 @@ def construir_log_dia_adrian(
         for key, grupo in keys_grupos
     ]
     return filas, total
+
+
+def construir_log_dia_adrian(
+    envios: list[Envio],
+    *,
+    dia: date,
+    planilla: str = "tortuguitas",
+    db: Any = None,
+    tarifario_ctx: Any = None,
+    page: int | None = None,
+    page_size: int | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    return construir_log_adrian_pagina(
+        envios,
+        planilla=planilla,
+        dia=dia,
+        db=db,
+        tarifario_ctx=tarifario_ctx,
+        page=page,
+        page_size=page_size,
+    )
 
 
 def export_log_dia_adrian_xlsx(
