@@ -366,20 +366,61 @@ def lookup_tarifa_priorizado(
     localidad: str,
     tipo_producto: str,
     medida: str,
+    *,
+    cp: str | None = None,
 ) -> float | None:
     """
-    Tarifario con jerarquía: provincia antes que localidad del cliente.
-    La localidad (ej. Boedo) solo refina si hay fila exacta; si no, tarifa provincial.
+    Tarifario con jerarquía por proveedor.
+    CLICPAQ/ALFARO: resolución CEDOL → precio exacto (sin mezclar capital/interior).
+    FRANSOF/LBO/otros: localidad en matriz; FLETES_SUC usa localidad = zona km.
     """
-    prov = provincia or ""
-    loc = (localidad or "").strip()
-    intentos_loc: list[str] = ["", "INTERIOR"]
-    if loc:
-        intentos_loc.append(loc)
-    prov_geo = normalizar_provincia_geo(prov)
-    if prov_geo:
-        intentos_loc.append(f"{prov_geo} INTERIOR")
-        intentos_loc.append(prov_geo)
+    from app.proveedores import normalizar_proveedor as norm_prov
+    from app.services.cedol_service import lookup_tarifa_con_cedol
+
+    prov_key = norm_prov(proveedor)
+    if prov_key in ("CLICPAQ", "ALFARO"):
+        precio, _ = lookup_tarifa_con_cedol(
+            tarifas,
+            prov_key,
+            provincia,
+            localidad,
+            tipo_producto,
+            medida,
+            cp=cp,
+        )
+        if precio is not None:
+            return precio
+        if _norm(tipo_producto) in ("BASE", "SOMIER"):
+            precio, _ = lookup_tarifa_con_cedol(
+                tarifas,
+                prov_key,
+                provincia,
+                localidad,
+                "COLCHON",
+                medida,
+                cp=cp,
+            )
+            if precio is not None:
+                return precio
+        return None
+
+    if prov_key == "FRANSOF":
+        loc = (localidad or "").strip()
+        intentos_loc: list[str] = []
+        if loc:
+            intentos_loc.append(loc)
+        prov_geo = normalizar_provincia_geo(provincia)
+        if prov_geo:
+            intentos_loc.append(prov_geo)
+        intentos_loc.append("INTERIOR")
+    elif prov_key == "FLETES_SUC":
+        intentos_loc = [localidad or ""]
+    else:
+        loc = (localidad or "").strip()
+        intentos_loc = [loc] if loc else [""]
+        prov_geo = normalizar_provincia_geo(provincia)
+        if prov_geo:
+            intentos_loc.append(prov_geo)
 
     vistos: set[str] = set()
     for loc_try in intentos_loc:
@@ -387,7 +428,7 @@ def lookup_tarifa_priorizado(
         if key in vistos:
             continue
         vistos.add(key)
-        precio = lookup_tarifa(tarifas, proveedor, prov, loc_try, tipo_producto, medida)
+        precio = lookup_tarifa(tarifas, proveedor, provincia, loc_try, tipo_producto, medida)
         if precio is not None:
             return precio
     return None
@@ -410,6 +451,7 @@ def enrich_from_tarifario(
         envio.localidad or "",
         tipo,
         banda or medida or "",
+        cp=envio.cp,
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
         precio = lookup_tarifa_priorizado(
@@ -419,6 +461,7 @@ def enrich_from_tarifario(
             envio.localidad or "",
             "COLCHON",
             banda or "",
+            cp=envio.cp,
         )
 
     if precio is not None and envio.costo_total is None and not envio.regla_postventa:

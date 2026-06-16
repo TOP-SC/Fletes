@@ -59,6 +59,7 @@ def candidatos_tarifa(
             envio.localidad or "",
             tipo,
             banda or medida or "",
+            cp=envio.cp,
         )
         if precio is None and tipo in ("BASE", "SOMIER"):
             precio = lookup_tarifa_priorizado(
@@ -68,6 +69,7 @@ def candidatos_tarifa(
                 envio.localidad or "",
                 "COLCHON",
                 banda or "",
+                cp=envio.cp,
             )
         if precio is not None and precio > 0:
             candidatos.append(_candidato_dict(prov, precio))
@@ -338,6 +340,7 @@ def aplicar_tarifa_proveedor_asignado(envio: Envio, tarifas: list[Tarifa]) -> No
         envio.localidad or "",
         tipo,
         banda or medida or "",
+        cp=envio.cp,
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
         precio = lookup_tarifa_priorizado(
@@ -347,6 +350,7 @@ def aplicar_tarifa_proveedor_asignado(envio: Envio, tarifas: list[Tarifa]) -> No
             envio.localidad or "",
             "COLCHON",
             banda or "",
+            cp=envio.cp,
         )
     if precio is not None:
         aplicar_cobro_linea(envio, tarifas)
@@ -416,6 +420,7 @@ def precio_tarifa_linea(
         envio.localidad or "",
         tipo,
         banda or medida or "",
+        cp=envio.cp,
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
         precio = lookup_tarifa_priorizado(
@@ -425,6 +430,7 @@ def precio_tarifa_linea(
             envio.localidad or "",
             "COLCHON",
             banda or "",
+            cp=envio.cp,
         )
     return precio
 

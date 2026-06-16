@@ -61,7 +61,7 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "prod-2026-06-12"
+API_BUILD_ESPERADO = "cedol-tarifario-2026-06-12"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
