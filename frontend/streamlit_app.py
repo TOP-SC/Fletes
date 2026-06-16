@@ -726,6 +726,26 @@ def _opciones_mes_control() -> list[tuple[int, int, str]]:
 SESSION_MES_CONTROL_IDX = "global_mes_control_idx"
 
 
+def _ui_mes_control_adrian() -> dict[str, Any]:
+    """Mes a controlar — Modo Adrián siempre usa fecha de entrega (LOG diario)."""
+    opciones = _opciones_mes_control()
+    labels = [o[2] for o in opciones]
+    if SESSION_MES_CONTROL_IDX not in st.session_state:
+        st.session_state[SESSION_MES_CONTROL_IDX] = 0
+    idx = st.selectbox(
+        "Mes a controlar",
+        range(len(labels)),
+        format_func=lambda i: labels[i],
+        key=SESSION_MES_CONTROL_IDX,
+    )
+    anio, mes, label_mes = opciones[idx]
+    st.caption(
+        f"Casos LOG con **entrega** en **{label_mes}**. "
+        "La columna *Fecha pedido* puede ser anterior — el corte operativo es por **entrega**."
+    )
+    return {"mes_control_anio": anio, "mes_control_mes": mes}
+
+
 def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
     """Filtros API: mes a controlar, campo fecha, estado remito."""
     opciones = _opciones_mes_control()
@@ -2708,7 +2728,7 @@ def pagina_modo_adrian() -> None:
         "Adrián lo armaba a mano día a día."
     )
 
-    filtros = _ui_filtros_fecha_remito("adrian")
+    filtros = _ui_mes_control_adrian()
     params_mes = {
         "mes_control_anio": filtros["mes_control_anio"],
         "mes_control_mes": filtros["mes_control_mes"],
@@ -2754,19 +2774,20 @@ def pagina_modo_adrian() -> None:
 
     ref = resumen.get("referencia_adrian_abr_2026") or {}
     pf = resumen.get("prefactura_clp") or {}
-    m1, m2, m3, m4, m5 = st.columns(5)
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric("Casos LOG (mes)", resumen.get("casos_tortuguitas", 0))
     m2.metric("Con prefactura CLP", pf.get("con_prefactura_clp", 0))
     m3.metric("Sin prefactura CLP", pf.get("sin_prefactura_clp", 0))
     m4.metric("Días con entregas", len(dias_resp.get("dias") or []))
-    m5.metric(
-        "Ref. Adrián abr/26",
-        ref.get("log_tortuguitas_remitos", "—"),
-        help="Remitos dedup en carpeta 4 ABR 2026.",
-    )
     if pf.get("con_diferencia_prefactura"):
         st.caption(
             f"**{pf['con_diferencia_prefactura']}** caso(s) con diferencia prefactura vs tarifario."
+        )
+    with st.expander("Referencia validación (abr 2026)", expanded=False):
+        st.caption(
+            f"Carpeta manual Adrián — LOG Tortuguitas: **{ref.get('log_tortuguitas_remitos', '—')}** "
+            f"remitos · LOG SA: **{ref.get('log_sa_remitos', '—')}** remitos. "
+            "Solo referencia histórica; no limita el sistema."
         )
 
     dias = dias_resp.get("dias") or []
