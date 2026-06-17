@@ -42,6 +42,20 @@
       min-height: 100vh;
     }
     .wrap { max-width: 1080px; margin: 0 auto; }
+    .pack-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1.25rem; padding: 0.65rem 0.85rem;
+      background: var(--paper); border: 1px solid var(--line);
+      border-radius: 12px; box-shadow: var(--shadow);
+      font-size: 0.82rem;
+    }
+    .pack-nav a {
+      color: var(--accent); text-decoration: none; padding: 0.35rem 0.75rem;
+      border-radius: 999px; border: 1px solid transparent;
+    }
+    .pack-nav a:hover { background: #ebf4ff; border-color: #bee3f8; }
+    .pack-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .pack-nav span { color: var(--muted); padding: 0.35rem 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 
     /* ── Hero ── */
     .hero {
@@ -600,6 +614,14 @@
       </div>
     </header>
 
+    <nav class="pack-nav" aria-label="Pack documental">
+      <span>Pack</span>
+      <a href="AVANCE_PROYECTO.html">Avance del proyecto</a>
+      <a href="DOCUMENTACION_SISTEMA.html">Documentación maestra</a>
+      <a href="ONE_PAGER_VALOR_PROYECTO.html" class="active">One pager valor</a>
+      <a href="COTIZACION_PROYECTO.html">Cotización comparativa</a>
+    </nav>
+
     <div class="print-hint">
       Abrir en Chrome o Edge. Para PDF ejecutivo: Ctrl+P → Guardar como PDF · Márgenes mínimos · Gráficos incluidos.
     </div>
@@ -670,7 +692,7 @@
         % etapa = procesos_contemplados_completos ÷ procesos_contemplados<br>
         · Proceso completo = lógica de negocio implementada + pantalla/flujo operativo usable.<br>
         · Dato no importado (mes vacío) NO reduce el % — la capacidad ya existe.<br>
-        · Piloto Adrián (M0/M1, confianza) = calibración post-entrega, NO resta al %.<br>
+        · Piloto operativo (M0/M1, confianza) = calibración post-entrega, NO resta al %.<br>
         · Etapa 2 (CC, devolución Clicpaq, AMBA quincena, deploy) = fuera de numerador y denominador.<br><br>
         TCO₃ años = (costo_implementación ÷ 3) + (mantenimiento_anual × 3) + labor_residual_excel<br>
         · Labor Excel status quo = 0,9 FTE analista LOG ≈ ARS 3,6 M/año.<br>
@@ -681,7 +703,7 @@
     <!-- 2. ENTREGA -->
     <section id="entrega">
       <h2><span class="num">2</span> Entrega etapa 1 — 10 procesos al 100%</h2>
-      <p class="intro">Cada ítem reemplaza un circuito manual Drive→Excel→mail que Adrián repetía mes a mes.</p>
+      <p class="intro">Cada ítem reemplaza un circuito manual Drive→Excel→mail que el operador repetía mes a mes.</p>
       <div class="process-grid">
         <div class="process-item"><span class="check">✓</span><div><strong>Import Tango acumulativo</strong>Fingerprint · no pisa datos · Maestro + Modo TOP</div></div>
         <div class="process-item"><span class="check">✓</span><div><strong>Motor tarifario</strong>4 proveedores + FLETES_SUC · 5 hojas · reglas 40/51/82</div></div>
@@ -897,7 +919,7 @@
     <section id="impacto">
       <h2><span class="num">6</span> Impacto operativo estimado</h2>
       <p class="intro">
-        Basado en carpeta real abr/2026 (40 archivos = mes completo Adrián). Estimado — pendiente cronometraje piloto formal.
+        Basado en carpeta real abr/2026 (40 archivos = mes completo de referencia manual). Estimado — pendiente cronometraje piloto formal.
       </p>
       <div class="table-wrap">
         <table>

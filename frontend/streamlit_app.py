@@ -3708,11 +3708,11 @@ def pagina_envios_interior() -> None:
 
 
 def pagina_modo_adrian() -> None:
-    """Vista micro: LOG WAMARO diario (mecánica Adrián) vs maestro macro."""
+    """Vista micro: LOG WAMARO diario (Modo TOP) vs maestro macro."""
     _render_page_header(
         etiqueta_pagina("Modo TOP"),
         "LOG WAMARO por día de entrega — interior y red Clickpack. "
-        "Misma planilla Tango, recorte operativo de Adrián.",
+        "Misma planilla Tango, recorte operativo del LOG diario (canal 51/83).",
         "Modo TOP",
     )
 
@@ -3732,12 +3732,12 @@ def pagina_modo_adrian() -> None:
             (
                 "",
                 "**Macro (Maestro / Fletes):** todos los casos Tango, tarifario completo, AMBA incluido. "
-                "Los **fleteros locales** (Blas, Gama, Armando…) se cargan desde el Excel Drive "
+                "Los **fleteros locales** (transportistas AMBA/GBA de confianza) se cargan desde el Excel Drive "
                 "y se ven en **Fletes** — no en esta planilla diaria.  \n\n"
                 "**Micro (Modo TOP):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
                 "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
                 "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
-                "Adrián lo armaba a mano día a día.",
+                "antes se armaba a mano, un archivo por día.",
             ),
         ],
     )
@@ -3799,7 +3799,7 @@ def pagina_modo_adrian() -> None:
         dias = dias_resp.get("dias") or []
         if not dias:
             st.info(
-                "Sin casos LOG en este mes con los filtros Adrián. "
+                "Sin casos LOG en este mes con los filtros del corte diario. "
                 "Probá otro mes o importá Tango desde **Configuración**."
             )
             return
@@ -3882,7 +3882,7 @@ def pagina_modo_adrian() -> None:
         if ver_todo:
             st.caption(
                 f"**{total}** caso(s) con entrega en el mes · planilla **WAMARO TORTUGUITAS**. "
-                "Elegí un día arriba para ver el corte diario o exportar la planilla Adrián."
+                "Elegí un día arriba para ver el corte diario o exportar la planilla del día."
             )
         else:
             st.caption(
@@ -3919,7 +3919,7 @@ def pagina_modo_adrian() -> None:
         [
             (
                 "",
-                f"Carpeta manual Adrián — LOG Tortuguitas: **{ref.get('log_tortuguitas_remitos', '—')}** "
+                f"Referencia manual abr/2026 — LOG Tortuguitas: **{ref.get('log_tortuguitas_remitos', '—')}** "
                 f"remitos · LOG SA: **{ref.get('log_sa_remitos', '—')}** remitos. "
                 "Solo referencia histórica; no limita el sistema.",
             ),
@@ -3952,7 +3952,7 @@ def pagina_modo_adrian() -> None:
         d_obj = _date.fromisoformat(sel_dia)
         fname = f"WAMARO TORTUGUITAS - {d_obj.day:02d}_{d_obj.month:02d}_{d_obj.year}.xlsx"
 
-        if st.button("Generar Excel del día (formato Adrián)", key="adrian_export_btn"):
+        if st.button("Generar Excel del día (formato WAMARO)", key="adrian_export_btn"):
             try:
                 with st.spinner("Generando Excel…"):
                     with httpx.Client(base_url=API_URL, timeout=120.0) as c:
@@ -3979,7 +3979,7 @@ def pagina_modo_adrian() -> None:
 def pagina_fletes() -> None:
     _render_page_header(
         "Fletes",
-        "Mirada macro Mundo 2 — entregas CABA/GBA, fleteros locales (Blas, Gama…) "
+        "Mirada macro Mundo 2 — entregas CABA/GBA, **fleteros locales** (transporte sucursal → domicilio) "
         "y tarifa ref. fletes sucursales (zona km).",
         "Fletes",
     )
@@ -4213,7 +4213,7 @@ def pagina_fletes() -> None:
             """
             - Export del tablero **Seguimientos centralizados** para entregas locales (Distribuidora / sucursales).
             - Que el Excel traiga **código de sucursal** (AV, BE, CA…) si existe.
-            - Km o prefactura **Gama / Blas** cuando tengan el formato.
+            - Km en Tango (si existe) o prefactura del **transportista de flete local** cuando tengan formato.
 
             Detalle: `data/TANGO_PENDIENTE_MUNDO2.md`
             """
@@ -4383,8 +4383,8 @@ def _config_fleteros_locales() -> None:
 
     st.subheader("Fleteros locales (AMBA / GBA)")
     st.caption(
-        "**Mirada macro (Mundo 2 / Fletes):** entregas sucursal → domicilio con fleteros "
-        "de confianza (**Blas**, Gama, Armando…). El cliente puede ver **$0**; "
+        "**Mirada macro (Mundo 2 / Fletes):** entregas sucursal → domicilio con "
+        "**fleteros locales** (transportistas de confianza en AMBA/GBA). El cliente puede ver **$0**; "
         "acá cargás el Excel del Drive y lo cruzás con el **maestro Fletes**. "
         "**No aplica** al LOG diario Modo TOP (micro — interior canal 51/83)."
     )
@@ -4985,7 +4985,7 @@ def pagina_configuracion() -> None:
             "El **detalle postventa** viene del seguimiento Tango (**TipoGestion** / **SubTipo**). "
             "La app lo muestra en cada caso; las **reglas logísticas** (+25%, $0, pagar viaje) "
             "se aplican al importar o con **Aplicar reglas postventa**. "
-            "En el maestro manual de Adrián también aparecen en la columna **obs**."
+            "En la planilla manual de referencia también aparecen en la columna **obs**."
         )
         plantilla_download("plantilla_postventa.xlsx", "Plantilla postventa")
         pv = st.file_uploader("Excel postventa", type=["xlsx"], key="cfg_pv")

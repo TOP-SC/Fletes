@@ -14,7 +14,7 @@ En la red operativa suele estar en:
 La carpeta mensual `4 ABR 2026` tiene LOG WAMARO / AMBA / CLP — **no** reemplaza este Excel.
 
 **Mirada macro:** menú **Fletes** + **Configuración → Fleteros locales**.  
-**Mirada micro (Modo Adrián):** no aplica — es LOG interior canal 51/83, sin fleteros locales.
+**Mirada micro (Modo TOP):** no aplica — es LOG interior canal 51/83, sin fleteros locales.
 
 Columnas clave:
 

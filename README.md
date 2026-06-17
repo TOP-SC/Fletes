@@ -62,7 +62,7 @@ Los importes con ceros de más (`240000.000000000`) se normalizan a **240000** (
 | Mundo | Dev | Operación | Nota |
 |-------|-----|-----------|------|
 | **1 Interior** | 97% | 74% | Proveedor por transporte, alertas operativas. Falta prefactura + macheo |
-| **2 Fletes AMBA/GBA** | 60% | 40% | Alertas en grilla. Falta Gama/Blas + datos Tango sucursal |
+| **2 Fletes AMBA/GBA** | Base entregada | Etapa 2 | Grilla, km, planilla Drive. Falta conciliación $ con prefactura del transportista local + datos Tango sucursal |
 | **3 Duplicados interior** | 15% | 5% | No AMBA/Fletes. Pendiente spec |
 | **Global** | **~78%** | **~58%** | Luces por columna, remitos R/RAR. Falta prefactura en rutina |
 

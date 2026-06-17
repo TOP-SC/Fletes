@@ -31,6 +31,20 @@
       padding: 2rem 1.5rem 3rem;
     }
     .wrap { max-width: 980px; margin: 0 auto; }
+    .pack-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1.25rem; padding: 0.65rem 0.85rem;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 12px; box-shadow: 0 4px 20px rgba(30, 42, 58, 0.08);
+      font-size: 0.82rem;
+    }
+    .pack-nav a {
+      color: var(--accent); text-decoration: none; padding: 0.35rem 0.75rem;
+      border-radius: 999px; border: 1px solid transparent;
+    }
+    .pack-nav a:hover { background: #ebf4ff; border-color: #bee3f8; }
+    .pack-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .pack-nav span { color: var(--muted); padding: 0.35rem 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     .hero {
       background: linear-gradient(135deg, #0a1628 0%, #0d4f8b 50%, #5b21b6 100%);
       color: #fff;
@@ -362,6 +376,14 @@
       </div>
     </header>
 
+    <nav class="pack-nav" aria-label="Pack documental">
+      <span>Pack</span>
+      <a href="AVANCE_PROYECTO.html">Avance del proyecto</a>
+      <a href="DOCUMENTACION_SISTEMA.html">Documentación maestra</a>
+      <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a>
+      <a href="COTIZACION_PROYECTO.html" class="active">Cotización comparativa</a>
+    </nav>
+
     <div class="callout blue" style="margin-bottom:1.25rem">
       <strong>Sincronía con el One pager:</strong> la <a href="ONE_PAGER_VALOR_PROYECTO.html">Executive Value Brief</a>
       cuantifica <em>valor del activo y TCO</em> para decisión interna. Este documento cuantifica
@@ -392,7 +414,7 @@
     </div>
     <p class="muted" style="margin-bottom:1.25rem">
       <strong>Etapa 1 = 100%</strong> significa que todo lo acordado para automatizar en esta fase está construido
-      (lógica + pantallas). El <strong>piloto con Adrián</strong> (M0/M1, confianza en números) es calibración
+      (lógica + pantallas). El <strong>piloto operativo</strong> (M0/M1, confianza en números) es calibración
       operativa — no resta al %. Lo de <strong>etapa 2</strong> (centro de costos, devolución Clicpaq, AMBA quincena, deploy)
       nunca entró en el alcance de etapa 1. Ver <a href="AVANCE_PROYECTO.html">AVANCE_PROYECTO</a>.
     </p>
@@ -717,7 +739,7 @@
       <strong>65–75% de probabilidad</strong> de alcanzar el mismo alcance funcional — especialmente en Modo TOP,
       reglas contractuales y cross Drive, sin acompañamiento continuo del equipo TOP.
       El desarrollo interno lo logró en <strong>~4 meses</strong> con <strong>~760 h</strong>, con
-      <strong>etapa 1 al 100%</strong> (10 procesos contemplados, 10 construidos). El piloto con Adrián
+      <strong>etapa 1 al 100%</strong> (10 procesos contemplados, 10 construidos). El piloto operativo
       valida confianza en los números; no es deuda de alcance. Mantenimiento anual estimado
       <strong>~ARS 1,8 M</strong> vs <strong>ARS 12–21 M</strong> de retainer externo.
       El activo no es solo el código: es el <strong>conocimiento de dominio codificado</strong> que un tercero

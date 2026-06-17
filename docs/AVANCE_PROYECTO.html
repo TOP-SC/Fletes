@@ -218,6 +218,20 @@
       color: var(--muted);
       padding: 1.5rem 0 0.5rem;
     }
+    .pack-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1.25rem; padding: 0.65rem 0.85rem;
+      background: var(--paper); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: var(--shadow);
+      font-size: 0.82rem;
+    }
+    .pack-nav a {
+      color: var(--accent); text-decoration: none; padding: 0.35rem 0.75rem;
+      border-radius: 999px; border: 1px solid transparent;
+    }
+    .pack-nav a:hover { background: #ebf4ff; border-color: #bee3f8; }
+    .pack-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .pack-nav span { color: var(--muted); padding: 0.35rem 0.5rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     .team-block {
       margin-top: 0.5rem;
       border-radius: 16px;
@@ -358,9 +372,17 @@
       </p>
       <div class="meta">
         Actualizado: 17 jun 2026 · Build: <code>fletes-auth-usuarios-2026-06-17</code> ·
-        Etapa 1 cerrada · Piloto Adrián en calibración
+        Etapa 1 cerrada · Piloto operativo en calibración
       </div>
     </header>
+
+    <nav class="pack-nav" aria-label="Pack documental">
+      <span>Pack</span>
+      <a href="AVANCE_PROYECTO.html" class="active">Avance del proyecto</a>
+      <a href="DOCUMENTACION_SISTEMA.html">Documentación maestra</a>
+      <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a>
+      <a href="COTIZACION_PROYECTO.html">Cotización comparativa</a>
+    </nav>
 
     <div class="kpi-row">
       <div class="kpi ok">
@@ -371,7 +393,7 @@
       <div class="kpi ok">
         <div class="label">Procesos finalizados</div>
         <div class="value">10</div>
-        <div class="sub">Adrián deja de hacer el circuito manual en cada uno</div>
+        <div class="sub">El operador deja de hacer el circuito manual en cada uno</div>
       </div>
       <div class="kpi micro">
         <div class="label">Próxima etapa (fuera de alcance)</div>
@@ -414,7 +436,7 @@
           <tr>
             <td><strong>May 2026</strong></td>
             <td>Fletes + Cross + piloto</td>
-            <td>Km cascada, alertas AMBA, Cross Drive, validación carpeta Adrián abr/26</td>
+            <td>Km cascada, alertas AMBA, Cross Drive, validación carpeta referencia abr/26</td>
           </tr>
           <tr>
             <td><strong>Jun 2026</strong></td>
@@ -436,7 +458,7 @@
     <section>
       <h2>Marco de evaluación — qué medimos y qué no</h2>
       <p class="intro">
-        La app <strong>no busca suplantar todo</strong> lo que hace Adrián. Busca que, en cada
+        La app <strong>no busca suplantar todo</strong> el trabajo manual histórico. Busca que, en cada
         proceso que <em>sí</em> cubre, él pueda <strong>olvidarse de la parte manual</strong>:
         eficiente, confiable, y terminado al 100% en esa pieza.
       </p>
@@ -444,11 +466,11 @@
         <strong>Regla de oro — cómo se calcula el % de etapa:</strong><br>
         <code style="font-size:0.95rem">% etapa = procesos contemplados completos ÷ procesos contemplados</code><br><br>
         · <strong>Etapa finalizada</strong> = antes Drive a Drive, tablero a tablero, Excel a Excel →
-        hoy un import o automático en la app. Adrián no repite el circuito manual.<br>
+        hoy un import o automático en la app. El operador no repite el circuito manual.<br>
         · <strong>Dato no cargado</strong> (mes sin importar) <em>no baja</em> el % — la lógica ya está.<br>
         · <strong>Fuera de alcance de esta etapa</strong> = no entra ni en numerador ni en denominador.
         Centro de costos, devolución Clicpaq, AMBA quincena y deploy son <em>etapa 2</em> — no restan al 100%.<br>
-        · <strong>Calibración piloto</strong> (M0/M1, cruce de casos) = Adrián valida que confía en los números.
+        · <strong>Calibración piloto</strong> (M0/M1, cruce de casos) = el operador valida que confía en los números.
         Eso es post-entrega; <em>no es</em> «falta construir» salvo que un proceso contemplado no tenga pantalla ni lógica.
       </div>
 
@@ -457,7 +479,7 @@
       </h3>
       <table>
         <thead>
-          <tr><th>Antes (Adrián)</th><th>Hoy (app)</th><th>Etapa</th></tr>
+          <tr><th>Antes (manual)</th><th>Hoy (app)</th><th>Etapa</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -498,7 +520,7 @@
           <tr>
             <td>App abierta sin control de acceso</td>
             <td>Login Streamlit · super admin · pestaña Usuarios (solo admin)</td>
-            <td><span class="badge badge-ok">Cierre etapa</span></td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
           </tr>
           <tr>
             <td>Centro de costos tortu_int / AMBA quincena</td>
@@ -513,15 +535,15 @@
         </tbody>
       </table>
       <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem">
-        Calibración piloto (M0/M1, km batch fleteros): validación con Adrián — no reduce el % de etapa.
+        Calibración piloto (M0/M1, km batch fleteros): validación con operador de referencia — no reduce el % de etapa.
       </p>
 
       <h3 style="margin:1.75rem 0 0.75rem;font-size:1rem;color:var(--accent)">
         Inventario etapa 1 — solo lo contemplado
       </h3>
       <p class="intro" style="margin-bottom:0.75rem">
-        <span class="badge badge-ok">Finalizada</span> = contemplado y construido (10 filas).
-        <span class="badge badge-info">Próxima etapa</span> = fuera del alcance acordado de etapa 1 (4 filas) —
+        <span class="badge badge-ok">Finalizada</span> = contemplado y construido (10 procesos + login/usuarios de cierre).
+        <span class="badge badge-info">Próxima etapa</span> = fuera del alcance acordado de etapa 1 (4 filas operativas) —
         <strong>no suma ni resta</strong> al porcentaje.
       </p>
       <table>
@@ -582,7 +604,7 @@
           <tr>
             <td>Acceso seguro (login + usuarios)</td>
             <td>Login + Config → Usuarios · super admin</td>
-            <td><span class="badge badge-ok">Cierre etapa</span></td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
           </tr>
           <tr>
             <td>Centro de costos (tortu_int, hurl_int, AMBA)</td>
@@ -600,26 +622,27 @@
             <td><span class="badge badge-info">Próxima etapa</span></td>
           </tr>
           <tr>
-            <td>Acceso usuario / servidor productivo</td>
-            <td>Infra / deploy</td>
+            <td>Deploy en servidor productivo (hosting)</td>
+            <td>Infra — fuera de PC local</td>
             <td><span class="badge badge-info">Próxima etapa</span></td>
           </tr>
         </tbody>
       </table>
       <div class="callout" style="margin-top:1rem">
-        <strong>Etapa 1 = 10 ÷ 10 = 100%.</strong> Los 4 ítems «Próxima etapa» no existían en el
-        alcance de automatización acordado para esta entrega. Si mañana sumamos centro de costos,
+        <strong>Etapa 1 = 10 ÷ 10 = 100%.</strong> <strong>Login y gestión de usuarios</strong> se entregó en jun 2026
+        como cierre de etapa (no es ítem de etapa 2). Los 4 ítems «Próxima etapa» son operativos futuros
+        (centro de costos, devolución CLP, AMBA quincena, deploy). Si mañana sumamos centro de costos,
         ese será el primer ítem de etapa 2 — y recién ahí medimos 0/1, 1/1, etc.
       </div>
     </section>
 
     <!-- NUEVA OPTICA -->
     <section>
-      <h2>De «copiar Adrián» a plataforma con dos miradas</h2>
+      <h2>De planilla manual a plataforma con dos miradas</h2>
       <p class="intro">
         Antes el avance se medía contra un Excel manual. Hoy el producto abre
         <strong>opciones que el proceso en papel no tenía</strong>: ver todo el mes y, al mismo tiempo,
-        trabajar como Adrián día a día — sin duplicar datos ni buscar en Tango.
+        trabajar con el corte LOG diario (Modo TOP) — sin duplicar datos ni buscar en Tango.
       </p>
       <div class="grid-2">
         <div class="dual-card macro">
@@ -651,10 +674,10 @@
       </div>
       <div class="callout opinion">
         <strong>Opinión técnica:</strong> dividir Macro/Micro no es cosmética — es arquitectura.
-        Adrián validó el <em>micro</em> (qué casos van al LOG diario). El <em>macro</em> responde
+        El piloto validó el <em>micro</em> (qué casos van al LOG diario). El <em>macro</em> responde
         preguntas nuevas: «¿cuánto nos cuesta el mes?», «¿dónde están las diferencias?», «¿qué no entró
         al LOG?». Una sola base SQLite evita los Excel paralelos que hoy generan desvíos de alcance
-        (5.978 remitos app vs 1.162 en carpeta Adrián no es error — es distinto propósito).
+        (5.978 remitos app vs 1.162 en carpeta de referencia manual no es error — es distinto propósito).
       </div>
     </section>
 
@@ -663,12 +686,12 @@
       <h2>Tiempo ganado estimado</h2>
       <p class="intro">
         <span class="estimado">Estimado</span> — basado en la carpeta real
-        <code>4 ABR 2026</code> (40 archivos = trabajo mensual completo de Adrián: LOG día a día,
+        <code>4 ABR 2026</code> (40 archivos = trabajo mensual completo de referencia: LOG día a día,
         CLP, centro de costos, AMBA quincenal, viajes). Pendiente cronometraje piloto.
       </p>
       <table style="margin-bottom:1.25rem">
         <thead>
-          <tr><th>Qué hizo Adrián (abr/26)</th><th class="num">Archivos</th><th class="num">Volumen</th><th class="num">Horas manual est.</th><th class="num">Con app hoy</th></tr>
+          <tr><th>Qué hacía el proceso manual (abr/26)</th><th class="num">Archivos</th><th class="num">Volumen</th><th class="num">Horas manual est.</th><th class="num">Con app hoy</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -736,7 +759,7 @@
       <h2>Avance etapa 1 — una sola lectura</h2>
       <p class="intro">
         Un solo porcentaje: <strong>lo contemplado para automatizar en esta etapa</strong>.
-        No mezclar con el mes completo de Adrián ni con etapa 2.
+        No mezclar con el mes completo de referencia manual ni con etapa 2.
       </p>
       <div class="grid-2">
         <div class="chart-box">
@@ -811,7 +834,7 @@
             <td>Operación LOG · export por día · prefactura 400/1.152</td>
           </tr>
           <tr>
-            <td><span class="badge badge-info">Ref.</span> Carpeta Adrián</td>
+            <td><span class="badge badge-info">Ref.</span> Carpeta referencia manual</td>
             <td>Planillas manuales LOG Tortuguitas dedup</td>
             <td><strong>~1.084</strong> remitos</td>
             <td>Validación histórica (no techo del sistema)</td>
@@ -820,7 +843,7 @@
             <td><span class="badge badge-macro">Macro</span> Fletes</td>
             <td>AMBA/GBA · retiro sucursal · zona km</td>
             <td><strong>~1.327</strong> casos</td>
-            <td>Reparto local (fuera del LOG Adrián)</td>
+            <td>Reparto local (fuera del LOG diario Modo TOP)</td>
           </tr>
         </tbody>
       </table>
@@ -890,7 +913,7 @@
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
           <tr>
-            <td>Reglas LOG Adrián</td>
+            <td>Reglas LOG diario (Modo TOP)</td>
             <td>Canal 51/83 · sin AMBA 40–50 · corte por fecha entrega · 29 cols</td>
             <td><span class="badge badge-micro">Micro</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
@@ -920,7 +943,7 @@
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
           <tr>
-            <td>Comparativa Adrián</td>
+            <td>Comparativa vs referencia manual</td>
             <td><code>comparar_maestro_adrian.py</code> · 420 casos cruzados abr/26</td>
             <td><span class="badge badge-info">Validación</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
@@ -956,7 +979,7 @@
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
           <tr>
-            <td>Demo Adrián 16/06</td>
+            <td>Demo operador LOG 16/06</td>
             <td>Presentación en vivo · validación CLICPAQ · casos M0/M1 · seguro $30 · flujo import B3</td>
             <td><span class="badge badge-info">Validación</span></td>
             <td><span class="badge badge-ok">Realizada</span></td>
@@ -997,7 +1020,7 @@
 
     <!-- DEMO ADRIAN -->
     <section>
-      <h2>Demo con Adrián Mantello — 16 jun 2026</h2>
+      <h2>Demo con operador LOG — 16 jun 2026</h2>
       <p class="intro">
         Reunión de validación operativa (transcripción Gemini). Objetivo acordado:
         <strong>probar la herramienta con casos reales</strong> y ajustar hasta aproximar el criterio manual,
@@ -1020,16 +1043,16 @@
           <ul>
             <li><strong>Seguro = $30</strong> (simbólico), no $3.000 — corregir parámetro global</li>
             <li><strong>M0 vs M1</strong> (Mendoza capital/interior + CP) — remito 321849 vs tarifario vigente abr/26</li>
-            <li>Caso OK: R1 conjunto G. Roca — ~$22.147 + $30 ≈ tarifa Adrián</li>
-            <li>Adrián controla <em>diario</em> devolviendo errores a Clicpaq; la app puede soportar cierre quincenal</li>
+            <li>Caso OK: R1 conjunto G. Roca — ~$22.147 + $30 ≈ tarifa de referencia</li>
+            <li>El operador controla <em>diario</em> devolviendo errores a Clicpaq; la app puede soportar cierre quincenal</li>
             <li>Cross interior: descarga planillas Drive «Retirado por Logística …» (Cristian / tráfico)</li>
             <li>Proveedores envían link Drive cotizado — encaja con botón «Importar desde link Drive»</li>
           </ul>
         </div>
       </div>
       <div class="callout">
-        <strong>Próximo paso acordado:</strong> ajustes M0/M1 + seguro, luego Adrián empieza a
-        «jugar» con la app. Fase 2: órdenes de retiro postventa, export estilo planilla Adrián,
+        <strong>Próximo paso acordado:</strong> ajustes M0/M1 + seguro, luego el operador empieza a
+        «jugar» con la app. Fase 2: órdenes de retiro postventa, export estilo planilla manual histórica,
         devolución de prefactura corregida a proveedor.
       </div>
       <table style="margin-top:1rem">
@@ -1048,7 +1071,7 @@
 
     <!-- COMPARATIVA -->
     <section>
-      <h2>Validación vs Adrián (abr 2026)</h2>
+      <h2>Validación vs referencia manual (abr 2026)</h2>
       <p class="intro">
         La carpeta manual sigue siendo <strong>referencia</strong>, no techo del sistema.
         El Modo TOP automatiza su lógica; el Maestro va más allá.
@@ -1069,8 +1092,8 @@
         <thead><tr><th>Métrica</th><th>Resultado</th><th>Interpretación</th></tr></thead>
         <tbody>
           <tr><td>Modo TOP abr/26</td><td><strong>1.152</strong> casos</td><td>Automático · canal 51/83</td></tr>
-          <tr><td>Ref. Adrián LOG</td><td><strong>~1.084</strong> remitos</td><td>Subconjunto manual + Tango parcial</td></tr>
-          <tr><td>Cruce remito (app vs Adrián)</td><td><strong>420</strong></td><td>Bultos 89% · identidad confiable</td></tr>
+          <tr><td>Ref. manual LOG</td><td><strong>~1.084</strong> remitos</td><td>Subconjunto manual + Tango parcial</td></tr>
+          <tr><td>Cruce remito (app vs referencia)</td><td><strong>420</strong></td><td>Bultos 89% · identidad confiable</td></tr>
           <tr><td>Prefactura en LOG abr (micro)</td><td><strong>400/1.152</strong></td><td>Mejora al re-ejecutar cruce CLP</td></tr>
           <tr><td>Fleteros sim ABR → maestro</td><td><strong>100/100</strong></td><td>Macheo por Nro Pedido Tango · piloto validado</td></tr>
           <tr><td>Maestro con LOG &gt; 0</td><td><strong>~51%</strong></td><td>Tarifario aplicado · mejora continua</td></tr>
@@ -1080,10 +1103,18 @@
 
     <!-- ROADMAP -->
     <section>
+      <h2>Cierre etapa 1 — entregado (jun 2026)</h2>
+      <ul style="font-size:0.88rem;margin:0 0 1rem 1.25rem">
+        <li><strong>Login Streamlit</strong> — pantalla de acceso, sesión 7 días <span class="badge badge-ok">Entregado</span></li>
+        <li><strong>Gestión de usuarios</strong> — super admin, pestaña Config → Usuarios <span class="badge badge-ok">Entregado</span></li>
+        <li><strong>Pack documental HTML</strong> — Avance, Documentación, One pager, Cotización <span class="badge badge-ok">Entregado</span></li>
+      </ul>
+    </section>
+
+    <section>
       <h2>Próximos pasos — etapa 2 (nuevo alcance)</h2>
       <ol class="steps">
-        <li><strong>Validación piloto</strong> — M0/M1 + casos cruzados con Excel Adrián <span class="badge badge-warn">Confianza</span></li>
-        <li><strong>Login y usuarios</strong> — acceso Streamlit, super admin, alta/baja usuarios <span class="badge badge-ok">Entregado jun 2026</span></li>
+        <li><strong>Validación piloto</strong> — M0/M1 + casos cruzados con Excel de referencia <span class="badge badge-warn">Confianza</span></li>
         <li><strong>Export devolución Clicpaq</strong> — cerrar loop diario manual <span class="badge badge-info">Etapa 2</span></li>
         <li><strong>Centro de costos</strong> tortu_int / AMBA <span class="badge badge-info">Etapa 2</span></li>
         <li><strong>Entregas AMBA quincenal</strong> <span class="badge badge-info">Etapa 2</span></li>
@@ -1101,7 +1132,7 @@
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
         <strong>Etapa 1: 100%</strong> (10 procesos contemplados, 10 construidos) + <strong>cierre</strong>
-        (login, usuarios, documentación archivable). Lo que Adrián aún hace manual fuera de esa lista —
+        (login, usuarios, documentación archivable). Lo que el operador aún hace manual fuera de esa lista —
         centro de costos, devolución Clicpaq, AMBA quincena, deploy en servidor —
         es <strong>etapa 2</strong>. Siguiente paso: piloto para validar confianza en los números.
       </p>
@@ -1148,7 +1179,10 @@
 
     <footer>
       Control de Fletes · TOP-SC · Documento informativo interno ·
-      <a href="https://github.com/TOP-SC/Fletes" style="color:var(--accent2)">github.com/TOP-SC/Fletes</a>
+      <a href="DOCUMENTACION_SISTEMA.html" style="color:var(--accent2)">Documentación</a> ·
+      <a href="ONE_PAGER_VALOR_PROYECTO.html" style="color:var(--accent2)">One pager</a> ·
+      <a href="COTIZACION_PROYECTO.html" style="color:var(--accent2)">Cotización</a> ·
+      <a href="https://github.com/TOP-SC/Fletes" style="color:var(--accent2)">GitHub</a>
     </footer>
   </div>
 
@@ -1199,7 +1233,7 @@
       [palette.info]);
 
     donut("chartAlcanceDual",
-      ["Maestro (6.829)", "Modo TOP (1.152)", "Solo ref. Adrián (~230)"],
+      ["Maestro (6.829)", "Modo TOP (1.152)", "Solo ref. manual LOG (~230)"],
       [6829, 1152, 230],
       [palette.macro, palette.micro, palette.warn]);
 

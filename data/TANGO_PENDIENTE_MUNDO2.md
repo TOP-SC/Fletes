@@ -18,10 +18,10 @@ Estos exports **mejoran** el módulo pero no bloquean la primera pantalla.
 ## Prioridad media
 
 3. **Km / distancia** (si existe reporte o columna en Tango).  
-   - **Para:** asignar Zona1_10km … Zona4_40+km y auditar Gama/Blas.
+   - **Para:** asignar Zona1_10km … Zona4_40+km y auditar el flete local calculado vs lo facturado.
 
-4. **Prefactura o liquidación de flete local** (Gama, Blas, Cristian Fernández) — cuando tengan formato.  
-   - **Para:** cruce $ como Clickpaq en interior.
+4. **Prefactura o liquidación del transportista de flete local (AMBA/GBA)** — cuando tengan formato estable.  
+   - **Para:** cruce en pesos como Clickpack en interior (cualquier fletero local; el sistema no depende del nombre comercial).
 
 ## Ya en la app (no hace falta bajar de nuevo)
 
