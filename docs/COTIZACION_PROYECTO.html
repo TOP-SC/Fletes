@@ -355,11 +355,18 @@
       </p>
       <div class="meta">
         Corte: junio 2026 · TC referencia USD 1 = ARS 1.150 ·
-        Complementa <a href="DOCUMENTACION_SISTEMA.html" style="color:#a8d4f0">DOCUMENTACION_SISTEMA</a> y
-        <a href="AVANCE_PROYECTO.html" style="color:#a8d4f0">AVANCE_PROYECTO</a> ·
-        ~19.300 líneas Python · 45 servicios · 60+ endpoints
+        Complementa <a href="DOCUMENTACION_SISTEMA.html" style="color:#a8d4f0">DOCUMENTACION_SISTEMA</a>,
+        <a href="AVANCE_PROYECTO.html" style="color:#a8d4f0">AVANCE_PROYECTO</a> y
+        <a href="ONE_PAGER_VALOR_PROYECTO.html" style="color:#a8d4f0">ONE_PAGER valor</a> ·
+        Build <code>fletes-auth-usuarios-2026-06-17</code>
       </div>
     </header>
+
+    <div class="callout blue" style="margin-bottom:1.25rem">
+      <strong>Sincronía con el One pager:</strong> la <a href="ONE_PAGER_VALOR_PROYECTO.html">Executive Value Brief</a>
+      cuantifica <em>valor del activo y TCO</em> para decisión interna. Este documento cuantifica
+      <em>costo de replicar con terceros</em>. Mismos supuestos: ~760 h, 100% etapa 1, USD 50k–80k, TC 1.150.
+    </div>
 
     <div class="stats">
       <div class="stat int">
@@ -395,6 +402,7 @@
       reglas de transporte contractuales (40/51/82), tarifarios 4 proveedores + FLETES_SUC, maestro WAMARO 29 columnas,
       macheo prefactura CLICPAQ, módulo <strong>Fletes</strong> (km, alertas, detalle por caso), vista
       <strong>Modo TOP</strong> (LOG diario WAMARO), <strong>Cross seguimiento</strong> (import Drive / link),
+      <strong>login y gestión de usuarios</strong> (cierre etapa),
       UI Streamlit con paneles operativos, export Excel, scripts de auditoría y documentación HTML.
       No incluye licencias de fletes reales ni ERP Tango.
     </div>
@@ -696,6 +704,7 @@
             <tr><td>5 Fletes</td><td>Km, Mundo 2 parcial</td><td class="num">2</td></tr>
             <tr><td>5b Modo TOP + hardening</td><td>LOG diario, tarifario vivo, CLP, bultos + blanquería</td><td class="num">~2</td></tr>
             <tr><td>5c Cross + Fletes + UX</td><td>Cross Drive link, detalle/alertas Fletes, paneles operativos UI</td><td class="num">~1</td></tr>
+            <tr><td>5d Auth + cierre</td><td>Login Streamlit, usuarios, super admin, docs archivable</td><td class="num">~0,5</td></tr>
             <tr class="highlight"><td><strong>Total</strong></td><td>Etapa 1 cerrada (jun 2026)</td><td class="num"><strong>~19</strong></td></tr>
           </tbody>
         </table>

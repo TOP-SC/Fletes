@@ -315,3 +315,27 @@ class CrossSeguimiento(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
+
+
+class AppUser(Base):
+    """Usuario de acceso a la interfaz Streamlit."""
+
+    __tablename__ = "app_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_super_admin: Mapped[bool] = mapped_column(default=False)
+    activo: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AuthSession(Base):
+    """Token de sesión tras login (header X-Auth-Token)."""
+
+    __tablename__ = "auth_sessions"
+
+    token: Mapped[str] = mapped_column(String(96), primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

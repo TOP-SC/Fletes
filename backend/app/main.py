@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
+    auth,
     cross,
     envios,
     importacion,
@@ -34,6 +35,7 @@ app.add_middleware(
 )
 
 prefix = settings.api_prefix
+app.include_router(auth.router, prefix=prefix)
 app.include_router(cross.router, prefix=prefix)
 app.include_router(importacion.router, prefix=prefix)
 app.include_router(envios.router, prefix=prefix)
@@ -51,6 +53,7 @@ app.include_router(transportes.router, prefix=prefix)
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    _seed_auth()
     _seed_sucursales()
     _seed_transportes()
     _migrate_tarifario_versiones()
@@ -74,6 +77,17 @@ def _migrate_tarifario_versiones() -> None:
     db = SessionLocal()
     try:
         migrate_legacy_tarifas(db)
+    finally:
+        db.close()
+
+
+def _seed_auth() -> None:
+    from app.database import SessionLocal
+    from app.services.auth_service import ensure_super_admin
+
+    db = SessionLocal()
+    try:
+        ensure_super_admin(db)
     finally:
         db.close()
 

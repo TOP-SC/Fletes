@@ -350,15 +350,15 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>Control de Fletes — Avance con mirada Macro + Micro</h1>
+      <h1>Control de Fletes — Recorrido, logros y cierre Etapa 1</h1>
       <p>
-        Plataforma de control logístico con <strong>dos lentes sobre el mismo Tango</strong>.
-        El avance de <strong>esta etapa</strong> se mide solo sobre lo que se
-        <strong>contempló automatizar</strong> — no sobre todo el mes de Adrián.
+        Presentación del <strong>camino recorrido</strong> (feb–jun 2026): de planillas manuales a plataforma
+        con <strong>dos lentes</strong> (Maestro macro + Modo TOP micro), <strong>10 procesos al 100%</strong>
+        y <strong>cierre de etapa</strong> con acceso seguro. No es solo un % de avance — es el relato de lo construido.
       </p>
       <div class="meta">
-        Actualizado: 16 jun 2026 · Build: <code>fletes-detalle-alertas-2026-06-16</code> ·
-        Demo Adrián 16/06
+        Actualizado: 17 jun 2026 · Build: <code>fletes-auth-usuarios-2026-06-17</code> ·
+        Etapa 1 cerrada · Piloto Adrián en calibración
       </div>
     </header>
 
@@ -379,11 +379,58 @@
         <div class="sub">No entran al % — nunca se plantearon en etapa 1</div>
       </div>
       <div class="kpi macro">
-        <div class="label">Validación piloto Adrián</div>
-        <div class="value">En curso</div>
-        <div class="sub">M0/M1, casos cruzados — confianza, no % de etapa</div>
+        <div class="label">Cierre de etapa</div>
+        <div class="value">✓</div>
+        <div class="sub">Login · usuarios · pack documental archivable</div>
       </div>
     </div>
+
+    <!-- CAMINO RECORRIDO -->
+    <section>
+      <h2>El camino que recorrimos — feb → jun 2026</h2>
+      <p class="intro">
+        Línea de tiempo del proyecto TOP. Cada hito sumó capacidad real en producción — no slides.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Período</th><th>Hito</th><th>Logro concreto</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Feb 2026</strong></td>
+            <td>Discovery + arquitectura</td>
+            <td>Relevamiento WAMARO, acuerdos Mantello, decisión Macro/Micro, stack FastAPI + Streamlit</td>
+          </tr>
+          <tr>
+            <td><strong>Mar 2026</strong></td>
+            <td>Core + motor de reglas</td>
+            <td>Import Tango acumulativo, tarifarios 4 proveedores, reglas 40/51/82, postventa</td>
+          </tr>
+          <tr>
+            <td><strong>Abr 2026</strong></td>
+            <td>Maestro + Modo TOP</td>
+            <td>Grilla mensual 29 cols, LOG diario Tortuguitas, export <code>DD_MM_AAAA</code>, CLP</td>
+          </tr>
+          <tr>
+            <td><strong>May 2026</strong></td>
+            <td>Fletes + Cross + piloto</td>
+            <td>Km cascada, alertas AMBA, Cross Drive, validación carpeta Adrián abr/26</td>
+          </tr>
+          <tr>
+            <td><strong>Jun 2026</strong></td>
+            <td>UX + seguridad + cierre</td>
+            <td>Paneles operativos, blanquería bultos, <strong>login y gestión de usuarios</strong>, docs ejecutivas</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout opinion" style="margin-top:1rem">
+        <strong>~760 h senior</strong> · <strong>~19 sem</strong> · <strong>~19.600 LOC Python</strong> ·
+        <strong>60+ endpoints</strong>. Pack para archivar:
+        <a href="DOCUMENTACION_SISTEMA.html">Documentación maestra</a> ·
+        <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a> ·
+        <a href="COTIZACION_PROYECTO.html">Cotización comparativa</a>.
+      </div>
+    </section>
 
     <!-- EVALUACION ENTREGA -->
     <section>
@@ -447,6 +494,11 @@
             <td>Revisar todo el mes a ojo</td>
             <td>Alertas + detalle + filtro «solo con alerta»</td>
             <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>App abierta sin control de acceso</td>
+            <td>Login Streamlit · super admin · pestaña Usuarios (solo admin)</td>
+            <td><span class="badge badge-ok">Cierre etapa</span></td>
           </tr>
           <tr>
             <td>Centro de costos tortu_int / AMBA quincena</td>
@@ -526,6 +578,11 @@
             <td>Fleteros locales + zona km</td>
             <td>Config → Fleteros + módulo Fletes</td>
             <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Acceso seguro (login + usuarios)</td>
+            <td>Login + Config → Usuarios · super admin</td>
+            <td><span class="badge badge-ok">Cierre etapa</span></td>
           </tr>
           <tr>
             <td>Centro de costos (tortu_int, hurl_int, AMBA)</td>
@@ -1026,10 +1083,11 @@
       <h2>Próximos pasos — etapa 2 (nuevo alcance)</h2>
       <ol class="steps">
         <li><strong>Validación piloto</strong> — M0/M1 + casos cruzados con Excel Adrián <span class="badge badge-warn">Confianza</span></li>
+        <li><strong>Login y usuarios</strong> — acceso Streamlit, super admin, alta/baja usuarios <span class="badge badge-ok">Entregado jun 2026</span></li>
         <li><strong>Export devolución Clicpaq</strong> — cerrar loop diario manual <span class="badge badge-info">Etapa 2</span></li>
         <li><strong>Centro de costos</strong> tortu_int / AMBA <span class="badge badge-info">Etapa 2</span></li>
         <li><strong>Entregas AMBA quincenal</strong> <span class="badge badge-info">Etapa 2</span></li>
-        <li><strong>Deploy</strong> usuario/contraseña <span class="badge badge-info">Etapa 2</span></li>
+        <li><strong>Deploy servidor</strong> (hosting fuera de PC local) <span class="badge badge-info">Etapa 2</span></li>
         <li><strong>Modo TOP CLP quincenal</strong> <span class="badge badge-info">Etapa 2</span></li>
       </ol>
       <div class="callout">
@@ -1042,10 +1100,10 @@
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        <strong>Etapa 1: 100%</strong> (10 procesos contemplados, 10 construidos). Lo que Adrián
-        aún hace manual fuera de esa lista — centro de costos, devolución Clicpaq, AMBA quincena —
-        es <strong>etapa 2</strong>, no deuda de esta entrega. Siguiente paso: piloto con Adrián
-        para validar confianza en los números (M0/M1, casos cruzados).
+        <strong>Etapa 1: 100%</strong> (10 procesos contemplados, 10 construidos) + <strong>cierre</strong>
+        (login, usuarios, documentación archivable). Lo que Adrián aún hace manual fuera de esa lista —
+        centro de costos, devolución Clicpaq, AMBA quincena, deploy en servidor —
+        es <strong>etapa 2</strong>. Siguiente paso: piloto para validar confianza en los números.
       </p>
     </section>
 

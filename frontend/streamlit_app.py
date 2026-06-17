@@ -70,7 +70,11 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-ui-panel-acciones-2026-06-17"
+API_BUILD_ESPERADO = "fletes-auth-usuarios-2026-06-17"
+
+AUTH_TOKEN_KEY = "auth_token"
+AUTH_USER_KEY = "auth_username"
+AUTH_SUPER_KEY = "auth_is_super_admin"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
@@ -629,10 +633,294 @@ def inject_theme() -> None:
                 line-height: 1.35;
             }
         }
+        .login-wrap {
+            max-width: 420px;
+            margin: 3rem auto 2rem auto;
+            padding: 2rem 2.25rem;
+            background: #ffffff;
+            border: 1px solid #dde5f0;
+            border-radius: 18px;
+            box-shadow: 0 12px 40px rgba(26, 54, 93, 0.12);
+        }
+        .login-wrap h2 {
+            text-align: center;
+            color: #1a365d !important;
+            margin-bottom: 0.35rem !important;
+        }
+        .login-wrap .login-sub {
+            text-align: center;
+            color: #5c6b7d;
+            font-size: 0.88rem;
+            margin-bottom: 1.25rem;
+        }
+        .users-tab-locked-banner {
+            background: #f1f5f9;
+            border: 1px dashed #94a3b8;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: #64748b;
+            font-size: 0.88rem;
+            margin-bottom: 1rem;
+        }
+        .users-tab-disabled {
+            opacity: 0.48;
+            pointer-events: none;
+            user-select: none;
+            filter: grayscale(0.55);
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+
+def inject_login_shell() -> None:
+    """Pantalla de login a full viewport — fondo logístico / mapa."""
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="stHeader"] { background: transparent !important; }
+        [data-testid="stToolbar"] { display: none !important; }
+        .stApp {
+            background: linear-gradient(145deg, #071525 0%, #0d4f8b 38%, #0f766e 72%, #134e4a 100%) !important;
+        }
+        .main .block-container {
+            max-width: 100% !important;
+            padding-top: 3vh !important;
+            padding-bottom: 3rem !important;
+            z-index: 2;
+            position: relative;
+        }
+        /* Tarjeta login — ancho fijo centrado vía columnas Streamlit */
+        form[data-testid="stForm"] {
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 18px;
+            padding: 1.35rem 1.5rem 1.15rem;
+            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
+            margin: 0;
+        }
+        form[data-testid="stForm"] .login-form-title {
+            font-weight: 700;
+            color: #1a365d;
+            font-size: 1.08rem;
+            margin: 0 0 0.85rem 0;
+            padding: 0;
+        }
+        form[data-testid="stForm"] label[data-testid="stWidgetLabel"] p {
+            font-weight: 600 !important;
+            color: #475569 !important;
+            font-size: 0.82rem !important;
+        }
+        form[data-testid="stForm"] input {
+            min-height: 2.85rem !important;
+            height: 2.85rem !important;
+            padding: 0.55rem 0.85rem !important;
+            border-radius: 10px !important;
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            font-size: 0.95rem !important;
+            color: #1e293b !important;
+        }
+        form[data-testid="stForm"] input::placeholder {
+            color: #94a3b8 !important;
+        }
+        form[data-testid="stForm"] [data-testid="stTextInput"] {
+            margin-bottom: 0.35rem;
+        }
+        form[data-testid="stForm"] button[kind="primaryFormSubmit"],
+        form[data-testid="stForm"] button[data-testid="stFormSubmitButton"] {
+            min-height: 2.85rem !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            margin-top: 0.5rem !important;
+        }
+        .login-hero {
+            text-align: center;
+            margin-bottom: 1.1rem;
+            color: #fff;
+        }
+        .login-scene {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .login-scene-grid {
+            position: absolute;
+            inset: -20%;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            transform: perspective(600px) rotateX(58deg) scale(1.4);
+            transform-origin: center 80%;
+            opacity: 0.55;
+            animation: loginGridDrift 28s linear infinite;
+        }
+        @keyframes loginGridDrift {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 48px 48px, 48px 48px; }
+        }
+        .login-scene-glow {
+            position: absolute;
+            width: 70vmax;
+            height: 70vmax;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+        }
+        .login-scene-glow.a {
+            top: -15%;
+            left: -10%;
+            background: #3182ce;
+        }
+        .login-scene-glow.b {
+            bottom: -20%;
+            right: -15%;
+            background: #14b8a6;
+        }
+        .login-scene-map {
+            position: absolute;
+            inset: 0;
+            opacity: 0.22;
+        }
+        .login-scene-map svg {
+            width: 100%;
+            height: 100%;
+        }
+        .login-route {
+            fill: none;
+            stroke: rgba(255,255,255,0.45);
+            stroke-width: 1.2;
+            stroke-dasharray: 6 8;
+            animation: loginRouteFlow 18s linear infinite;
+        }
+        .login-route.delay { animation-delay: -6s; opacity: 0.7; }
+        @keyframes loginRouteFlow {
+            to { stroke-dashoffset: -120; }
+        }
+        .login-pin {
+            fill: #fbbf24;
+            filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
+            animation: loginPinPulse 2.8s ease-in-out infinite;
+        }
+        .login-pin.b { fill: #38bdf8; animation-delay: -1.2s; }
+        .login-pin.c { fill: #34d399; animation-delay: -2s; }
+        @keyframes loginPinPulse {
+            0%, 100% { opacity: 0.75; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.15); }
+        }
+        .login-scene-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                180deg,
+                rgba(7, 21, 37, 0.15) 0%,
+                rgba(7, 21, 37, 0.45) 55%,
+                rgba(7, 21, 37, 0.72) 100%
+            );
+        }
+        .login-hero-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3.25rem;
+            height: 3.25rem;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(49, 130, 206, 0.35), rgba(20, 184, 166, 0.35));
+            border: 1px solid rgba(255,255,255,0.25);
+            backdrop-filter: blur(8px);
+            font-size: 1.55rem;
+            margin-bottom: 0.65rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .login-hero h1 {
+            font-size: 1.65rem !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+            margin: 0 0 0.35rem 0 !important;
+            letter-spacing: -0.02em;
+        }
+        .login-hero .login-tagline {
+            font-size: 0.92rem;
+            color: rgba(255,255,255,0.82);
+            margin: 0;
+            line-height: 1.45;
+        }
+        .login-hero .login-brand {
+            font-size: 0.76rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            margin-top: 0.5rem;
+        }
+        .login-foot-wrap {
+            text-align: center;
+            margin-top: 0.85rem;
+        }
+        .login-foot-wrap .login-foot {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.62);
+            text-align: center;
+            margin: 0;
+        }
+        .login-kpis {
+            display: flex;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-top: 1.25rem;
+            flex-wrap: wrap;
+        }
+        .login-kpi {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.65);
+            text-align: center;
+        }
+        .login-kpi strong {
+            display: block;
+            color: rgba(255,255,255,0.92);
+            font-size: 0.82rem;
+            margin-bottom: 0.1rem;
+        }
+        .top-watermark { display: none !important; }
+        </style>
+        <div class="login-scene" aria-hidden="true">
+            <div class="login-scene-glow a"></div>
+            <div class="login-scene-glow b"></div>
+            <div class="login-scene-grid"></div>
+            <div class="login-scene-map">
+                <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                    <path class="login-route" d="M120,520 C280,420 360,380 520,340 S780,280 920,220 S1080,180 1140,140"/>
+                    <path class="login-route delay" d="M80,620 C240,560 400,500 560,460 S820,400 980,360 S1100,320 1160,280"/>
+                    <path class="login-route" d="M200,680 C340,620 480,580 640,520 S880,440 1020,400"/>
+                    <circle class="login-pin" cx="520" cy="340" r="7"/>
+                    <circle class="login-pin b" cx="920" cy="220" r="6"/>
+                    <circle class="login-pin c" cx="640" cy="520" r="6"/>
+                    <circle class="login-pin" cx="280" cy="480" r="5" opacity="0.8"/>
+                    <circle class="login-pin b" cx="980" cy="360" r="5" opacity="0.8"/>
+                </svg>
+            </div>
+            <div class="login-scene-overlay"></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _login_hero_html() -> str:
+    return """
+        <div class="login-hero">
+            <div class="login-hero-icon">🚚</div>
+            <h1>Control de Fletes</h1>
+            <p class="login-tagline">Control logístico · geolocalización · tarifarios y rutas</p>
+            <p class="login-brand">SommierCenter · Wamaro · TOP</p>
+        </div>
+    """
 
 
 def inject_top_watermark() -> None:
@@ -742,6 +1030,240 @@ def _render_leyenda_operativa() -> None:
 
 def api_client() -> httpx.Client:
     return httpx.Client(base_url=API_URL, timeout=120.0)
+
+
+def _auth_headers() -> dict[str, str]:
+    token = st.session_state.get(AUTH_TOKEN_KEY)
+    return {"X-Auth-Token": token} if token else {}
+
+
+def _is_super_admin() -> bool:
+    return bool(st.session_state.get(AUTH_SUPER_KEY))
+
+
+def _auth_get_json(path: str) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        r = client.get(path, headers=_auth_headers())
+        r.raise_for_status()
+        return r.json()
+
+
+def _auth_post_json(path: str, payload: dict[str, Any]) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        r = client.post(path, json=payload, headers=_auth_headers())
+        r.raise_for_status()
+        return r.json()
+
+
+def _auth_delete(path: str) -> None:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        r = client.delete(path, headers=_auth_headers())
+        r.raise_for_status()
+
+
+def _auth_put_json(path: str, payload: dict[str, Any]) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        r = client.put(path, json=payload, headers=_auth_headers())
+        r.raise_for_status()
+        return r.json()
+
+
+def _clear_auth_session() -> None:
+    for key in (AUTH_TOKEN_KEY, AUTH_USER_KEY, AUTH_SUPER_KEY):
+        st.session_state.pop(key, None)
+
+
+def _set_auth_session(token: str, username: str, is_super_admin: bool) -> None:
+    st.session_state[AUTH_TOKEN_KEY] = token
+    st.session_state[AUTH_USER_KEY] = username
+    st.session_state[AUTH_SUPER_KEY] = is_super_admin
+
+
+def _restore_auth_session() -> bool:
+    token = st.session_state.get(AUTH_TOKEN_KEY)
+    if not token:
+        return False
+    if not check_health_cached():
+        return bool(st.session_state.get(AUTH_USER_KEY))
+    try:
+        me = _auth_get_json("/auth/me")
+        _set_auth_session(token, me["username"], bool(me.get("is_super_admin")))
+        return True
+    except Exception:
+        _clear_auth_session()
+        return False
+
+
+def _auth_logout() -> None:
+    try:
+        if st.session_state.get(AUTH_TOKEN_KEY) and check_health_cached():
+            with httpx.Client(base_url=API_URL, timeout=10.0) as client:
+                client.post("/auth/logout", headers=_auth_headers())
+    except Exception:
+        pass
+    _clear_auth_session()
+    for key in ("login_user_input", "login_pass_input", "login_form_submitted"):
+        st.session_state.pop(key, None)
+
+
+def _pagina_login() -> None:
+    inject_login_shell()
+
+    _sp1, col, _sp2 = st.columns([1, 1.05, 1])
+
+    with col:
+        st.markdown(_login_hero_html(), unsafe_allow_html=True)
+
+        if not check_health_cached():
+            st.error("El servidor no está disponible. Ejecutá **Iniciar_Fletes.bat** e intentá de nuevo.")
+            return
+
+        for _lk in ("login_user_input", "login_pass_input"):
+            if _lk not in st.session_state:
+                st.session_state[_lk] = ""
+
+        with st.form("login_form", clear_on_submit=False):
+            st.markdown('<p class="login-form-title">Iniciar sesión</p>', unsafe_allow_html=True)
+            usuario = st.text_input(
+                "Usuario",
+                placeholder="Ingresá tu usuario",
+                key="login_user_input",
+                autocomplete="off",
+            )
+            clave = st.text_input(
+                "Contraseña",
+                type="password",
+                placeholder="Ingresá tu contraseña",
+                key="login_pass_input",
+                autocomplete="new-password",
+            )
+            submit = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+
+        st.markdown(
+            """
+            <div class="login-foot-wrap">
+              <p class="login-foot">Contactá al administrador TOP si no tenés usuario.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            """
+            <div class="login-kpis">
+                <div class="login-kpi"><strong>29</strong> sucursales</div>
+                <div class="login-kpi"><strong>3</strong> mundos logísticos</div>
+                <div class="login-kpi"><strong>Km</strong> tarifario AMBA</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if submit:
+            if not (usuario or "").strip():
+                st.error("Ingresá tu usuario.")
+                return
+            if not clave:
+                st.error("Ingresá tu contraseña.")
+                return
+            try:
+                with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+                    r = client.post(
+                        "/auth/login",
+                        json={"username": usuario.strip(), "password": clave},
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+                _set_auth_session(data["token"], data["username"], bool(data.get("is_super_admin")))
+                st.session_state.pop("login_user_input", None)
+                st.session_state.pop("login_pass_input", None)
+                st.rerun()
+            except httpx.HTTPStatusError as exc:
+                st.error(_detalle_error_api(exc))
+            except Exception as exc:
+                st.error(str(exc))
+
+
+def _config_usuarios() -> None:
+    is_super = _is_super_admin()
+    st.subheader("Usuarios de la aplicación")
+    if is_super:
+        st.caption(
+            "Solo el super administrador puede crear o eliminar usuarios. "
+            "Los demás usuarios ven la app completa excepto esta sección."
+        )
+    else:
+        st.markdown(
+            """
+            <div class="users-tab-locked-banner">
+              🔒 <strong>Acceso restringido.</strong>
+              Solo el super administrador puede gestionar usuarios.
+              El resto de Configuración y la app siguen disponibles con tu usuario.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    wrap_start = '<div class="users-tab-disabled">' if not is_super else "<div>"
+    st.markdown(wrap_start, unsafe_allow_html=True)
+
+    try:
+        users = _auth_get_json("/auth/usuarios") if is_super else []
+    except Exception:
+        users = []
+
+    if is_super and users:
+        df_u = pd.DataFrame(users)
+        show_cols = [c for c in ("username", "is_super_admin", "activo") if c in df_u.columns]
+        if show_cols:
+            df_show = df_u[show_cols].copy()
+            df_show.columns = ["Usuario", "Super admin", "Activo"]
+            st.dataframe(df_show, width="stretch", hide_index=True, height=min(220, 40 + 35 * len(df_show)))
+    elif not is_super:
+        st.text_input("Usuario nuevo", value="", disabled=True, key="usr_lock_name")
+        st.text_input("Contraseña", value="", type="password", disabled=True, key="usr_lock_pass")
+        st.button("Agregar usuario", disabled=True, key="usr_lock_add")
+
+    st.markdown("---")
+    st.markdown("**Alta de usuario**")
+    nuevo_user = st.text_input("Usuario nuevo", key="cfg_user_new", disabled=not is_super)
+    nueva_pass = st.text_input(
+        "Contraseña",
+        type="password",
+        key="cfg_user_pass",
+        disabled=not is_super,
+        help="Mínimo 6 caracteres. Letras, números, punto, guión.",
+    )
+    if st.button("Agregar usuario", type="primary", disabled=not is_super, key="cfg_user_add"):
+        try:
+            _auth_post_json("/auth/usuarios", {"username": nuevo_user, "password": nueva_pass})
+            st.success(f"Usuario «{nuevo_user.strip().lower()}» creado.")
+            st.rerun()
+        except httpx.HTTPStatusError as exc:
+            st.error(_detalle_error_api(exc))
+        except Exception as exc:
+            st.error(str(exc))
+
+    if is_super and users:
+        st.markdown("---")
+        st.markdown("**Eliminar usuario**")
+        opciones = [
+            u["username"]
+            for u in users
+            if not u.get("is_super_admin")
+        ]
+        if opciones:
+            borrar = st.selectbox("Usuario a eliminar", opciones, key="cfg_user_del_sel")
+            if st.button("Eliminar usuario", key="cfg_user_del_btn"):
+                try:
+                    _auth_delete(f"/auth/usuarios/{borrar}")
+                    st.success(f"Usuario «{borrar}» eliminado.")
+                    st.rerun()
+                except httpx.HTTPStatusError as exc:
+                    st.error(_detalle_error_api(exc))
+        else:
+            st.caption("No hay usuarios regulares para eliminar.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _detalle_error_api(exc: Exception) -> str:
@@ -4296,7 +4818,7 @@ def pagina_configuracion() -> None:
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
         st.stop()
 
-    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys = st.tabs(
+    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_users = st.tabs(
         [
             "Tango (principal)",
             "Prefactura Clicpaq",
@@ -4306,6 +4828,7 @@ def pagina_configuracion() -> None:
             "Fleteros locales",
             "Cross seguimiento",
             "Sistema",
+            "Usuarios",
         ]
     )
 
@@ -4770,6 +5293,9 @@ def pagina_configuracion() -> None:
             except Exception as exc:
                 st.error(str(exc))
 
+    with tab_users:
+        _config_usuarios()
+
 
 # --- Main ---
 
@@ -4782,6 +5308,10 @@ st.set_page_config(
 
 inject_theme()
 inject_top_watermark()
+
+if not _restore_auth_session():
+    _pagina_login()
+    st.stop()
 
 # Limpiar enlaces viejos (?_gcaso=) que abrían pestaña duplicada
 if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
@@ -4798,6 +5328,15 @@ st.sidebar.markdown(
     "</div>",
     unsafe_allow_html=True,
 )
+
+_logged_user = st.session_state.get(AUTH_USER_KEY) or ""
+if _logged_user:
+    st.sidebar.caption(f"Usuario: **{_logged_user}**")
+    if _is_super_admin():
+        st.sidebar.caption("Super administrador")
+    if st.sidebar.button("Cerrar sesión", use_container_width=True, key="btn_logout"):
+        _auth_logout()
+        st.rerun()
 
 pagina = _sidebar_nav_tree()
 inject_module_accent(pagina)

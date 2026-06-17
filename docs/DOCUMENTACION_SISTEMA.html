@@ -309,12 +309,14 @@
 <div class="layout">
   <aside class="sidebar">
     <div class="sidebar-brand">Control de Fletes</div>
-    <div class="sidebar-tag">Documentación maestra · v1.0</div>
+    <div class="sidebar-tag">Documentación maestra · Etapa 1 cerrada</div>
     <nav>
       <div class="nav-group">Ejecutivo</div>
       <a href="#resumen">Resumen ejecutivo</a>
+      <a href="#pack">Pack documental ↓</a>
+      <a href="AVANCE_PROYECTO.html">Recorrido y logros ↗</a>
+      <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor ↗</a>
       <a href="COTIZACION_PROYECTO.html">Cotización comparativa ↗</a>
-      <a href="AVANCE_PROYECTO.html">Avance macro/micro ↗</a>
       <a href="#vision">Visión y alcance</a>
       <a href="#automation">Tipo de automatización</a>
       <a href="#equipo">Escala y liderazgo técnico</a>
@@ -331,30 +333,32 @@
       <a href="#matching">Geocoding y matching</a>
       <div class="nav-group">Producto</div>
       <a href="#ui">Interfaz de usuario</a>
+      <a href="#auth">Acceso y usuarios</a>
       <a href="#mantello">Integración Mantello</a>
       <a href="#timeline">Línea de tiempo y esfuerzo</a>
       <a href="#roadmap">Roadmap futuro</a>
       <a href="#operacion">Operación y despliegue</a>
     </nav>
-    <div class="build-badge">Build API<br><strong>modo-adrian-clp-2026-06-03</strong></div>
+    <div class="build-badge">Build API<br><strong>fletes-auth-usuarios-2026-06-17</strong><br>Etapa 1 · 100%</div>
   </aside>
 
   <main class="main">
     <header class="hero">
       <div class="hero-inner">
         <div class="hero-eyebrow">SommierCenter · Wamaro · Logística Argentina</div>
-        <h1>Control de Fletes<br><em>Sistema de automatización logística integral</em></h1>
+        <h1>Control de Fletes<br><em>Sistema de automatización logística — Etapa 1 archivada</em></h1>
         <p class="hero-lead">
-          Plataforma full-stack diseñada para reemplazar planillas manuales, reglas implícitas
-          y cruces a ojo entre Tango, tarifarios de cuatro proveedores regionales y prefacturas
-          diarias — con trazabilidad, reglas de negocio codificadas y una UI operativa lista para producción.
+          Plataforma full-stack que reemplaza planillas manuales, reglas implícitas y cruces a ojo entre Tango,
+          tarifarios Mantello, prefacturas CLP y LOG diario WAMARO — con trazabilidad, reglas codificadas,
+          UI operativa y <strong>acceso controlado por usuario</strong>. Documento de referencia para archivar y compartir.
         </p>
         <div class="hero-meta">
+          <span class="hero-pill"><strong>Etapa 1</strong> 100% (10/10 procesos)</span>
           <span class="hero-pill"><strong>FastAPI</strong> + Streamlit + SQLite</span>
-          <span class="hero-pill"><strong>29</strong> sucursales georreferenciadas</span>
-          <span class="hero-pill"><strong>4</strong> proveedores interior + FLETES_SUC</span>
-          <span class="hero-pill"><strong>~40</strong> endpoints REST documentados</span>
-          <span class="hero-pill">Generado · <strong>Junio 2026</strong></span>
+          <span class="hero-pill"><strong>~760 h</strong> · ~19 sem senior</span>
+          <span class="hero-pill"><strong>60+</strong> endpoints REST</span>
+          <span class="hero-pill"><strong>Login</strong> + gestión usuarios</span>
+          <span class="hero-pill">Corte · <strong>Jun 2026</strong></span>
         </div>
       </div>
     </header>
@@ -370,13 +374,13 @@
         </p>
 
         <div class="stat-row">
-          <div class="stat"><div class="stat-value">3</div><div class="stat-label">Mundos logísticos</div></div>
-          <div class="stat"><div class="stat-value">8</div><div class="stat-label">Tablas principales</div></div>
-          <div class="stat"><div class="stat-value">25+</div><div class="stat-label">Servicios backend</div></div>
-          <div class="stat"><div class="stat-value">7</div><div class="stat-label">Pantallas operativas</div></div>
-          <div class="stat"><div class="stat-value">~16</div><div class="stat-label">Semanas eq. senior*</div></div>
+          <div class="stat"><div class="stat-value">100%</div><div class="stat-label">Etapa 1 cerrada</div></div>
+          <div class="stat"><div class="stat-value">10</div><div class="stat-label">Procesos automatizados</div></div>
+          <div class="stat"><div class="stat-value">45+</div><div class="stat-label">Servicios backend</div></div>
+          <div class="stat"><div class="stat-value">~5.4k</div><div class="stat-label">LOC UI Streamlit</div></div>
+          <div class="stat"><div class="stat-value">~19</div><div class="stat-label">Semanas eq. senior</div></div>
         </div>
-        <p style="font-size:0.78rem;color:var(--ink-muted);">* Estimación de esfuerzo acumulado de diseño, dominio, backend, UI, integración Mantello y módulo Fletes parcial — ver sección Timeline.</p>
+        <p style="font-size:0.78rem;color:var(--ink-muted);">~19.600 LOC Python total · Feb–Jun 2026 · Equipo TOP (Giselle / Juan / Jerson).</p>
 
         <div class="card-grid">
           <div class="card">
@@ -402,11 +406,51 @@
         </div>
 
         <div class="callout">
-          <p><strong>Avance global (jun 2026):</strong> ~<strong>95%</strong> desarrollo · ~<strong>86%</strong> operación lista.
-          Arquitectura <strong>macro (Maestro)</strong> + <strong>micro (Modo Adrián)</strong> sobre el mismo Tango.
-          Ver <a href="AVANCE_PROYECTO.html">AVANCE_PROYECTO.html</a> y
-          <a href="COTIZACION_PROYECTO.html">COTIZACION_PROYECTO.html</a>.</p>
+          <p><strong>Etapa 1 (jun 2026):</strong> <strong>100%</strong> — 10 procesos contemplados construidos (lógica + pantalla).
+          Arquitectura <strong>macro (Maestro)</strong> + <strong>micro (Modo TOP)</strong> sobre el mismo Tango.
+          <strong>Cierre:</strong> login, gestión de usuarios, pack documental.
+          Ver <a href="AVANCE_PROYECTO.html">recorrido y logros</a>,
+          <a href="ONE_PAGER_VALOR_PROYECTO.html">valor del activo</a>,
+          <a href="COTIZACION_PROYECTO.html">cotización externa</a>.</p>
         </div>
+      </section>
+
+      <!-- PACK DOCUMENTAL -->
+      <section id="pack">
+        <h2>Pack documental — Etapa 1 para archivar</h2>
+        <p class="section-intro">
+          Cuatro documentos HTML autocontenidos (sin servidor). Imprimibles a PDF desde Chrome/Edge.
+          Compartir la carpeta <code>docs/</code> o exportar cada uno.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Documento</th><th>Para quién</th><th>Contenido</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>DOCUMENTACION_SISTEMA.html</strong> (este)</td>
+                <td>Técnico / archivo</td>
+                <td>Stack, arquitectura, API, datos, negocio, operación, herramientas</td>
+              </tr>
+              <tr>
+                <td><a href="AVANCE_PROYECTO.html">AVANCE_PROYECTO.html</a></td>
+                <td>Operación / stakeholders</td>
+                <td>Recorrido feb–jun, logros, 10/10 procesos, piloto, gráficos</td>
+              </tr>
+              <tr>
+                <td><a href="ONE_PAGER_VALOR_PROYECTO.html">ONE_PAGER_VALOR_PROYECTO.html</a></td>
+                <td>Dirección / inversión</td>
+                <td>Valor del activo, TCO, moat, impacto horas — lectura 5 min</td>
+              </tr>
+              <tr>
+                <td><a href="COTIZACION_PROYECTO.html">COTIZACION_PROYECTO.html</a></td>
+                <td>Compras / comparativa</td>
+                <td>Costo proveedor externo USD, plazos, probabilidad paridad</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Repositorio:</strong> <a href="https://github.com/TOP-SC/Fletes">github.com/TOP-SC/Fletes</a> ·
+        Arranque local: <code>Iniciar_Fletes.bat</code></p>
       </section>
 
       <!-- VISIÓN -->
@@ -587,6 +631,9 @@
               <tr><td>Excel</td><td>pandas + openpyxl</td><td>Imports tolerantes a columnas variables</td></tr>
               <tr><td>HTTP</td><td>httpx (UI), requests (geocoding)</td><td>Cliente API desacoplado</td></tr>
               <tr><td>Geocoding</td><td>Nominatim (default) / ORS (opcional)</td><td>Throttle 1.1s, cache persistente</td></tr>
+              <tr><td>Autenticación</td><td>PBKDF2-SHA256 + sesiones token</td><td>Tablas <code>app_users</code>, <code>auth_sessions</code> · header <code>X-Auth-Token</code></td></tr>
+              <tr><td>Control versiones</td><td>Git + build ID</td><td><code>backend/app/version.py</code> sincronizado con UI</td></tr>
+              <tr><td>IDE / entorno</td><td>Cursor, Python venv, PowerShell</td><td>Windows-first · <code>Iniciar_Fletes.bat</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -603,7 +650,7 @@
           </div>
           <div class="arch-arrow">↕ HTTP / JSON</div>
           <div class="arch-layer">
-            <div class="arch-box api">FastAPI Routers<br><small>8 módulos routes/</small></div>
+            <div class="arch-box api">FastAPI Routers<br><small>12+ módulos routes/</small></div>
           </div>
           <div class="arch-arrow">↕</div>
           <div class="arch-layer">
@@ -641,13 +688,13 @@
 ├── Iniciar_Fletes.bat          ← arranque one-click
 ├── backend/app/
 │   ├── main.py                 ← FastAPI app + startup sync sucursales
-│   ├── models.py               ← 8 entidades SQLAlchemy
+│   ├── models.py               ← entidades SQLAlchemy (+ usuarios auth)
 │   ├── proveedores.py          ← dominio zonas proveedor
 │   ├── transporte_reglas.py    ← códigos 40/51/82
-│   ├── api/routes/             ← importacion, envios, tarifas, mundo1,
-│   │                               maestro, fletes, proveedores, sucursales, sistema
-│   └── services/               ← lógica de negocio (25+ módulos)
-├── frontend/streamlit_app.py   ← UI operativa (~1700 líneas)
+│   ├── api/routes/             ← auth, importacion, envios, tarifas, maestro,
+│   │                               modo_adrian, fletes, cross, proveedores, sistema…
+│   └── services/               ← lógica de negocio (45+ módulos)
+├── frontend/streamlit_app.py   ← UI operativa (~5.400 líneas)
 ├── data/
 │   ├── fletes.db               ← base operativa
 │   ├── sucursales.json         ← 29 sucursales AV, BE, CA…
@@ -671,6 +718,9 @@
               <tr><td><code>liquidacion_lineas</code></td><td>id</td><td>Liquidación quincenal Clickpack</td></tr>
               <tr><td><code>flete_distancias</code></td><td>remito_norm</td><td>Cache km, zona, sucursal origen, coords destino</td></tr>
               <tr><td><code>sucursales</code></td><td>codigo</td><td>Catálogo 29 puntos con lat/lon y zona CABA/GBA/INTERIOR</td></tr>
+              <tr><td><code>app_users</code></td><td>id</td><td>Usuarios login Streamlit (hash PBKDF2, flag super admin)</td></tr>
+              <tr><td><code>auth_sessions</code></td><td>token</td><td>Sesiones post-login (TTL 7 días)</td></tr>
+              <tr><td><code>cross_seguimiento</code></td><td>id</td><td>Filas import planillas cross Drive por remito</td></tr>
             </tbody>
           </table>
         </div>
@@ -701,6 +751,11 @@
               <tr><td>POST</td><td><code>/proveedores/elegir</code></td><td>Asignación manual proveedor</td></tr>
               <tr><td>GET</td><td><code>/sucursales</code></td><td>Catálogo sucursales</td></tr>
               <tr><td>POST</td><td><code>/sistema/cierre-mensual</code></td><td>Reset operativo mensual</td></tr>
+              <tr><td>POST</td><td><code>/auth/login</code></td><td>Login → token sesión</td></tr>
+              <tr><td>GET</td><td><code>/auth/me</code></td><td>Usuario actual (header X-Auth-Token)</td></tr>
+              <tr><td>GET/POST/DELETE</td><td><code>/auth/usuarios/*</code></td><td>CRUD usuarios (solo super admin)</td></tr>
+              <tr><td>GET/POST</td><td><code>/cross/*</code></td><td>Import seguimiento cross Drive</td></tr>
+              <tr><td>GET</td><td><code>/modo-adrian/*</code></td><td>Modo TOP — LOG diario (API legacy path)</td></tr>
             </tbody>
           </table>
         </div>
@@ -810,15 +865,36 @@
             <tbody>
               <tr><td>Dashboard</td><td><code>/envios/stats</code>, <code>/mundo1/stats</code></td><td>Métricas, chips por color, alertas datos</td></tr>
               <tr><td>Maestro (macro)</td><td><code>/maestro</code></td><td>Grilla completa, quincena, export Excel, macheo CLP</td></tr>
-              <tr><td>Modo Adrián (micro)</td><td><code>/modo-adrian/*</code></td><td>LOG diario WAMARO TORTUGUITAS · canal 51/83 · export por día</td></tr>
+              <tr><td>Modo TOP (micro)</td><td><code>/modo-adrian/*</code></td><td>LOG diario WAMARO TORTUGUITAS · canal 51/83 · export por día</td></tr>
               <tr><td>Proveedores (×4)</td><td><code>/maestro?vista_proveedor=</code></td><td>Filtro por zona tarifaria</td></tr>
               <tr><td>Proveedor a elegir</td><td><code>solo_pendiente_proveedor</code></td><td>Desplegable + fila clicable</td></tr>
-              <tr><td>Fletes</td><td><code>/fletes/*</code></td><td>Calcular km batch, detalle inline</td></tr>
-              <tr><td>Configuración</td><td>Multi-tab</td><td>Tango, prefactura, postventa, liquidación, tarifarios, sistema</td></tr>
+              <tr><td>Fletes</td><td><code>/fletes/*</code></td><td>Calcular km batch, alertas, detalle por caso</td></tr>
+              <tr><td>Configuración</td><td>Multi-tab</td><td>Tango, CLP, postventa, tarifarios, cross, fleteros, usuarios, sistema</td></tr>
+              <tr><td>Login</td><td><code>/auth/login</code></td><td>Pantalla acceso · sesión 7 días · cierre etapa</td></tr>
             </tbody>
           </table>
         </div>
-        <p>UX: grillas HTML con fila completa clicable (sin checkbox Streamlit), popup detalle con renglones Tango expandibles, leyenda colores pastel legible, validación build API/UI sincronizada.</p>
+        <p>UX: paneles de acción por módulo, grillas <code>st.dataframe</code>, popup detalle, ayuda en expanders, validación build API/UI sincronizada, tema por módulo (Maestro / Modo TOP / Fletes).</p>
+      </section>
+
+      <!-- AUTH -->
+      <section id="auth">
+        <h2>Acceso y usuarios</h2>
+        <p class="section-intro">Cierre de Etapa 1 — la UI Streamlit exige login. Gestión de usuarios solo para super administrador.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Elemento</th><th>Detalle</th></tr></thead>
+            <tbody>
+              <tr><td>Super admin inicial</td><td>Usuario <code>top</code> — seed al arrancar API si no existe</td></tr>
+              <tr><td>Almacenamiento</td><td>Tablas <code>app_users</code>, <code>auth_sessions</code> en <code>fletes.db</code></td></tr>
+              <tr><td>Contraseñas</td><td>PBKDF2-SHA256 (260k iteraciones) — nunca en texto plano</td></tr>
+              <tr><td>Sesión</td><td>Token en header <code>X-Auth-Token</code> · TTL 7 días</td></tr>
+              <tr><td>UI admin</td><td>Configuración → pestaña <strong>Usuarios</strong> — alta/baja (no eliminable <code>top</code>)</td></tr>
+              <tr><td>Usuarios regulares</td><td>Acceso completo a la app excepto pestaña Usuarios (visible en gris, bloqueada)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Archivos: <code>auth_service.py</code>, <code>api/routes/auth.py</code>, login en <code>streamlit_app.py</code>.</p>
       </section>
 
       <!-- MANTELLO -->
@@ -837,7 +913,7 @@
             </tbody>
           </table>
         </div>
-        <p>Build identifier compartido: <code>fletes-km-mantello-2026-06-04</code></p>
+        <p>Build identifier: <code>fletes-auth-usuarios-2026-06-17</code></p>
       </section>
 
       <!-- TIMELINE -->
@@ -883,10 +959,22 @@
             <span class="tl-effort">~2 semanas</span>
           </div>
           <div class="tl-item done">
-            <div class="tl-date">Fase 5b · Modo Adrián + hardening</div>
+            <div class="tl-date">Fase 5b · Modo TOP + hardening</div>
             <div class="tl-title">Vista micro LOG diario + tarifario vivo + macheo CLP ampliado</div>
-            <div class="tl-body">API modo-adrian, filtros 51/83, comparativa carpeta Adrián, bultos definitivos, export diario.</div>
+            <div class="tl-body">API modo-adrian (UI «Modo TOP»), filtros 51/83, bultos + blanquería, export diario.</div>
             <span class="tl-effort">~2 semanas</span>
+          </div>
+          <div class="tl-item done">
+            <div class="tl-date">Fase 5c · Cross + Fletes UX</div>
+            <div class="tl-title">Cross Drive, alertas Fletes, paneles operativos</div>
+            <div class="tl-body">Import cross, detalle por caso, paneles acción Maestro/TOP/Fletes.</div>
+            <span class="tl-effort">~1 semana</span>
+          </div>
+          <div class="tl-item done">
+            <div class="tl-date">Fase 5d · Auth + cierre etapa</div>
+            <div class="tl-title">Login, usuarios, pack documental HTML</div>
+            <div class="tl-body">PBKDF2, super admin, pestaña Usuarios, docs sincronizadas — Etapa 1 archivada.</div>
+            <span class="tl-effort">~0.5 semanas</span>
           </div>
           <div class="tl-item future">
             <div class="tl-date">Fase 6 · Q3 2026</div>
@@ -977,9 +1065,15 @@
       </section>
 
       <footer>
-        <p><strong>Control de Fletes</strong> · Documentación generada para SommierCenter / Wamaro</p>
-        <p>Build <code>fletes-km-mantello-2026-06-04</code> · Junio 2026 · FastAPI + Streamlit + SQLite</p>
-        <p style="margin-top:0.75rem;">Abrir este archivo en cualquier navegador · Imprimible · Sin dependencias externas de runtime</p>
+        <p><strong>Control de Fletes</strong> · Documentación Etapa 1 · SommierCenter / Wamaro · TOP</p>
+        <p>Build <code>fletes-auth-usuarios-2026-06-17</code> · Junio 2026 · FastAPI + Streamlit + SQLite</p>
+        <p style="margin-top:0.5rem">
+          <a href="AVANCE_PROYECTO.html">Avance</a> ·
+          <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager</a> ·
+          <a href="COTIZACION_PROYECTO.html">Cotización</a> ·
+          <a href="https://github.com/TOP-SC/Fletes">GitHub</a>
+        </p>
+        <p style="margin-top:0.75rem;">Abrir en navegador · Imprimible a PDF · Sin dependencias de runtime</p>
       </footer>
 
     </div>
