@@ -14,7 +14,7 @@ PROVEEDOR_DISPLAY: dict[str, str] = {
 MENU_DISPLAY: dict[str, str] = {
     "Dashboard": "Dashboard",
     "MAESTRO": "Maestro",
-    "Modo Adrián": "Modo Adrián",
+    "Modo TOP": "Modo TOP",
     "Fletes": "Fletes",
     "Configuración": "Configuración",
     "CLICPAQ": "Clicpaq",
@@ -26,7 +26,9 @@ MENU_DISPLAY: dict[str, str] = {
 
 # Columnas del maestro (clave DataFrame → encabezado)
 COLUMNA_DISPLAY: dict[str, str] = {
-    "FECHA": "Fecha",
+    "FECHA ENTREGA": "Fecha entrega",
+    "ESTADO PEDIDO": "Estado ped.",
+    "ESTADO REMITO": "Estado remito",
     "ENVIO": "Envío",
     "NRO TRANSP": "Nro. transp.",
     "REMITOS": "Remitos",
@@ -67,6 +69,65 @@ COLUMNA_DISPLAY: dict[str, str] = {
 }
 
 _PARTICULAS = frozenset({"de", "del", "la", "las", "los", "y", "e", "en", "a", "al"})
+
+# Provincias argentinas → siglas (misma lógica que sucursales: SA, TU, JU…)
+PROVINCIA_ABREV: dict[str, str] = {
+    "SALTA": "SA",
+    "TUCUMAN": "TU",
+    "TUCUMÁN": "TU",
+    "JUJUY": "JU",
+    "CORDOBA": "CB",
+    "CÓRDOBA": "CB",
+    "SANTA FE": "SF",
+    "BUENOS AIRES": "BA",
+    "MENDOZA": "MZ",
+    "NEUQUEN": "NQ",
+    "NEUQUÉN": "NQ",
+    "CHACO": "CC",
+    "MISIONES": "MI",
+    "CORRIENTES": "CT",
+    "ENTRE RIOS": "ER",
+    "ENTRE RÍOS": "ER",
+    "FORMOSA": "FO",
+    "CATAMARCA": "CA",
+    "LA RIOJA": "LR",
+    "SAN JUAN": "SJ",
+    "SAN LUIS": "SL",
+    "LA PAMPA": "LP",
+    "RIO NEGRO": "RN",
+    "RÍO NEGRO": "RN",
+    "CHUBUT": "CH",
+    "SANTA CRUZ": "SC",
+    "TIERRA DEL FUEGO": "TF",
+    "SANTIAGO DEL ESTERO": "SdE",
+    "SANTIAGO DE ESTERO": "SdE",
+}
+
+
+def nombre_provincia_completo(provincia: str | None) -> str:
+    """Nombre legible para tooltip (ej. SF → Santa Fe)."""
+    if not provincia:
+        return ""
+    raw = str(provincia).strip()
+    key = raw.upper()
+    if key in PROVINCIA_ABREV:
+        return titulo_palabras(key)
+    for nombre, abrev in PROVINCIA_ABREV.items():
+        if raw.upper() == abrev.upper():
+            return titulo_palabras(nombre)
+    return titulo_palabras(raw)
+
+
+def abreviar_provincia(provincia: str | None) -> str:
+    if not provincia:
+        return ""
+    key = str(provincia).strip().upper()
+    if key in PROVINCIA_ABREV:
+        return PROVINCIA_ABREV[key]
+    if len(key) <= 3:
+        return key
+    return titulo_palabras(provincia)
+
 
 _CAMPOS_TITULO = frozenset(
     {
@@ -142,6 +203,18 @@ def fmt_celda_maestro(valor: object, columna: str) -> str:
         return ""
     if columna == "PROVEEDOR":
         return etiqueta_proveedor(str(valor))
+    if columna == "PROVINCIA":
+        return abreviar_provincia(str(valor))
+    if columna == "TRANSPORTE":
+        s = str(valor or "").strip().upper()
+        if "CROSSDOCK" in s:
+            return "Cross"
+        if "CORREO" in s:
+            return "Correo"
+        return titulo_palabras(str(valor))
+    if columna == "ESTADO PEDIDO":
+        s = str(valor or "").strip()
+        return s[:18] + "…" if len(s) > 19 else s
     if columna in _CAMPOS_TITULO:
         return titulo_palabras(str(valor))
     return str(valor).strip()

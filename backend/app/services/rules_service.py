@@ -368,6 +368,7 @@ def lookup_tarifa_priorizado(
     medida: str,
     *,
     cp: str | None = None,
+    cedol: str | None = None,
 ) -> float | None:
     """
     Tarifario con jerarquía por proveedor.
@@ -375,10 +376,22 @@ def lookup_tarifa_priorizado(
     FRANSOF/LBO/otros: localidad en matriz; FLETES_SUC usa localidad = zona km.
     """
     from app.proveedores import normalizar_proveedor as norm_prov
-    from app.services.cedol_service import lookup_tarifa_con_cedol
+    from app.services.cedol_service import lookup_tarifa_con_cedol, lookup_tarifa_por_cedol
 
     prov_key = norm_prov(proveedor)
     if prov_key in ("CLICPAQ", "ALFARO"):
+        if cedol:
+            precio = lookup_tarifa_por_cedol(
+                tarifas, prov_key, cedol, tipo_producto, medida
+            )
+            if precio is not None:
+                return precio
+            if _norm(tipo_producto) in ("BASE", "SOMIER"):
+                precio = lookup_tarifa_por_cedol(
+                    tarifas, prov_key, cedol, "COLCHON", medida
+                )
+                if precio is not None:
+                    return precio
         precio, _ = lookup_tarifa_con_cedol(
             tarifas,
             prov_key,

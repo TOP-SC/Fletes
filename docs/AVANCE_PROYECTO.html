@@ -105,7 +105,11 @@
       min-height: 260px;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
+    }
+    .chart-box.bar-chart {
+      height: 280px;
+      min-height: 280px;
     }
     .chart-box h3 {
       font-size: 0.92rem;
@@ -113,8 +117,24 @@
       text-align: center;
       margin-bottom: 0.5rem;
       color: var(--ink);
+      flex-shrink: 0;
     }
-    .chart-box canvas { max-height: 220px; }
+    .chart-box .chart-canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+    .chart-box .chart-canvas-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .chart-box > canvas {
+      display: block;
+      width: 100% !important;
+      max-height: 220px;
+    }
     .chart-center-label {
       position: absolute;
       top: 58%;
@@ -198,6 +218,129 @@
       color: var(--muted);
       padding: 1.5rem 0 0.5rem;
     }
+    .team-block {
+      margin-top: 0.5rem;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, #f0f6fc 0%, #ffffff 55%, #faf5ff 100%);
+      box-shadow: var(--shadow);
+    }
+    .team-block-head {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      background: linear-gradient(90deg, rgba(26, 54, 93, 0.06) 0%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #1a365d 0%, #2c5282 100%);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+    .team-block-head h2 {
+      font-size: 1.05rem;
+      margin: 0;
+      color: var(--accent);
+    }
+    .team-block-head p {
+      margin: 0.2rem 0 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+      padding: 1.1rem 1.35rem 1.35rem;
+    }
+    @media (max-width: 760px) {
+      .team-grid { grid-template-columns: 1fr; }
+    }
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.95rem 1.05rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(26, 54, 93, 0.05);
+    }
+    .team-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.85rem;
+      height: 2.85rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+    .team-icon svg {
+      width: 1.45rem;
+      height: 1.45rem;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .team-icon.logic {
+      background: linear-gradient(145deg, #8b5cf6 0%, #6d28d9 100%);
+      color: #fff;
+    }
+    .team-icon.dev {
+      background: linear-gradient(145deg, #14b8a6 0%, #047857 100%);
+      color: #fff;
+    }
+    .team-icon.doc {
+      background: linear-gradient(145deg, #fbbf24 0%, #d97706 100%);
+      color: #fff;
+    }
+    .team-member-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+    .team-member strong {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.25;
+    }
+    .team-role {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .team-member.logic .team-role { color: #6d28d9; }
+    .team-member.dev .team-role { color: #047857; }
+    .team-member.doc .team-role { color: #b45309; }
+    .doc-watermark {
+      position: fixed;
+      bottom: 0.75rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.72rem;
+      color: rgba(30, 42, 58, 0.38);
+      letter-spacing: 0.03em;
+      pointer-events: none;
+      z-index: 50;
+      white-space: nowrap;
+    }
     @media print {
       body { background: #fff; padding: 0; }
       section { break-inside: avoid; box-shadow: none; }
@@ -209,45 +352,209 @@
     <header>
       <h1>Control de Fletes — Avance con mirada Macro + Micro</h1>
       <p>
-        El proyecto dejó de ser solo «replicar el Excel de Adrián». Hoy es una plataforma con
-        <strong>dos lentes sobre el mismo Tango</strong>: control total del mes (Maestro) y armado
-        operativo diario (Modo Adrián). Misma base, mismo tarifario, misma prefactura CLICPAQ —
-        distintas decisiones según el rol.
+        Plataforma de control logístico con <strong>dos lentes sobre el mismo Tango</strong>.
+        El avance de <strong>esta etapa</strong> se mide solo sobre lo que se
+        <strong>contempló automatizar</strong> — no sobre todo el mes de Adrián.
       </p>
       <div class="meta">
-        Actualizado: 12 jun 2026 · Build API: <code>fletes-paginado-2026-06-12</code> ·
-        Base: <code>data/fletes.db</code> (12.541 renglones · 6.829 casos maestro) ·
-        Ref. Adrián: <code>4 ABR 2026</code> · Historial: <code>docs/HISTORIAL_CHARLA.txt</code>
+        Actualizado: 16 jun 2026 · Build: <code>fletes-detalle-alertas-2026-06-16</code> ·
+        Demo Adrián 16/06
       </div>
     </header>
 
     <div class="kpi-row">
       <div class="kpi ok">
-        <div class="label">Desarrollo (código)</div>
-        <div class="value">96%</div>
-        <div class="sub">Modo Adrián + fleteros piloto + tarifario vivo</div>
+        <div class="label">Etapa 1 — alcance contemplado</div>
+        <div class="value">100%</div>
+        <div class="sub">10 / 10 procesos previstos · lógica + pantalla listas</div>
       </div>
       <div class="kpi ok">
-        <div class="label">Operación lista</div>
-        <div class="value">89%</div>
-        <div class="sub">Macro y micro usables · Fletes quincena desbloqueado</div>
-      </div>
-      <div class="kpi macro">
-        <div class="label">Macro — Maestro</div>
-        <div class="value">6.829</div>
-        <div class="sub">Casos · todo Tango · export mensual</div>
+        <div class="label">Procesos finalizados</div>
+        <div class="value">10</div>
+        <div class="sub">Adrián deja de hacer el circuito manual en cada uno</div>
       </div>
       <div class="kpi micro">
-        <div class="label">Micro — Modo Adrián</div>
-        <div class="value">1.152</div>
-        <div class="sub">Casos LOG abr/26 (canal 51/83) · corte diario</div>
+        <div class="label">Próxima etapa (fuera de alcance)</div>
+        <div class="value">4</div>
+        <div class="sub">No entran al % — nunca se plantearon en etapa 1</div>
       </div>
-      <div class="kpi ok">
-        <div class="label">Motor compartido</div>
-        <div class="value">1</div>
-        <div class="sub">Tarifario + prefactura CLP + reglas 40/51/82</div>
+      <div class="kpi macro">
+        <div class="label">Validación piloto Adrián</div>
+        <div class="value">En curso</div>
+        <div class="sub">M0/M1, casos cruzados — confianza, no % de etapa</div>
       </div>
     </div>
+
+    <!-- EVALUACION ENTREGA -->
+    <section>
+      <h2>Marco de evaluación — qué medimos y qué no</h2>
+      <p class="intro">
+        La app <strong>no busca suplantar todo</strong> lo que hace Adrián. Busca que, en cada
+        proceso que <em>sí</em> cubre, él pueda <strong>olvidarse de la parte manual</strong>:
+        eficiente, confiable, y terminado al 100% en esa pieza.
+      </p>
+      <div class="callout opinion">
+        <strong>Regla de oro — cómo se calcula el % de etapa:</strong><br>
+        <code style="font-size:0.95rem">% etapa = procesos contemplados completos ÷ procesos contemplados</code><br><br>
+        · <strong>Etapa finalizada</strong> = antes Drive a Drive, tablero a tablero, Excel a Excel →
+        hoy un import o automático en la app. Adrián no repite el circuito manual.<br>
+        · <strong>Dato no cargado</strong> (mes sin importar) <em>no baja</em> el % — la lógica ya está.<br>
+        · <strong>Fuera de alcance de esta etapa</strong> = no entra ni en numerador ni en denominador.
+        Centro de costos, devolución Clicpaq, AMBA quincena y deploy son <em>etapa 2</em> — no restan al 100%.<br>
+        · <strong>Calibración piloto</strong> (M0/M1, cruce de casos) = Adrián valida que confía en los números.
+        Eso es post-entrega; <em>no es</em> «falta construir» salvo que un proceso contemplado no tenga pantalla ni lógica.
+      </div>
+
+      <h3 style="margin:1.5rem 0 0.75rem;font-size:1rem;color:var(--accent)">
+        Antes manual → hoy en la app (ganancias concretas)
+      </h3>
+      <table>
+        <thead>
+          <tr><th>Antes (Adrián)</th><th>Hoy (app)</th><th>Etapa</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Buscar pedidos en Tango / armar planilla caso a caso</td>
+            <td>Import B3 acumulativo → Maestro + Modo TOP</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Regla de tres + tarifario Excel por proveedor/zona/producto</td>
+            <td>Motor tarifario + reaplicar reglas + alertas ⚠</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Mail Clicpaq → copiar/pegar → cruzar remitos a mano</td>
+            <td>Config → Prefactura + macheo automático</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>LOG Tortuguitas: un Excel por día, 29 columnas</td>
+            <td>Modo TOP → export <code>DD_MM_AAAA</code></td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Planillas cross Drive «Retirado por…» una por sucursal</td>
+            <td>Cross seguimiento + import / link Drive + macheo remito</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Fleteros sucursales: Excel Drive + cruce con Tango</td>
+            <td>Config → Fleteros + columna en Fletes</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Revisar todo el mes a ojo</td>
+            <td>Alertas + detalle + filtro «solo con alerta»</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Centro de costos tortu_int / AMBA quincena</td>
+            <td>—</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+          <tr>
+            <td>Devolver Excel a Clicpaq con errores corregidos (loop diario)</td>
+            <td>—</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem">
+        Calibración piloto (M0/M1, km batch fleteros): validación con Adrián — no reduce el % de etapa.
+      </p>
+
+      <h3 style="margin:1.75rem 0 0.75rem;font-size:1rem;color:var(--accent)">
+        Inventario etapa 1 — solo lo contemplado
+      </h3>
+      <p class="intro" style="margin-bottom:0.75rem">
+        <span class="badge badge-ok">Finalizada</span> = contemplado y construido (10 filas).
+        <span class="badge badge-info">Próxima etapa</span> = fuera del alcance acordado de etapa 1 (4 filas) —
+        <strong>no suma ni resta</strong> al porcentaje.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Proceso (X, Y, Z…)</th><th>Dónde en la app</th><th>Estado etapa</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tango B3 — meses, quincenas, CD + SA</td>
+            <td>Config → Tango (suma sin pisar)</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Tarifarios Mantello + historial</td>
+            <td>Config → Tarifarios</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Prefactura Clicpaq + cruce</td>
+            <td>Config → Prefactura + macheo</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Postventa (grillas, reglas, aprobar viaje)</td>
+            <td>Config → Postventa + detalle</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Liquidación quincenal proveedor</td>
+            <td>Config → Liquidación</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Maestro control mensual + export</td>
+            <td>Maestro + alertas</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>LOG diario Tortuguitas (canal 51/83)</td>
+            <td>Modo TOP + export día</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Vistas por proveedor (CLP, cross, Alfaro…)</td>
+            <td>Menú proveedores + maestro</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Cross seguimiento Drive</td>
+            <td>Config → Cross + link Drive</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Fleteros locales + zona km</td>
+            <td>Config → Fleteros + módulo Fletes</td>
+            <td><span class="badge badge-ok">Finalizada</span></td>
+          </tr>
+          <tr>
+            <td>Centro de costos (tortu_int, hurl_int, AMBA)</td>
+            <td>—</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+          <tr>
+            <td>Devolver prefactura corregida a Clicpaq</td>
+            <td>—</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+          <tr>
+            <td>Entregas AMBA quincenal (archivo 16k filas)</td>
+            <td>—</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+          <tr>
+            <td>Acceso usuario / servidor productivo</td>
+            <td>Infra / deploy</td>
+            <td><span class="badge badge-info">Próxima etapa</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout" style="margin-top:1rem">
+        <strong>Etapa 1 = 10 ÷ 10 = 100%.</strong> Los 4 ítems «Próxima etapa» no existían en el
+        alcance de automatización acordado para esta entrega. Si mañana sumamos centro de costos,
+        ese será el primer ítem de etapa 2 — y recién ahí medimos 0/1, 1/1, etc.
+      </div>
+    </section>
 
     <!-- NUEVA OPTICA -->
     <section>
@@ -272,7 +579,7 @@
           </ul>
         </div>
         <div class="dual-card micro">
-          <h3>◈ Micro — Modo Adrián</h3>
+          <h3>◈ Micro — Modo TOP</h3>
           <p style="font-size:0.88rem;color:var(--muted)">
             Vista operativa: planilla diaria <strong>WAMARO TORTUGUITAS</strong>, mismas 29 columnas,
             canal 51/83, un archivo por fecha de entrega.
@@ -352,46 +659,66 @@
         </tbody>
       </table>
       <p style="font-size:0.82rem;color:var(--muted);margin-bottom:1rem">
-        * Modo Adrián hoy es Tortuguitas; SA fuera de alcance micro actual.<br>
+        * Modo TOP hoy es Tortuguitas; SA fuera de alcance micro actual.<br>
         ** Módulo Fletes / fleteros / centro costos aún no cierran esos Excels.<br>
         *** Ahorro <strong>implementado hoy</strong> (LOG Tortuguitas + CLP + maestro): <strong>~50–65 h/mes</strong>.
         Potencial cuando cierre AMBA + CC: <strong>~80–110 h/mes</strong>.
       </p>
-      <div class="chart-box" style="max-width:640px;margin:0 auto">
-        <canvas id="chartTiempoGanado"></canvas>
+      <div class="chart-box bar-chart" style="max-width:640px;margin:0 auto">
+        <div class="chart-canvas-wrap">
+          <canvas id="chartTiempoGanado"></canvas>
+        </div>
       </div>
       <p style="text-align:center;font-size:0.84rem;color:var(--muted);margin-top:0.75rem">
-        Cada LOG diario = buscar en Tango + tarifario + retocar Excel (~2,5–3,5 h) → Modo Adrián + export (~25–40 min)
+        Cada LOG diario = buscar en Tango + tarifario + retocar Excel (~2,5–3,5 h) → Modo TOP + export (~25–40 min)
       </p>
     </section>
 
-    <!-- GLOBAL -->
+    <!-- AVANCE GLOBAL -->
     <section>
-      <h2>Avance global</h2>
-      <p class="intro">Desarrollo vs operación real, incorporando el módulo Modo Adrián.</p>
+      <h2>Avance etapa 1 — una sola lectura</h2>
+      <p class="intro">
+        Un solo porcentaje: <strong>lo contemplado para automatizar en esta etapa</strong>.
+        No mezclar con el mes completo de Adrián ni con etapa 2.
+      </p>
       <div class="grid-2">
         <div class="chart-box">
-          <h3>Desarrollo — hecho vs pendiente</h3>
+          <h3>Etapa 1 — alcance contemplado</h3>
           <canvas id="chartDevGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">96%</div>
-            <div class="small">desarrollado</div>
+            <div class="big">100%</div>
+            <div class="small">10 / 10</div>
           </div>
         </div>
         <div class="chart-box">
-          <h3>Operación — lista vs falta</h3>
+          <h3>Próxima etapa (referencia)</h3>
           <canvas id="chartOpsGlobal"></canvas>
           <div class="chart-center-label" style="top:54%">
-            <div class="big">89%</div>
-            <div class="small">operativo</div>
+            <div class="big">4</div>
+            <div class="small">ítems fuera de alcance 1</div>
           </div>
         </div>
       </div>
+      <div class="kpi-row" style="margin-top:1rem;margin-bottom:0">
+        <div class="kpi macro">
+          <div class="label">Maestro (ref. abr/26)</div>
+          <div class="value">6.829</div>
+          <div class="sub">Casos Tango importados</div>
+        </div>
+        <div class="kpi micro">
+          <div class="label">Modo TOP abr/26</div>
+          <div class="value">1.152</div>
+          <div class="sub">LOG canal 51/83</div>
+        </div>
+        <div class="kpi ok">
+          <div class="label">Prefacturas CLP en base</div>
+          <div class="value">1.132</div>
+          <div class="sub">Macheo ampliado 51/83</div>
+        </div>
+      </div>
       <div class="callout">
-        <strong>Motor único:</strong> tarifario en vivo (asignación proveedor al calcular cobro),
-        export con LOGISTICA corregido, macheo CLP que incluye canal 51/83 aunque
-        <code>excluir_planilla</code> esté mal marcado (costa, Mar del Plata).
-        Prefacturas CLP en base: <strong>1.132</strong> · envíos con PRECIO NETO: <strong>809</strong>.
+        <strong>Motor único:</strong> tarifario en vivo, seguro $30, export LOGISTICA corregido,
+        macheo CLP, Modo TOP + Maestro sobre la misma SQLite — sin duplicar remitos al reimportar.
       </div>
     </section>
 
@@ -405,7 +732,7 @@
           <canvas id="chartAlcanceDual"></canvas>
         </div>
         <div class="chart-box">
-          <h3>Modo Adrián abr/26 — prefactura CLP</h3>
+          <h3>Modo TOP abr/26 — prefactura CLP</h3>
           <canvas id="chartAdrianPf"></canvas>
         </div>
       </div>
@@ -421,7 +748,7 @@
             <td>Control mensual, gerencia, conciliación total</td>
           </tr>
           <tr>
-            <td><span class="badge badge-micro">Micro</span> Modo Adrián</td>
+            <td><span class="badge badge-micro">Micro</span> Modo TOP</td>
             <td>LOG WAMARO diario · canal 51 y 83 · remito oficial</td>
             <td><strong>1.152</strong> casos</td>
             <td>Operación LOG · export por día · prefactura 400/1.152</td>
@@ -450,7 +777,10 @@
     <!-- MODULOS -->
     <section>
       <h2>Avance por módulo</h2>
-      <p class="intro">Incluye el nuevo eje Modo Adrián dentro de Infra/UI.</p>
+      <p class="intro">
+        Detalle interno por área de código. <strong>No es el % de etapa 1</strong> (ese es 10/10 arriba).
+        Las columnas Dev/Ops son estimaciones de madurez por módulo.
+      </p>
       <table>
         <thead>
           <tr><th>Módulo</th><th>Dev</th><th>Ops</th><th>Estado</th><th>Nota Macro/Micro</th></tr>
@@ -462,14 +792,14 @@
             <td>Quincena, búsqueda, export completo</td>
           </tr>
           <tr>
-            <td><strong>Modo Adrián (micro)</strong></td><td>90%</td><td>82%</td>
+            <td><strong>Modo TOP (micro)</strong></td><td>90%</td><td>82%</td>
             <td><span class="badge badge-ok">Nuevo</span></td>
             <td>LOG diario · tarifario + CLP compartidos · falta CLP quincenal (fase 2)</td>
           </tr>
           <tr>
-            <td><strong>M2 Fletes</strong></td><td>94%</td><td>92%</td>
-            <td><span class="badge badge-ok">Operativo</span></td>
-            <td>API paginada · stats liviano · grilla rápida · fix 500 quincena</td>
+            <td><strong>M2 Fletes</strong></td><td>94%</td><td>90%</td>
+            <td><span class="badge badge-ok">En etapa 1</span></td>
+            <td>Contemplado y construido · calibración piloto km/fletero</td>
           </tr>
           <tr>
             <td><strong>M1 Interior / tarifario</strong></td><td>98%</td><td>82%</td>
@@ -484,7 +814,7 @@
           <tr>
             <td><strong>Infra / UI</strong></td><td>98%</td><td>96%</td>
             <td><span class="badge badge-ok">Sólido</span></td>
-            <td>Sidebar: Dashboard · Maestro · Modo Adrián · Fletes · Config</td>
+            <td>Sidebar: Dashboard · Maestro · Modo TOP · Fletes · Config</td>
           </tr>
         </tbody>
       </table>
@@ -497,7 +827,7 @@
         <thead><tr><th>Área</th><th>Entrega</th><th>Vista</th><th>Estado</th></tr></thead>
         <tbody>
           <tr>
-            <td>Modo Adrián</td>
+            <td>Modo TOP</td>
             <td>Pestaña sidebar · API <code>/modo-adrian/*</code> · LOG diario WAMARO TORTUGUITAS</td>
             <td><span class="badge badge-micro">Micro</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
@@ -516,7 +846,7 @@
           </tr>
           <tr>
             <td>Prefactura CLP</td>
-            <td>Macheo ampliado a canal red con <code>excluir_planilla</code> · cruce desde Modo Adrián</td>
+            <td>Macheo ampliado a canal red con <code>excluir_planilla</code> · cruce desde Modo TOP</td>
             <td><span class="badge badge-macro">Ambas</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
@@ -528,7 +858,7 @@
           </tr>
           <tr>
             <td>Bultos</td>
-            <td>Colchón/sommier = 1 u. · patas ÷6 · columna Bultos</td>
+            <td>Colchón/sommier = 1 u. · blanquería = 1 u. · patas ÷6 · columna Bultos</td>
             <td><span class="badge badge-macro">Ambas</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
@@ -552,7 +882,7 @@
           </tr>
           <tr>
             <td>UI — grilla rápida</td>
-            <td>Maestro / Fletes / Modo Adrián: <code>st.dataframe</code> + caché API (sin 700+ widgets/fila)</td>
+            <td>Maestro / Fletes / Modo TOP: <code>st.dataframe</code> + caché API (sin 700+ widgets/fila)</td>
             <td><span class="badge badge-macro">Ambas</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
@@ -568,6 +898,93 @@
             <td><span class="badge badge-macro">Macro</span></td>
             <td><span class="badge badge-ok">Listo</span></td>
           </tr>
+          <tr>
+            <td>Demo Adrián 16/06</td>
+            <td>Presentación en vivo · validación CLICPAQ · casos M0/M1 · seguro $30 · flujo import B3</td>
+            <td><span class="badge badge-info">Validación</span></td>
+            <td><span class="badge badge-ok">Realizada</span></td>
+          </tr>
+          <tr>
+            <td>Cross seguimiento</td>
+            <td>Planillas Drive «Retirado por …» · import · macheo remito · pestaña Config Cross</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Import link Drive</td>
+            <td>Popup «Importar desde link Drive» — pegar URL y descargar planilla cross</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Maestro cross pricing</td>
+            <td>Crossdock: LOGISTICA = última milla · PRECIO NETO = red CLP · total ambos tramos</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>UI grilla</td>
+            <td>Provincia abreviada (SdE) · siglas en leyenda · icono ⚠ · grilla estable <code>st.dataframe</code></td>
+            <td><span class="badge badge-macro">Ambas</span></td>
+            <td><span class="badge badge-ok">Listo</span></td>
+          </tr>
+          <tr>
+            <td>Fletes detalle + alertas</td>
+            <td>API <code>/fletes/caso</code> · ⚠ fletero/km/zona · panel detalle dedicado</td>
+            <td><span class="badge badge-macro">Macro</span></td>
+            <td><span class="badge badge-warn">16/06</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- DEMO ADRIAN -->
+    <section>
+      <h2>Demo con Adrián Mantello — 16 jun 2026</h2>
+      <p class="intro">
+        Reunión de validación operativa (transcripción Gemini). Objetivo acordado:
+        <strong>probar la herramienta con casos reales</strong> y ajustar hasta aproximar el criterio manual,
+        no clonar el Excel al 100% en la primera instancia.
+      </p>
+      <div class="grid-2">
+        <div class="dual-card macro">
+          <h3>Lo que mostramos</h3>
+          <ul>
+            <li>Import del B3 de Tango (sin duplicar ni pisar casos existentes)</li>
+            <li>Maestro mensual + quincena + iconos de alerta con detalle</li>
+            <li>Modo TOP (~1.448 casos mayo vs ~6.000 maestro)</li>
+            <li>Vistas por proveedor (Clicpaq, Limanski, cross Córdoba/Rosario/Salta…)</li>
+            <li>Tarifarios precargados + historial de versiones</li>
+            <li>Configuración: Tango, prefactura CLP, tarifarios, fleteros, cross Drive</li>
+          </ul>
+        </div>
+        <div class="dual-card micro">
+          <h3>Feedback y hallazgos en vivo</h3>
+          <ul>
+            <li><strong>Seguro = $30</strong> (simbólico), no $3.000 — corregir parámetro global</li>
+            <li><strong>M0 vs M1</strong> (Mendoza capital/interior + CP) — remito 321849 vs tarifario vigente abr/26</li>
+            <li>Caso OK: R1 conjunto G. Roca — ~$22.147 + $30 ≈ tarifa Adrián</li>
+            <li>Adrián controla <em>diario</em> devolviendo errores a Clicpaq; la app puede soportar cierre quincenal</li>
+            <li>Cross interior: descarga planillas Drive «Retirado por Logística …» (Cristian / tráfico)</li>
+            <li>Proveedores envían link Drive cotizado — encaja con botón «Importar desde link Drive»</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>Próximo paso acordado:</strong> ajustes M0/M1 + seguro, luego Adrián empieza a
+        «jugar» con la app. Fase 2: órdenes de retiro postventa, export estilo planilla Adrián,
+        devolución de prefactura corregida a proveedor.
+      </div>
+      <table style="margin-top:1rem">
+        <thead><tr><th>Tema demo</th><th>Estado post-demo (16/06)</th></tr></thead>
+        <tbody>
+          <tr><td>Import B3 sin duplicar</td><td><span class="badge badge-ok">Operativo</span></td></tr>
+          <tr><td>Alertas maestro + detalle</td><td><span class="badge badge-ok">Operativo</span></td></tr>
+          <tr><td>Cross seguimiento Drive</td><td><span class="badge badge-ok">Implementado hoy</span></td></tr>
+          <tr><td>Seguro $30 fijo</td><td><span class="badge badge-ok">Config OK ($30)</span></td></tr>
+          <tr><td>Zona M0/M1 + CP Mendoza</td><td><span class="badge badge-warn">En análisis</span></td></tr>
+          <tr><td>Fletes: km / fletero / detalle</td><td><span class="badge badge-warn">Ajuste 16/06</span></td></tr>
+          <tr><td>Export devolución Clicpaq</td><td><span class="badge badge-info">Roadmap</span></td></tr>
         </tbody>
       </table>
     </section>
@@ -577,12 +994,14 @@
       <h2>Validación vs Adrián (abr 2026)</h2>
       <p class="intro">
         La carpeta manual sigue siendo <strong>referencia</strong>, no techo del sistema.
-        El Modo Adrián automatiza su lógica; el Maestro va más allá.
+        El Modo TOP automatiza su lógica; el Maestro va más allá.
       </p>
       <div class="grid-2">
-        <div class="chart-box">
+        <div class="chart-box bar-chart">
           <h3>420 casos cruzados — calidad</h3>
-          <canvas id="chartAbrCampos"></canvas>
+          <div class="chart-canvas-wrap">
+            <canvas id="chartAbrCampos"></canvas>
+          </div>
         </div>
         <div class="chart-box">
           <h3>Export — LOGISTICA con tarifario</h3>
@@ -592,7 +1011,7 @@
       <table style="margin-top:1rem">
         <thead><tr><th>Métrica</th><th>Resultado</th><th>Interpretación</th></tr></thead>
         <tbody>
-          <tr><td>Modo Adrián abr/26</td><td><strong>1.152</strong> casos</td><td>Automático · canal 51/83</td></tr>
+          <tr><td>Modo TOP abr/26</td><td><strong>1.152</strong> casos</td><td>Automático · canal 51/83</td></tr>
           <tr><td>Ref. Adrián LOG</td><td><strong>~1.084</strong> remitos</td><td>Subconjunto manual + Tango parcial</td></tr>
           <tr><td>Cruce remito (app vs Adrián)</td><td><strong>420</strong></td><td>Bultos 89% · identidad confiable</td></tr>
           <tr><td>Prefactura en LOG abr (micro)</td><td><strong>400/1.152</strong></td><td>Mejora al re-ejecutar cruce CLP</td></tr>
@@ -604,29 +1023,69 @@
 
     <!-- ROADMAP -->
     <section>
-      <h2>Próximos pasos — ampliar opciones, no solo igualar Adrián</h2>
+      <h2>Próximos pasos — etapa 2 (nuevo alcance)</h2>
       <ol class="steps">
-        <li><strong>Modo Adrián fase 2 — CLP quincenal</strong> (prefactura <code>tortu_int</code>) <span class="badge badge-micro">Micro</span></li>
-        <li><strong>Liquidación fleteros</strong> (prefactura Blas/Gama por período) <span class="badge badge-macro">Macro</span></li>
-        <li><strong>Export Drive abril</strong> cuando exista (reemplaza simulación) <span class="badge badge-macro">Macro</span></li>
-        <li><strong>Centro de costos</strong> (archivo Adrián) <span class="badge badge-info">Nuevo</span></li>
+        <li><strong>Validación piloto</strong> — M0/M1 + casos cruzados con Excel Adrián <span class="badge badge-warn">Confianza</span></li>
+        <li><strong>Export devolución Clicpaq</strong> — cerrar loop diario manual <span class="badge badge-info">Etapa 2</span></li>
+        <li><strong>Centro de costos</strong> tortu_int / AMBA <span class="badge badge-info">Etapa 2</span></li>
+        <li><strong>Entregas AMBA quincenal</strong> <span class="badge badge-info">Etapa 2</span></li>
+        <li><strong>Deploy</strong> usuario/contraseña <span class="badge badge-info">Etapa 2</span></li>
+        <li><strong>Modo TOP CLP quincenal</strong> <span class="badge badge-info">Etapa 2</span></li>
       </ol>
       <div class="callout">
-        <strong>Meta:</strong> cerrar mes con un solo Tango importado. Operador usa <em>Micro</em> para
-        el LOG diario; gerencia usa <em>Macro</em> para el mes entero — sin Excels paralelos ni
-        buscar remitos en Tango.
+        <strong>Cada ítem de etapa 2</strong>, cuando se acuerde, entra al inventario de esa etapa
+        y recién ahí se mide su % (0/1, 1/1…). Etapa 1 permanece en 100% salvo que falte
+        construir algo que sí estaba contemplado.
       </div>
     </section>
 
     <section>
       <h2>Resumen en una línea</h2>
       <p style="font-size:1.05rem;padding:0.5rem 0">
-        La app está <strong>~96% construida</strong> y <strong>~89% operativa</strong>, con
-        <strong>dos miradas complementarias</strong>: Maestro (6.829 casos) para control total y
-        Modo Adrián (1.152 casos LOG abr/26) para la operación diaria — mismo tarifario,
-        misma prefactura CLICPAQ, fleteros locales en piloto macro (sim ABR 100/100 macheo),
-        Fletes con paginación y grilla usable en quincena abril.
+        <strong>Etapa 1: 100%</strong> (10 procesos contemplados, 10 construidos). Lo que Adrián
+        aún hace manual fuera de esa lista — centro de costos, devolución Clicpaq, AMBA quincena —
+        es <strong>etapa 2</strong>, no deuda de esta entrega. Siguiente paso: piloto con Adrián
+        para validar confianza en los números (M0/M1, casos cruzados).
       </p>
+    </section>
+
+    <section class="team-block" aria-label="Equipo TOP">
+      <div class="team-block-head">
+        <span class="team-badge">TOP</span>
+        <div>
+          <h2>Equipo del proyecto</h2>
+          <p>Proyecto y Transformación Operativa · Control de Fletes</p>
+        </div>
+      </div>
+      <div class="team-grid">
+        <div class="team-member logic">
+          <span class="team-icon logic" title="Lógica y reglas de negocio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2.8 0-4.5 2.2-4.5 4.8 0 1.6.9 2.8 1.7 3.5V17"/><path d="M12 6c2.8 0 4.5 2.2 4.5 4.8 0 1.6-.9 2.8-1.7 3.5V17"/><path d="M9 19h6"/><path d="M10 17h4"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Giselle Morbello</strong>
+            <span class="team-role">Lógica</span>
+          </div>
+        </div>
+        <div class="team-member dev">
+          <span class="team-icon dev" title="Desarrollo de la aplicación">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8.5 5 12l3 3.5"/><path d="M16 8.5l3 3.5-3 3.5"/><path d="M13.5 7.5l-3 9"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Juan Manuel Billiot</strong>
+            <span class="team-role">Desarrollo</span>
+          </div>
+        </div>
+        <div class="team-member doc">
+          <span class="team-icon doc" title="Documentación del proyecto">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h8l4 4v10H7z"/><path d="M15 5v4h4"/><path d="M10 12h6"/><path d="M10 15h6"/><path d="M10 18h4"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Jerson Reyes</strong>
+            <span class="team-role">Documentación</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <footer>
@@ -635,10 +1094,15 @@
     </footer>
   </div>
 
+  <div class="doc-watermark" aria-hidden="true">
+    Creado por Proyecto y Transformación Operativa (TOP)
+  </div>
+
   <script>
     Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
     Chart.defaults.plugins.legend.position = "bottom";
     Chart.defaults.plugins.legend.labels.boxWidth = 12;
+    Chart.defaults.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2.5);
 
     const palette = {
       done: "#38a169", pending: "#e2e8f0", warn: "#d69e2e", bad: "#e53e3e",
@@ -649,18 +1113,35 @@
       new Chart(document.getElementById(id), {
         type: "doughnut",
         data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
-        options: { cutout, responsive: true, plugins: { legend: { position: "bottom" } } }
+        options: { cutout, responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom" } } }
       });
     }
     function pctDonut(id, pct, a, b, c = palette.done) {
       donut(id, [a, b], [pct, 100 - pct], [c, palette.pending]);
     }
+    function barChart(id, config) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      return new Chart(el, {
+        type: "bar",
+        ...config,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2.5),
+          ...config.options,
+        },
+      });
+    }
 
-    pctDonut("chartDevGlobal", 96, "Desarrollado", "Pendiente");
-    pctDonut("chartOpsGlobal", 89, "Operativo", "Falta");
+    pctDonut("chartDevGlobal", 100, "Contemplado listo", "Pendiente");
+    donut("chartOpsGlobal",
+      ["CC + AMBA + devol. CLP + deploy"],
+      [4],
+      [palette.info]);
 
     donut("chartAlcanceDual",
-      ["Maestro (6.829)", "Modo Adrián (1.152)", "Solo ref. Adrián (~230)"],
+      ["Maestro (6.829)", "Modo TOP (1.152)", "Solo ref. Adrián (~230)"],
       [6829, 1152, 230],
       [palette.macro, palette.micro, palette.warn]);
 
@@ -669,19 +1150,19 @@
       [400, 752],
       [palette.done, palette.pending]);
 
-    new Chart(document.getElementById("chartTiempoGanado"), {
-      type: "bar",
+    barChart("chartTiempoGanado", {
       data: {
         labels: ["LOG Tortuguitas (20 días)", "Prefactura CLP", "Import + reglas mes", "Export / revisión"],
         datasets: [{
           label: "Horas ganadas (estimado · lo que la app cubre hoy)",
           data: [55, 10, 8, 5],
           backgroundColor: "#38a169",
+          borderRadius: 4,
+          borderSkipped: false,
         }]
       },
       options: {
         indexAxis: "y",
-        responsive: true,
         plugins: { legend: { display: false } },
         scales: {
           x: {
@@ -692,14 +1173,15 @@
       }
     });
 
-    new Chart(document.getElementById("chartAbrCampos"), {
-      type: "bar",
+    barChart("chartAbrCampos", {
       data: {
         labels: ["Bultos", "Destinatario", "Localidad", "Montos"],
         datasets: [{
           label: "% OK en 420 cruzados",
           data: [89.5, 72.6, 70.2, 35.5],
           backgroundColor: [palette.done, palette.info, palette.info, palette.warn],
+          borderRadius: 4,
+          borderSkipped: false,
         }]
       },
       options: {

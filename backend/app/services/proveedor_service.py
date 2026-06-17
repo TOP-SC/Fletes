@@ -413,6 +413,7 @@ def precio_tarifa_linea(
     medida = infer_medida(envio.descripcion)
     tipo = tipo_producto or infer_tipo_producto(envio.descripcion, envio.cod_articulo)
     banda = medida_banda or (medida_a_banda(medida) if medida else medida)
+    cedol = envio.cedol_codigo if envio.cedol_manual and envio.cedol_codigo else None
     precio = lookup_tarifa_priorizado(
         tarifas,
         canon,
@@ -421,6 +422,7 @@ def precio_tarifa_linea(
         tipo,
         banda or medida or "",
         cp=envio.cp,
+        cedol=cedol,
     )
     if precio is None and tipo in ("BASE", "SOMIER"):
         precio = lookup_tarifa_priorizado(
@@ -431,6 +433,7 @@ def precio_tarifa_linea(
             "COLCHON",
             banda or "",
             cp=envio.cp,
+            cedol=cedol,
         )
     return precio
 

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Fletes — Cotización comparativa (interno vs proveedor externo)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --ink: #0f1419;
+      --muted: #5a6b7d;
+      --line: #e2e8f0;
+      --accent: #0d4f8b;
+      --accent-soft: #e8f2fc;
+      --gold: #9a6700;
+      --gold-bg: #fff8e6;
+      --ok: #1a6b42;
+      --ok-bg: #e8f5ee;
+      --warn: #b45309;
+      --bad: #9b2335;
+      --card: #ffffff;
+      --internal: #1a6b42;
+      --external: #7c3aed;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f4f6fa;
+      color: var(--ink);
+      line-height: 1.55;
+      padding: 2rem 1.5rem 3rem;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .hero {
+      background: linear-gradient(135deg, #0a1628 0%, #0d4f8b 50%, #5b21b6 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 2.25rem 2rem;
+      margin-bottom: 1.75rem;
+    }
+    .hero .eyebrow {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      opacity: 0.75;
+      margin-bottom: 0.5rem;
+    }
+    .hero h1 { font-size: 1.85rem; font-weight: 650; margin-bottom: 0.75rem; }
+    .hero p { opacity: 0.9; max-width: 52rem; font-size: 0.95rem; }
+    .hero .meta { margin-top: 1rem; font-size: 0.8rem; opacity: 0.7; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .stat.int { border-top: 3px solid var(--internal); }
+    .stat.ext { border-top: 3px solid var(--external); }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: var(--accent); }
+    .stat.int .stat-value { color: var(--internal); }
+    .stat.ext .stat-value { color: var(--external); }
+    .stat-label { font-size: 0.76rem; color: var(--muted); margin-top: 0.3rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .card-head {
+      padding: 0.85rem 1.15rem;
+      border-bottom: 1px solid var(--line);
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .card-head span { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+    .card-body { padding: 1.15rem; }
+    h2 { font-size: 1.2rem; margin: 1.75rem 0 0.75rem; color: var(--accent); }
+    h2:first-of-type { margin-top: 0; }
+    p.lead { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .team-block {
+      margin: 1.75rem 0 0.5rem;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, #f0f6fc 0%, #ffffff 55%, #f5f3ff 100%);
+      box-shadow: 0 2px 12px rgba(13, 79, 139, 0.06);
+    }
+    .team-block-head {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.15rem 1.35rem;
+      background: linear-gradient(90deg, rgba(13, 79, 139, 0.05) 0%, transparent 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.85rem;
+      height: 2.85rem;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #0a1628 0%, #0d4f8b 100%);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+    .team-block-head h2 {
+      font-size: 1rem;
+      margin: 0;
+      color: var(--accent);
+    }
+    .team-block-head p {
+      margin: 0.15rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.85rem;
+      padding: 1rem 1.25rem 1.25rem;
+    }
+    @media (max-width: 760px) {
+      .team-grid { grid-template-columns: 1fr; }
+    }
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.9rem 1rem;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(13, 79, 139, 0.05);
+    }
+    .team-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 10px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+    .team-icon svg {
+      width: 1.4rem;
+      height: 1.4rem;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .team-icon.logic {
+      background: linear-gradient(145deg, #8b5cf6 0%, #6d28d9 100%);
+      color: #fff;
+    }
+    .team-icon.dev {
+      background: linear-gradient(145deg, #14b8a6 0%, #047857 100%);
+      color: #fff;
+    }
+    .team-icon.doc {
+      background: linear-gradient(145deg, #fbbf24 0%, #d97706 100%);
+      color: #fff;
+    }
+    .team-member-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.18rem;
+    }
+    .team-member strong {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .team-role {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .team-member.logic .team-role { color: #6d28d9; }
+    .team-member.dev .team-role { color: #047857; }
+    .team-member.doc .team-role { color: #b45309; }
+    .doc-watermark {
+      position: fixed;
+      bottom: 0.75rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.72rem;
+      color: rgba(15, 20, 25, 0.38);
+      letter-spacing: 0.03em;
+      pointer-events: none;
+      z-index: 50;
+      white-space: nowrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    th, td {
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 0.76rem; }
+    th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.num .sub { text-align: right; display: block; }
+    tr.highlight td { background: var(--ok-bg); font-weight: 600; }
+    tr.highlight-ext td { background: #f5f3ff; }
+    .table-wrap { overflow-x: auto; margin: 0 -0.15rem; }
+    table.table-compare {
+      table-layout: fixed;
+      min-width: 920px;
+      width: 100%;
+    }
+    table.table-compare th,
+    table.table-compare td {
+      padding: 0.7rem 0.85rem;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+    table.table-compare th:first-child,
+    table.table-compare td:first-child {
+      width: 16%;
+      text-align: center;
+    }
+    table.table-compare th:not(:first-child),
+    table.table-compare td:not(:first-child) {
+      width: 21%;
+      border-left: 1px solid #edf2f7;
+    }
+    table.table-compare thead th:not(:first-child),
+    table.table-compare thead th:first-child {
+      text-align: center;
+      line-height: 1.35;
+    }
+    table.table-compare td:not(:first-child),
+    table.table-compare td:first-child {
+      text-align: center;
+    }
+    table.table-compare .cell-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.5rem;
+      gap: 0.15rem;
+      text-align: center;
+    }
+    table.table-compare td.col-num .cell-stack {
+      align-items: center;
+      text-align: center;
+    }
+    table.table-compare td.col-num {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    table.table-compare .cell-main {
+      display: block;
+      font-weight: 500;
+      text-align: center;
+    }
+    table.table-compare td:first-child .cell-main { font-weight: 600; }
+    table.table-compare .cell-sub {
+      display: block;
+      font-size: 0.76rem;
+      color: var(--muted);
+      font-weight: 400;
+      line-height: 1.3;
+      text-align: center;
+    }
+    table.table-compare td.col-badge .cell-stack {
+      min-height: 1.75rem;
+    }
+    table.table-compare thead th {
+      background: #f8fafc;
+      border-bottom: 2px solid var(--line);
+      vertical-align: bottom;
+      padding-bottom: 0.75rem;
+    }
+    table.table-compare thead th.col-int {
+      background: #f0fdf4;
+      color: var(--internal);
+    }
+    table.table-compare tbody td.col-int {
+      background: #fafdfb;
+    }
+    table.table-compare tr.highlight td.col-int {
+      background: #dcfce7;
+    }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .callout {
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    .callout.gold { background: var(--gold-bg); border: 1px solid #f0d080; }
+    .callout.ok { background: var(--ok-bg); border: 1px solid #9ae6b4; }
+    .callout.blue { background: var(--accent-soft); border: 1px solid #b8d4f0; }
+    .badge {
+      display: inline-block;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .b-alta { background: #fdeef0; color: var(--bad); }
+    .b-media { background: #fff8e6; color: var(--gold); }
+    .b-baja { background: #e8f5ee; color: var(--ok); }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+    .chart-box { min-height: 280px; position: relative; }
+    .chart-box canvas { max-height: 240px; }
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Cotización comparativa · SommierCenter / Wamaro</div>
+      <h1>¿Cuánto costaría esto si lo hiciera un proveedor externo?</h1>
+      <p>
+        Estimación de <strong>costo de desarrollo</strong>, <strong>plazo</strong>, <strong>mantenimiento</strong>
+        y <strong>probabilidad de lograr la misma función</strong> que el Control de Fletes actual
+        (macro Maestro + micro <strong>Modo TOP</strong> + Fletes AMBA + Cross Drive), comparado con lo construido internamente
+        por el equipo TOP. <strong>Etapa 1 cerrada al 100%</strong> (10 procesos contemplados).
+      </p>
+      <div class="meta">
+        Corte: junio 2026 · TC referencia USD 1 = ARS 1.150 ·
+        Complementa <a href="DOCUMENTACION_SISTEMA.html" style="color:#a8d4f0">DOCUMENTACION_SISTEMA</a> y
+        <a href="AVANCE_PROYECTO.html" style="color:#a8d4f0">AVANCE_PROYECTO</a> ·
+        ~19.300 líneas Python · 45 servicios · 60+ endpoints
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat int">
+        <div class="stat-value">~19 sem</div>
+        <div class="stat-label">Esfuerzo interno (~760 h senior eq.)</div>
+      </div>
+      <div class="stat ext">
+        <div class="stat-value">6–9 meses</div>
+        <div class="stat-label">Calendario proveedor externo típico</div>
+      </div>
+      <div class="stat ext">
+        <div class="stat-value">USD 50k–80k</div>
+        <div class="stat-label">Implementación tercero (mismo alcance)</div>
+      </div>
+      <div class="stat int">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">Etapa 1 — alcance contemplado (10/10)</div>
+      </div>
+      <div class="stat ext">
+        <div class="stat-value">65–75%</div>
+        <div class="stat-label">Prob. paridad funcional a 12 meses (agencia)</div>
+      </div>
+    </div>
+    <p class="muted" style="margin-bottom:1.25rem">
+      <strong>Etapa 1 = 100%</strong> significa que todo lo acordado para automatizar en esta fase está construido
+      (lógica + pantallas). El <strong>piloto con Adrián</strong> (M0/M1, confianza en números) es calibración
+      operativa — no resta al %. Lo de <strong>etapa 2</strong> (centro de costos, devolución Clicpaq, AMBA quincena, deploy)
+      nunca entró en el alcance de etapa 1. Ver <a href="AVANCE_PROYECTO.html">AVANCE_PROYECTO</a>.
+    </p>
+
+    <div class="callout blue">
+      <strong>Qué se cotiza:</strong> replicar el sistema actual — ingestión Tango acumulativa, motor de
+      reglas de transporte contractuales (40/51/82), tarifarios 4 proveedores + FLETES_SUC, maestro WAMARO 29 columnas,
+      macheo prefactura CLICPAQ, módulo <strong>Fletes</strong> (km, alertas, detalle por caso), vista
+      <strong>Modo TOP</strong> (LOG diario WAMARO), <strong>Cross seguimiento</strong> (import Drive / link),
+      UI Streamlit con paneles operativos, export Excel, scripts de auditoría y documentación HTML.
+      No incluye licencias de fletes reales ni ERP Tango.
+    </div>
+
+    <h2>1. Alcance funcional a replicar</h2>
+    <div class="card">
+      <div class="card-head">Inventario de complejidad <span>Base para cotizar horas</span></div>
+      <div class="card-body" style="padding-top:0.4rem">
+        <table>
+          <thead>
+            <tr><th>Bloque</th><th>Entregable</th><th>Complejidad</th><th class="num">Horas est. externo</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Discovery dominio</td><td>Planillas operativas, acuerdos tarifarios, Tango, 3 mundos logísticos</td><td><span class="badge b-alta">Alta</span></td><td class="num">120–200</td></tr>
+            <tr><td>Core backend</td><td>FastAPI, SQLite, import fingerprint, parsers Tango flexibles</td><td><span class="badge b-alta">Alta</span></td><td class="num">160–240</td></tr>
+            <tr><td>Motor reglas</td><td>AMBA/GBA, Clickpack, postventa, colores, bultos (colchón/blanquería/patas), remitos RAR</td><td><span class="badge b-alta">Alta</span></td><td class="num">200–320</td></tr>
+            <tr><td>Tarifarios</td><td>Parser 5 hojas proveedor, versiones, lookup geo/producto</td><td><span class="badge b-alta">Alta</span></td><td class="num">120–180</td></tr>
+            <tr><td>Cobro / proveedor</td><td>Circuito 40/51/82, crossdock, asignación automática</td><td><span class="badge b-alta">Alta</span></td><td class="num">160–240</td></tr>
+            <tr><td>Maestro macro</td><td>Grilla, paginación, export, 4 vistas proveedor, alertas</td><td><span class="badge b-media">Media-alta</span></td><td class="num">120–180</td></tr>
+            <tr><td>Vista micro LOG (Modo TOP)</td><td>Planilla diaria WAMARO, filtros 51/83, API dedicada, export por día</td><td><span class="badge b-media">Media</span></td><td class="num">80–120</td></tr>
+            <tr><td>Macheo CLP</td><td>Prefactura Clickpack, conjuntos, diferencias</td><td><span class="badge b-media">Media</span></td><td class="num">80–120</td></tr>
+            <tr><td>Fletes M2</td><td>Km cascada, 29 sucursales, grilla AMBA, alertas, detalle por caso</td><td><span class="badge b-alta">Alta</span></td><td class="num">160–240</td></tr>
+            <tr><td>Cross seguimiento</td><td>Import planillas Drive / link, macheo remito, integración maestro</td><td><span class="badge b-media">Media</span></td><td class="num">60–100</td></tr>
+            <tr><td>UI Streamlit</td><td>7+ pantallas, detalle popup, temas por módulo, paneles de acción, Config multi-tab</td><td><span class="badge b-media">Media</span></td><td class="num">140–200</td></tr>
+            <tr><td>QA + documentación</td><td>Scripts auditoría, HTML avance/cotización, capacitación</td><td><span class="badge b-media">Media</span></td><td class="num">80–120</td></tr>
+            <tr class="highlight-ext"><td><strong>Total estimado</strong></td><td>Mismo alcance que hoy en repo (etapa 1)</td><td>—</td><td class="num"><strong>1.480–2.240 h</strong></td></tr>
+          </tbody>
+        </table>
+        <p class="muted" style="margin-top:0.75rem">
+          Rango externo mayor que interno (~760 h) porque el proveedor debe <em>redescubrir</em> reglas no escritas
+          en un spec formal (documentación operativa, acuerdos tarifarios, excepciones de negocio).
+        </p>
+      </div>
+    </div>
+
+    <h2>2. Comparación: interno vs proveedor externo</h2>
+    <div class="card">
+      <div class="card-body" style="padding-top:0.4rem">
+        <div class="table-wrap">
+        <table class="table-compare">
+          <thead>
+            <tr>
+              <th>Concepto</th>
+              <th class="col-int">Desarrollo interno<br><span style="font-weight:500">(real)</span></th>
+              <th>Freelancer<br><span style="font-weight:500">senior AR</span></th>
+              <th>Consultora /<br><span style="font-weight:500">agencia AR</span></th>
+              <th>SaaS / TMS<br><span style="font-weight:500">genérico</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="cell-main">Plazo hasta estado actual</span></td>
+              <td class="col-int"><div class="cell-stack">
+                <span class="cell-main">~4 meses calendario</span>
+                <span class="cell-sub">feb–jun 2026</span>
+              </div></td>
+              <td><div class="cell-stack"><span class="cell-main">7–10 meses</span></div></td>
+              <td><div class="cell-stack"><span class="cell-main">6–9 meses</span></div></td>
+              <td><div class="cell-stack">
+                <span class="cell-main">3–6 meses config</span>
+                <span class="cell-sub">sin paridad</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><span class="cell-main">Horas equivalentes</span></td>
+              <td class="col-int col-num"><div class="cell-stack"><span class="cell-main">~760 h</span></div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main">1.400–1.800 h</span></div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main">1.600–2.200 h</span></div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main">—</span></div></td>
+            </tr>
+            <tr>
+              <td><span class="cell-main">Costo implementación</span></td>
+              <td class="col-int"><div class="cell-stack">
+                <span class="cell-main">Costo interno salarial</span>
+                <span class="cell-sub">no facturado</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main">USD 28k–45k</span>
+                <span class="cell-sub">ARS 32–52 M</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main">USD 50k–80k</span>
+                <span class="cell-sub">ARS 58–92 M</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main">USD 15k–40k</span>
+                <span class="cell-sub">+ gaps</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><span class="cell-main">Mantenimiento año 1</span></td>
+              <td class="col-int col-num"><div class="cell-stack">
+                <span class="cell-main">~0,3 FTE</span>
+                <span class="cell-sub">ARS ~1,8 M</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main">USD 6k–12k/año</span></div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main">USD 10k–18k/año</span>
+                <span class="cell-sub">retainer 15–20%</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main">USD 10k–25k/año</span>
+                <span class="cell-sub">licencia</span>
+              </div></td>
+            </tr>
+            <tr>
+              <td><span class="cell-main">Prob. misma función*</span></td>
+              <td class="col-int col-badge"><div class="cell-stack"><span class="badge b-baja">Referencia 100%</span></div></td>
+              <td class="col-badge"><div class="cell-stack"><span class="badge b-media">70–80%</span></div></td>
+              <td class="col-badge"><div class="cell-stack"><span class="badge b-media">65–75%</span></div></td>
+              <td class="col-badge"><div class="cell-stack"><span class="badge b-alta">25–40%</span></div></td>
+            </tr>
+            <tr>
+              <td><span class="cell-main">Conocimiento dominio</span></td>
+              <td class="col-int"><div class="cell-stack"><span class="cell-main">En código + equipo</span></div></td>
+              <td><div class="cell-stack">
+                <span class="cell-main">Parcial</span>
+                <span class="cell-sub">depende continuidad</span>
+              </div></td>
+              <td><div class="cell-stack">
+                <span class="cell-main">Se pierde</span>
+                <span class="cell-sub">al fin contrato</span>
+              </div></td>
+              <td><div class="cell-stack">
+                <span class="cell-main">No aplica</span>
+                <span class="cell-sub">reglas WAMARO</span>
+              </div></td>
+            </tr>
+            <tr class="highlight">
+              <td><span class="cell-main">TCO 3 años</span><span class="cell-sub">impl/3 + mant×3</span></td>
+              <td class="col-int col-num"><div class="cell-stack">
+                <span class="cell-main"><strong>ARS ~7 M</strong></span>
+                <span class="cell-sub">solo mant. interno</span>
+              </div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main"><strong>ARS ~55–75 M</strong></span></div></td>
+              <td class="col-num"><div class="cell-stack"><span class="cell-main"><strong>ARS ~85–120 M</strong></span></div></td>
+              <td class="col-num"><div class="cell-stack">
+                <span class="cell-main"><strong>ARS ~60–100 M</strong></span>
+                <span class="cell-sub">sin paridad</span>
+              </div></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="muted" style="margin-top:0.5rem">
+          * «Misma función» = los <strong>10 procesos de etapa 1</strong> (maestro, Modo TOP, tarifarios, CLP, postventa,
+          liquidación, cross, fleteros/Fletes, alertas, export). Prob. externa = lograr eso sin el equipo TOP.
+          Tarifa referencia: USD 35–55/h (freelancer) · USD 55–75/h (agencia).
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">Costo de reposición hoy <span>ARS · TC 1.150</span></div>
+        <div class="card-body">
+          <div class="chart-box"><canvas id="chartCosto"></canvas></div>
+          <p class="muted" style="margin-top:0.5rem;font-size:0.82rem">
+            Mediana agencia: <strong>USD 65.000 × 1.150 ≈ ARS 74.750.000</strong> solo implementación.
+          </p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Probabilidad de paridad — etapa 1 <span>A los 12 meses (externo)</span></div>
+        <div class="card-body">
+          <div class="chart-box"><canvas id="chartProb"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <h2>3. Probabilidad de cumplir la misma función — detalle</h2>
+    <div class="card">
+      <div class="card-body">
+        <p class="muted" style="margin-bottom:1rem">
+          Escala para un <strong>proveedor externo sin el contexto TOP</strong> (solo brief + acceso a Tango).
+          Columna «Interno» = <strong>etapa 1 contemplada</strong> (10/10 construidos). No incluye etapa 2.
+        </p>
+        <table>
+          <thead><tr><th>Capacidad (etapa 1)</th><th>Interno (hoy)</th><th>Agencia externa</th><th>SaaS</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Import Tango + no pisar histórico</td>
+              <td>100%</td>
+              <td>85%</td><td>40%</td>
+              <td class="muted">Fingerprint y parsers flexibles son custom</td>
+            </tr>
+            <tr>
+              <td>Reglas transporte 40/51/82 (contractuales)</td>
+              <td>100%</td>
+              <td>70%</td><td>20%</td>
+              <td class="muted">Requiere workshops; no está en Tango</td>
+            </tr>
+            <tr>
+              <td>Tarifario 4 proveedores + bultos (blanquería)</td>
+              <td>100%</td>
+              <td>75%</td><td>30%</td>
+              <td class="muted">Parser Excel propietario · reglas colchón/patas/blanquería</td>
+            </tr>
+            <tr>
+              <td>Maestro WAMARO + export + alertas</td>
+              <td>100%</td>
+              <td>80%</td><td>35%</td>
+              <td class="muted">29 columnas · 4 vistas proveedor</td>
+            </tr>
+            <tr>
+              <td>Modo TOP — LOG diario</td>
+              <td>100%</td>
+              <td>60%</td><td>15%</td>
+              <td class="muted">Canal 51/83 · export por día</td>
+            </tr>
+            <tr>
+              <td>Macheo prefactura CLICPAQ</td>
+              <td>100%</td>
+              <td>70%</td><td>45%</td>
+              <td class="muted">Conjuntos colchón+somier</td>
+            </tr>
+            <tr>
+              <td>Fletes AMBA — km, alertas, detalle</td>
+              <td>100%</td>
+              <td>65%</td><td>25%</td>
+              <td class="muted">Módulo construido · calibración km en piloto</td>
+            </tr>
+            <tr>
+              <td>Cross seguimiento Drive</td>
+              <td>100%</td>
+              <td>55%</td><td>20%</td>
+              <td class="muted">Import link + macheo remito</td>
+            </tr>
+            <tr>
+              <td>Postventa contractuada (+25%, $0)</td>
+              <td>100%</td>
+              <td>55%</td><td>10%</td>
+              <td class="muted">Reglas en obs + Tango</td>
+            </tr>
+            <tr class="highlight">
+              <td><strong>Etapa 1 — paridad alcance acordado</strong></td>
+              <td><strong>100%</strong></td>
+              <td><strong>65–75%</strong></td>
+              <td><strong>25–40%</strong></td>
+              <td class="muted">Interno: etapa 2 (CC, devol. CLP, AMBA quincena, deploy) es otro presupuesto</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h2>4. Mantenimiento y evolución</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">Mantenimiento anual estimado</div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Escenario</th><th class="num">USD/año</th><th class="num">ARS/año</th></tr></thead>
+            <tbody>
+              <tr class="highlight"><td>Interno (~0,3 FTE analista/dev)</td><td class="num">~1.600</td><td class="num">~1.800.000</td></tr>
+              <tr><td>Freelancer soporte (40 h/mes)</td><td class="num">18.000–30.000</td><td class="num">21–35 M</td></tr>
+              <tr><td>Agencia retainer (15% build)</td><td class="num">10.000–18.000</td><td class="num">12–21 M</td></tr>
+              <tr><td>SaaS TMS + integrador</td><td class="num">15.000–30.000</td><td class="num">17–35 M</td></tr>
+              <tr><td>Licencias stack actual</td><td class="num">0</td><td class="num">0</td></tr>
+            </tbody>
+          </table>
+          <p class="muted" style="margin-top:0.75rem">
+            El stack propio (FastAPI + SQLite + Streamlit local) no paga licencias.
+            El costo recurrente es <strong>personas</strong>, no software.
+          </p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Etapa 2 — próximo alcance (fuera de etapa 1)</div>
+        <div class="card-body">
+          <ul style="font-size:0.88rem;margin-left:1.1rem">
+            <li>Centro de costos (tortu_int, AMBA quincena)</li>
+            <li>Devolución prefactura corregida a Clicpaq (loop diario)</li>
+            <li>Entregas AMBA quincenal (~16k filas)</li>
+            <li>Deploy producción (usuario, servidor, credenciales)</li>
+            <li>Modo TOP — CLP quincenal ampliado</li>
+            <li>Mundo 3 duplicados interior (evolución futura)</li>
+          </ul>
+          <p class="muted" style="margin-top:0.75rem">
+            Estos ítems <strong>no restan</strong> al 100% de etapa 1. Un externo cotizaría cada bloque como
+            <strong>change request</strong> (USD 8k–15k por pieza). Internamente: ~10–12 semanas adicionales según prioridad.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h2>5. Lo que hizo el equipo interno (referencia)</h2>
+    <div class="card">
+      <div class="card-head">Esfuerzo acumulado <span>Feb → jun 2026</span></div>
+      <div class="card-body">
+        <table>
+          <thead><tr><th>Fase</th><th>Entregable</th><th class="num">Semanas</th></tr></thead>
+          <tbody>
+            <tr><td>0 Discovery</td><td>Dominio WAMARO, acuerdos tarifarios, 3 mundos</td><td class="num">1,5</td></tr>
+            <tr><td>1 Core</td><td>API, BD, import Tango</td><td class="num">2,5</td></tr>
+            <tr><td>2 Reglas</td><td>40/51/82, tarifarios, postventa</td><td class="num">3</td></tr>
+            <tr><td>3 Maestro</td><td>Proveedores, macheo, export</td><td class="num">3</td></tr>
+            <tr><td>4 UI</td><td>Streamlit operativo</td><td class="num">2,5</td></tr>
+            <tr><td>5 Fletes</td><td>Km, Mundo 2 parcial</td><td class="num">2</td></tr>
+            <tr><td>5b Modo TOP + hardening</td><td>LOG diario, tarifario vivo, CLP, bultos + blanquería</td><td class="num">~2</td></tr>
+            <tr><td>5c Cross + Fletes + UX</td><td>Cross Drive link, detalle/alertas Fletes, paneles operativos UI</td><td class="num">~1</td></tr>
+            <tr class="highlight"><td><strong>Total</strong></td><td>Etapa 1 cerrada (jun 2026)</td><td class="num"><strong>~19</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout gold">
+      <strong>Conclusión ejecutiva:</strong> replicar hoy el Control de Fletes (etapa 1 completa) con un proveedor externo
+      costaría del orden de <strong>USD 50.000 – 80.000</strong> y <strong>6 a 9 meses</strong>, con
+      <strong>65–75% de probabilidad</strong> de alcanzar el mismo alcance funcional — especialmente en Modo TOP,
+      reglas contractuales y cross Drive, sin acompañamiento continuo del equipo TOP.
+      El desarrollo interno lo logró en <strong>~4 meses</strong> con <strong>~760 h</strong>, con
+      <strong>etapa 1 al 100%</strong> (10 procesos contemplados, 10 construidos). El piloto con Adrián
+      valida confianza en los números; no es deuda de alcance. Mantenimiento anual estimado
+      <strong>~ARS 1,8 M</strong> vs <strong>ARS 12–21 M</strong> de retainer externo.
+      El activo no es solo el código: es el <strong>conocimiento de dominio codificado</strong> que un tercero
+      tardaría meses en reconstruir — y difícilmente igualaría del todo.
+    </div>
+
+    <div class="callout ok">
+      <strong>Opinión técnica:</strong> contratar afuera tiene sentido para piezas aisladas (ej. app móvil,
+      BI corporativo), no para reemplazar este núcleo. La etapa 1 ya está entregada; la inversión racional
+      es <strong>evolucionar etapa 2 internamente</strong> (CC, Clicpaq loop, deploy) sobre el activo amortizado,
+      usando esta cotización solo como <strong>piso de valoración</strong> del software construido.
+    </div>
+
+    <section class="team-block" aria-label="Equipo TOP">
+      <div class="team-block-head">
+        <span class="team-badge">TOP</span>
+        <div>
+          <h2>Equipo del proyecto</h2>
+          <p>Proyecto y Transformación Operativa · Control de Fletes</p>
+        </div>
+      </div>
+      <div class="team-grid">
+        <div class="team-member logic">
+          <span class="team-icon logic" title="Lógica y reglas de negocio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-2.8 0-4.5 2.2-4.5 4.8 0 1.6.9 2.8 1.7 3.5V17"/><path d="M12 6c2.8 0 4.5 2.2 4.5 4.8 0 1.6-.9 2.8-1.7 3.5V17"/><path d="M9 19h6"/><path d="M10 17h4"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Giselle Morbello</strong>
+            <span class="team-role">Lógica</span>
+          </div>
+        </div>
+        <div class="team-member dev">
+          <span class="team-icon dev" title="Desarrollo de la aplicación">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8.5 5 12l3 3.5"/><path d="M16 8.5l3 3.5-3 3.5"/><path d="M13.5 7.5l-3 9"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Juan Manuel Billiot</strong>
+            <span class="team-role">Desarrollo</span>
+          </div>
+        </div>
+        <div class="team-member doc">
+          <span class="team-icon doc" title="Documentación del proyecto">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h8l4 4v10H7z"/><path d="M15 5v4h4"/><path d="M10 12h6"/><path d="M10 15h6"/><path d="M10 18h4"/></svg>
+          </span>
+          <div class="team-member-text">
+            <strong>Jerson Reyes</strong>
+            <span class="team-role">Documentación</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">
+      Control de Fletes · TOP-SC · Documento de cotización comparativa · Uso interno ·
+      <a href="DOCUMENTACION_SISTEMA.html">Documentación técnica</a> ·
+      <a href="AVANCE_PROYECTO.html">Avance del proyecto</a> ·
+      <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a>
+    </p>
+  </div>
+
+  <div class="doc-watermark" aria-hidden="true">
+    Creado por Proyecto y Transformación Operativa (TOP)
+  </div>
+
+  <script>
+    const tc = 1150;
+    new Chart(document.getElementById("chartCosto"), {
+      type: "bar",
+      data: {
+        labels: ["Interno (mant. 3a)", "Freelancer", "Agencia", "SaaS TCO 3a"],
+        datasets: [{
+          label: "ARS millones",
+          data: [7, 65, 95, 80],
+          backgroundColor: ["#1a6b42", "#7c3aed", "#5b21b6", "#94a3b8"],
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: { y: { title: { display: true, text: "ARS millones (TCO 3 años)" } } }
+      }
+    });
+    new Chart(document.getElementById("chartProb"), {
+      type: "bar",
+      data: {
+        labels: ["Interno", "Freelancer", "Agencia", "SaaS"],
+        datasets: [{
+          label: "% paridad funcional",
+          data: [100, 75, 70, 32],
+          backgroundColor: ["#1a6b42", "#6366f1", "#7c3aed", "#cbd5e1"],
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: { x: { max: 100, ticks: { callback: v => v + "%" } } }
+      }
+    });
+  </script>
+</body>
+</html>

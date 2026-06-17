@@ -6,6 +6,7 @@ import html as html_lib
 import json
 import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,11 +41,13 @@ try:
     from app.proveedores import caso_en_vista_proveedor, proveedores_para_selector
     from app.transporte_reglas import proveedores_acotados_por_transporte
     from app.ui_labels import (
+        abreviar_provincia,
         etiqueta_columna,
         etiqueta_menu,
         etiqueta_pagina,
         etiqueta_proveedor,
         fmt_celda_maestro,
+        nombre_provincia_completo,
     )
 except ImportError:
     def etiqueta_menu(clave: str) -> str:
@@ -61,13 +64,19 @@ except ImportError:
 
     def fmt_celda_maestro(valor: object, columna: str) -> str:
         return "" if valor is None else str(valor).strip()
-API_BUILD_ESPERADO = "cedol-tarifario-2026-06-12"
+
+    def abreviar_provincia(provincia: str | None) -> str:
+        return str(provincia or "").strip()
+
+    def nombre_provincia_completo(provincia: str | None) -> str:
+        return str(provincia or "").strip()
+API_BUILD_ESPERADO = "fletes-ui-panel-acciones-2026-06-17"
 
 # Acentos por módulo (sobrio con personalidad)
 MODULE_THEMES: dict[str, dict[str, str]] = {
     "Dashboard": {"accent": "#1a365d", "accent2": "#3182ce", "bg": "#eef4fc", "icon": "◆"},
     "MAESTRO": {"accent": "#2b6cb0", "accent2": "#4299e1", "bg": "#ebf4ff", "icon": "▣"},
-    "Modo Adrián": {"accent": "#7c2d12", "accent2": "#c2410c", "bg": "#fff7ed", "icon": "◈"},
+    "Modo TOP": {"accent": "#7c2d12", "accent2": "#c2410c", "bg": "#fff7ed", "icon": "◈"},
     "Fletes": {"accent": "#0f766e", "accent2": "#14b8a6", "bg": "#ecfdf5", "icon": "▶"},
     "Configuración": {"accent": "#475569", "accent2": "#64748b", "bg": "#f1f5f9", "icon": "⚙"},
     "CLICPAQ": {"accent": "#5b21b6", "accent2": "#7c3aed", "bg": "#f5f3ff", "icon": "◎"},
@@ -145,6 +154,7 @@ FLETES_VISTA_GRILLA = [
 MAESTRO_VISTA_GRILLA = [
     "FECHA PEDIDO",
     "FECHA ENTREGA",
+    "ESTADO PEDIDO",
     "REMITOS",
     "ESTADO REMITO",
     "NRO TRANSP",
@@ -153,6 +163,7 @@ MAESTRO_VISTA_GRILLA = [
     "PROVINCIA",
     "TRANSPORTE",
     "PROVEEDOR",
+    "CEDOL",
     "BULTOS",
     "LOGISTICA",
     "SEGURO",
@@ -163,21 +174,23 @@ MAESTRO_VISTA_GRILLA = [
 # Proporciones de columnas en grilla maestro / elegir proveedor (sin dif/obs/suc)
 MAESTRO_COL_RATIOS: dict[str, float] = {
     "FECHA": 0.72,
-    "FECHA PEDIDO": 0.72,
-    "FECHA ENTREGA": 0.72,
-    "ESTADO REMITO": 0.95,
-    "NRO TRANSP": 0.42,
-    "REMITOS": 1.0,
-    "DESTINATARIO": 1.65,
-    "LOCALIDAD": 1.05,
-    "PROVINCIA": 0.78,
-    "TRANSPORTE": 1.0,
-    "PROVEEDOR": 1.2,
-    "BULTOS": 0.48,
-    "LOGISTICA": 0.9,
-    "SEGURO": 0.72,
-    "PRECIO NETO": 0.9,
-    "total": 0.9,
+    "FECHA PEDIDO": 0.68,
+    "FECHA ENTREGA": 0.68,
+    "ESTADO PEDIDO": 0.82,
+    "ESTADO REMITO": 0.78,
+    "NRO TRANSP": 0.38,
+    "REMITOS": 0.95,
+    "DESTINATARIO": 1.55,
+    "LOCALIDAD": 0.95,
+    "PROVINCIA": 0.38,
+    "TRANSPORTE": 0.62,
+    "PROVEEDOR": 1.05,
+    "CEDOL": 0.42,
+    "BULTOS": 0.42,
+    "LOGISTICA": 0.85,
+    "SEGURO": 0.62,
+    "PRECIO NETO": 0.85,
+    "total": 0.85,
     "SUCURSAL": 0.5,
     "KM": 0.55,
     "ZONA KM": 0.8,
@@ -225,7 +238,7 @@ def preparar_maestro_df(df: pd.DataFrame) -> pd.DataFrame:
             out[col] = pd.to_numeric(out[col], errors="coerce")
         elif col == "FECHA" or "fecha" in col.lower():
             out[col] = out[col].apply(fmt_fecha_sin_hora)
-        elif col in ("PROVEEDOR", "DESTINATARIO", "LOCALIDAD", "PROVINCIA", "TRANSPORTE"):
+        elif col in ("PROVEEDOR", "DESTINATARIO", "LOCALIDAD", "PROVINCIA", "TRANSPORTE", "ESTADO PEDIDO"):
             out[col] = out[col].apply(lambda v, c=col: fmt_celda_maestro(v, c))
     return out
 
@@ -497,6 +510,30 @@ def inject_theme() -> None:
         .module-metrics.pend-filter-on [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {
             color: #c53030 !important;
         }
+        .panel-acciones-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--mod-accent);
+            margin: 0 0 0.15rem 0;
+            padding: 0;
+            line-height: 1.2;
+        }
+        section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label) {
+            background: var(--mod-bg) !important;
+            border: 1px solid rgba(30, 42, 58, 0.1) !important;
+            border-left: 5px solid var(--mod-accent) !important;
+            border-radius: 12px !important;
+            padding: 0.75rem 0.95rem 0.95rem !important;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 12px rgba(30, 42, 58, 0.06) !important;
+        }
+        section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+            [data-testid="stMetric"] {
+            background: #ffffff !important;
+            border-color: rgba(30, 42, 58, 0.1) !important;
+        }
         .leyenda-wrap {
             display: flex;
             flex-wrap: wrap;
@@ -570,8 +607,39 @@ def inject_theme() -> None:
         .dash-card-body strong {
             font-size: 0.98rem;
         }
+        .top-watermark {
+            position: fixed;
+            bottom: 0.65rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: rgba(30, 42, 58, 0.42);
+            letter-spacing: 0.03em;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            text-align: center;
+        }
+        @media (max-width: 720px) {
+            .top-watermark {
+                font-size: 0.62rem;
+                white-space: normal;
+                max-width: 92vw;
+                line-height: 1.35;
+            }
+        }
         </style>
         """,
+        unsafe_allow_html=True,
+    )
+
+
+def inject_top_watermark() -> None:
+    st.markdown(
+        '<div class="top-watermark" aria-hidden="true">'
+        "Creado por Proyecto y Transformación Operativa (TOP)"
+        "</div>",
         unsafe_allow_html=True,
     )
 
@@ -607,22 +675,92 @@ def _render_page_header(titulo: str, subtitulo: str, theme_key: str) -> None:
     )
 
 
-def _render_leyenda_operativa() -> None:
-    st.markdown(
-        """
+@contextmanager
+def _panel_acciones(theme_key: str, titulo: str = "Operaciones"):
+    """Recuadro destacado para filtros, botones y métricas operativas."""
+    _ = _theme_for(theme_key)
+    with st.container(border=True):
+        st.markdown(
+            f'<p class="panel-acciones-label">{html_lib.escape(titulo)}</p>',
+            unsafe_allow_html=True,
+        )
+        yield
+
+
+def _render_ayuda_referencia(
+    titulo: str,
+    secciones: list[tuple[str, str]],
+    *,
+    expanded: bool = False,
+    html_indices: frozenset[int] | None = None,
+) -> None:
+    if not secciones:
+        return
+    html_idx = html_indices or frozenset()
+    with st.expander(titulo, expanded=expanded):
+        for i, (subtitulo, cuerpo) in enumerate(secciones):
+            if subtitulo:
+                st.markdown(f"**{subtitulo}**")
+            if i in html_idx:
+                st.markdown(cuerpo, unsafe_allow_html=True)
+            else:
+                st.markdown(cuerpo)
+            if i < len(secciones) - 1:
+                st.divider()
+
+
+def _render_ayuda_grilla(
+    *,
+    siglas: str = "",
+    notas: str = "",
+    paginacion: str = "",
+) -> None:
+    with st.expander("Ayuda de la grilla", expanded=False):
+        st.markdown("Seleccioná **una fila** para ver el detalle abajo.")
+        if paginacion:
+            st.caption(paginacion)
+        if notas:
+            st.markdown(notas)
+        if siglas:
+            st.caption(siglas)
+
+
+def _html_leyenda_operativa() -> str:
+    return """
         <div class="leyenda-wrap">
             <span class="leyenda-chip chip-alerta">● Revisar</span>
             <span class="leyenda-chip chip-ok">● OK</span>
             <span class="leyenda-chip chip-info">🔍 Detalle</span>
             <span class="leyenda-chip chip-luz">Luz = columna a revisar</span>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+
+
+def _render_leyenda_operativa() -> None:
+    st.markdown(_html_leyenda_operativa(), unsafe_allow_html=True)
 
 
 def api_client() -> httpx.Client:
     return httpx.Client(base_url=API_URL, timeout=120.0)
+
+
+def _detalle_error_api(exc: Exception) -> str:
+    """Mensaje legible de error FastAPI (detail) para mostrar en UI."""
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        try:
+            data = resp.json()
+            detail = data.get("detail")
+            if isinstance(detail, list):
+                return "; ".join(str(d) for d in detail)
+            if detail:
+                return str(detail)
+        except Exception:
+            pass
+        text = getattr(resp, "text", None)
+        if text:
+            return str(text)[:500]
+    return str(exc)
 
 
 def check_health() -> bool:
@@ -727,7 +865,7 @@ SESSION_MES_CONTROL_IDX = "global_mes_control_idx"
 
 
 def _ui_mes_control_adrian() -> dict[str, Any]:
-    """Mes a controlar — Modo Adrián siempre usa fecha de entrega (LOG diario)."""
+    """Mes a controlar — Modo TOP siempre usa fecha de entrega (LOG diario)."""
     opciones = _opciones_mes_control()
     labels = [o[2] for o in opciones]
     if SESSION_MES_CONTROL_IDX not in st.session_state:
@@ -1046,6 +1184,16 @@ def _reset_maestro_page_si_cambian_filtros(key_prefix: str, firma: str) -> int:
     return page
 
 
+def _reset_page_si_buscar_cambia(key_prefix: str, buscar_key: str) -> None:
+    """Vuelve a página 1 cuando cambia el texto de búsqueda en grilla."""
+    page_key = f"{key_prefix}_maestro_page"
+    sig_key = f"{key_prefix}_buscar_sig"
+    q = str(st.session_state.get(buscar_key, "") or "").strip()
+    if st.session_state.get(sig_key) != q:
+        st.session_state[sig_key] = q
+        st.session_state[page_key] = 1
+
+
 def _controles_paginacion_maestro_api(
     key_prefix: str,
     *,
@@ -1053,31 +1201,54 @@ def _controles_paginacion_maestro_api(
     page: int,
     page_size: int,
     total_pages: int,
+    buscar_key: str | None = None,
+    buscar_placeholder: str = "Buscar remito, destinatario, localidad…",
 ) -> int:
     """Controles Anterior/Siguiente contra la API; devuelve número de página (1-based)."""
     page_key = f"{key_prefix}_maestro_page"
-    if total <= page_size:
-        return 1
-    c1, c2, c3 = st.columns([1.2, 2.6, 1.2])
+    show_nav = total > page_size
+
+    if buscar_key:
+        c1, c2, c3, c4 = st.columns([1, 2.2, 1, 2.6])
+    else:
+        c1, c2, c3 = st.columns([1.2, 2.6, 1.2])
+        c4 = None
+
     with c1:
-        if st.button("← Anterior", key=f"{key_prefix}_api_prev", disabled=page <= 1):
-            st.session_state[page_key] = max(1, page - 1)
-            st.rerun()
+        if show_nav:
+            if st.button("← Anterior", key=f"{key_prefix}_api_prev", disabled=page <= 1):
+                st.session_state[page_key] = max(1, page - 1)
+                st.rerun()
     fin = min(page * page_size, total)
-    inicio = (page - 1) * page_size + 1
+    inicio = (page - 1) * page_size + 1 if total else 0
     with c2:
-        st.caption(
-            f"Casos **{inicio}–{fin}** de **{total}** · página **{page}/{total_pages}** "
-            f"({page_size} por carga)"
-        )
+        if show_nav:
+            st.caption(
+                f"Casos **{inicio}–{fin}** de **{total}** · página **{page}/{total_pages}** "
+                f"({page_size} por carga)"
+            )
+        elif total:
+            st.caption(f"**{total}** caso(s) en esta vista")
     with c3:
-        if st.button(
-            "Siguiente →",
-            key=f"{key_prefix}_api_next",
-            disabled=page >= total_pages,
-        ):
-            st.session_state[page_key] = min(total_pages, page + 1)
-            st.rerun()
+        if show_nav:
+            if st.button(
+                "Siguiente →",
+                key=f"{key_prefix}_api_next",
+                disabled=page >= total_pages,
+            ):
+                st.session_state[page_key] = min(total_pages, page + 1)
+                st.rerun()
+    if buscar_key and c4 is not None:
+        with c4:
+            st.text_input(
+                "Buscar",
+                key=buscar_key,
+                placeholder=buscar_placeholder,
+                label_visibility="collapsed",
+            )
+
+    if not show_nav and not buscar_key:
+        return 1
     return page
 
 
@@ -1158,6 +1329,20 @@ def post_file(
         files = {"file": (file_name, content)}
         q = {k: v for k, v in params.items() if v is not None}
         r = client.post(path, files=files, params=q or None)
+        r.raise_for_status()
+        return r.json()
+
+
+def post_json(
+    path: str,
+    body: dict[str, Any],
+    *,
+    timeout: float = 180.0,
+    **params: str | bool,
+) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=timeout) as client:
+        q = {k: v for k, v in params.items() if v is not None}
+        r = client.post(path, json=body, params=q or None)
         r.raise_for_status()
         return r.json()
 
@@ -1272,12 +1457,236 @@ def _render_distancia_sucursal(info: dict[str, Any] | None) -> None:
         st.caption("Sin sucursal asignada todavía para este envío local.")
 
 
+def _render_cross_seguimiento_caso(det: dict[str, Any]) -> None:
+    """Estado operativo cross (planilla Retirado por …) — solo revisión, no factura."""
+    cross = det.get("cross_seguimiento")
+    if not cross:
+        return
+
+    st.markdown("#### Seguimiento cross (planilla operativa)")
+    prov = cross.get("proveedor")
+    if prov:
+        st.write(f"**Operador:** {etiqueta_proveedor(str(prov))}")
+    ent = (cross.get("entregado") or "pendiente").upper()
+    if ent == "SI":
+        st.success(f"**Entregado:** SI · coord. {cross.get('fecha_entrega_coord') or '—'}")
+    elif ent == "NO":
+        st.error(f"**Entregado:** NO")
+    else:
+        st.info(f"**Entregado:** pendiente / sin dato en planilla")
+
+    if cross.get("fecha_retiro"):
+        st.caption(f"Retiro: {cross['fecha_retiro']}")
+    if cross.get("observacion"):
+        st.caption(f"Obs planilla: {cross['observacion']}")
+    if cross.get("archivo_origen"):
+        st.caption(
+            f"Fuente: {cross['archivo_origen']}"
+            + (f" · hoja «{cross['hoja_origen']}»" if cross.get("hoja_origen") else "")
+        )
+    if cross.get("match_estado") == "sin_maestro":
+        st.warning(
+            "Este remito está en la planilla cross pero no en el maestro importado "
+            "(otro mes o aún no cargado en Tango)."
+        )
+
+
+def _render_cedol_caso(caso_id: str, det: dict[str, Any]) -> None:
+    """CEDOL tarifario (CLICPAQ/ALFARO) con corrección manual opcional."""
+    cedol = det.get("cedol") or {}
+    if not cedol.get("aplica"):
+        return
+
+    st.markdown("#### CEDOL (zona tarifaria)")
+    efectivo = cedol.get("cedol_efectivo") or "—"
+    auto = cedol.get("cedol_auto") or "—"
+    loc = cedol.get("localidad") or ""
+    prov = cedol.get("provincia") or ""
+
+    if cedol.get("cedol_manual"):
+        st.write(
+            f"**CEDOL activo:** `{efectivo}` — corregido manualmente "
+            f"(automático sería `{auto}` para {loc}, {prov})"
+        )
+    else:
+        st.write(
+            f"**CEDOL activo:** `{efectivo}` — resuelto por destino ({loc}, {prov})"
+        )
+    st.caption(
+        "Códigos del tarifario Mantello (ej. A0 capital Salta, A1 interior). "
+        "Si la carga de Tango trae localidad ambigua, podés corregir acá y recalcular."
+    )
+
+    opciones = det.get("cedol_opciones") or []
+    if not opciones:
+        st.caption("Sin códigos CEDOL en el tarifario vigente para este proveedor.")
+        return
+
+    idx_auto = 0
+    labels = ["Automático (según destino)"]
+    values: list[str | None] = [None]
+    for cod in opciones:
+        labels.append(cod)
+        values.append(cod)
+        if cod == efectivo and not cedol.get("cedol_manual"):
+            idx_auto = len(values) - 1
+
+    default_idx = idx_auto
+    if cedol.get("cedol_manual") and efectivo in values:
+        default_idx = values.index(efectivo)
+
+    col_sel, col_btn, col_rst = st.columns([2, 1, 1])
+    with col_sel:
+        sel_label = st.selectbox(
+            "CEDOL",
+            labels,
+            index=default_idx,
+            key=f"cedol_sel_{caso_id}",
+            label_visibility="collapsed",
+        )
+    sel_cedol = values[labels.index(sel_label)]
+
+    with col_btn:
+        aplicar = st.button(
+            "Aplicar y recalcular",
+            key=f"cedol_apply_{caso_id}",
+            type="primary",
+        )
+    with col_rst:
+        restaurar = st.button("Restaurar automático", key=f"cedol_auto_{caso_id}")
+
+    if aplicar:
+        if sel_cedol is None and not cedol.get("cedol_manual"):
+            st.info("Ya está en modo automático.")
+        else:
+            try:
+                body: dict[str, Any] = {}
+                if sel_cedol is None:
+                    body["restaurar_auto"] = True
+                else:
+                    body["cedol"] = sel_cedol
+                with api_client() as c:
+                    r = c.post(f"/maestro/caso/{caso_id}/cedol", json=body)
+                    r.raise_for_status()
+                get_maestro_filas_cached.clear()
+                get_adrian_resumen_cached.clear()
+                get_adrian_dias_cached.clear()
+                get_adrian_dia_cached.clear()
+                get_adrian_mes_cached.clear()
+                st.success("CEDOL actualizado — recalculando…")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"No se pudo aplicar CEDOL: {_detalle_error_api(exc)}")
+
+    if restaurar:
+        if not cedol.get("cedol_manual"):
+            st.info("El CEDOL ya es automático.")
+        else:
+            try:
+                with api_client() as c:
+                    r = c.post(
+                        f"/maestro/caso/{caso_id}/cedol",
+                        json={"restaurar_auto": True},
+                    )
+                    r.raise_for_status()
+                get_maestro_filas_cached.clear()
+                get_adrian_resumen_cached.clear()
+                get_adrian_dias_cached.clear()
+                get_adrian_dia_cached.clear()
+                get_adrian_mes_cached.clear()
+                st.success("CEDOL automático restaurado — recalculando…")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"No se pudo restaurar: {_detalle_error_api(exc)}")
+
+
 DETALLE_POPUP = "_detalle_popup"
+
+
+def _render_bloque_detalle_fletes(caso_id: str) -> bool:
+    """Detalle operativo Fletes (alertas, km, fletero). Devuelve False si falló."""
+    try:
+        det = get_json(f"/fletes/caso/{caso_id}")
+    except Exception as exc:
+        st.error(f"No se pudo cargar detalle Fletes: {exc}")
+        return False
+
+    f = det.get("fletes") or {}
+    alertas = _parse_alertas_celdas(f.get("_alertas_celdas"))
+    if alertas:
+        for al in alertas:
+            cols_txt = ", ".join(al.get("columnas") or [])
+            st.warning(f"**{cols_txt}:** {al.get('motivo', '')}")
+    elif f.get("_alerta_motivo"):
+        st.warning(str(f["_alerta_motivo"]))
+    elif f.get("_regla_motivo"):
+        st.info(str(f["_regla_motivo"]))
+
+    st.markdown("#### Flete local (CABA/GBA)")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Fletero", f.get("FLETERO") or "—")
+    c2.metric("Sucursal", f.get("SUCURSAL") or "—")
+    c3.metric("Km", f.get("KM") or "—")
+    c4.metric("Zona km", f.get("ZONA KM") or "—")
+    if f.get("TARIFA REF"):
+        st.write(f"**Tarifa ref.:** {f.get('TARIFA REF')}")
+    if f.get("total"):
+        st.write(f"**Total ref. (log + seguro):** {fmt_pesos_ar(f.get('total'))}")
+    if f.get("_pedido_cobro"):
+        st.caption(f"**Pedido:** {f['_pedido_cobro']}")
+    for adv in f.get("_pedido_advertencias") or []:
+        st.caption(adv)
+
+    sol = det.get("solicitud_drive")
+    if sol:
+        st.markdown("#### Solicitud Drive")
+        st.write(
+            f"**{sol.get('fletero_corto') or sol.get('fletero') or '—'}** · "
+            f"pedido `{sol.get('nro_pedido') or '—'}` · "
+            f"estado {sol.get('estado') or '—'}"
+        )
+
+    dist_info = det.get("distancia_sucursal") or {}
+    _render_distancia_sucursal(dist_info)
+    if dist_info.get("aplica") and (
+        dist_info.get("pendiente_calculo") or dist_info.get("es_estimado")
+    ):
+        if st.button("Calcular km real", key=f"fletes_calc_km_{caso_id}", type="primary"):
+            try:
+                with api_client() as c:
+                    r = c.post(f"/fletes/caso/{caso_id}/calcular-km")
+                    r.raise_for_status()
+                get_fletes_pagina_cached.clear()
+                st.success("Distancia calculada — actualizando…")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"No se pudo calcular: {exc}")
+
+    renglones = det.get("renglones") or []
+    if renglones:
+        st.markdown("#### Artículos del caso")
+        st.dataframe(
+            pd.DataFrame(renglones),
+            width="stretch",
+            hide_index=True,
+            height=min(220, 40 + 35 * len(renglones)),
+        )
+    return True
 
 
 def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     """Cuerpo del detalle (panel inline, sin dialog)."""
+    popup = st.session_state.get(DETALLE_POPUP) or {}
+    modulo = str(popup.get("modulo") or "maestro")
+
     st.markdown(f"**{titulo}**")
+    if modulo == "fletes":
+        st.caption(
+            "Flete local CABA/GBA — tarifa ref. sucursales, zona km y fletero Drive."
+        )
+        _render_bloque_detalle_fletes(caso_id)
+        return
+
     st.caption(
         "Un caso = un remito (puede tener varios artículos: colchón, base, postventa desde Tango)."
     )
@@ -1304,7 +1713,14 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     cobro_prov = float(m.get("COBRO PROVINCIA") or 0)
     cobro_red = float(m.get("COBRO RED") or 0)
     if cobro_red or cobro_prov:
-        if cobro_prov > 0:
+        if cobro_prov > 0 and cobro_red > 0:
+            st.write(
+                f"**Cobro red (Clicpaq):** ${cobro_red:,.2f} · "
+                f"**Última milla:** ${cobro_prov:,.2f} · "
+                f"**Total cross:** ${cobro_red + cobro_prov + float(m.get('SEGURO') or 0):,.2f} · "
+                f"**Seguro:** ${float(m.get('SEGURO') or 0):,.2f}"
+            )
+        elif cobro_prov > 0:
             st.write(
                 f"**Cobro red:** ${cobro_red:,.2f} · "
                 f"**Última milla:** ${cobro_prov:,.2f} · "
@@ -1378,6 +1794,8 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
 
     dist_info = det.get("distancia_sucursal") or {}
     _render_distancia_sucursal(dist_info)
+    _render_cedol_caso(caso_id, det)
+    _render_cross_seguimiento_caso(det)
     if dist_info.get("aplica") and (dist_info.get("pendiente_calculo") or dist_info.get("es_estimado")):
         col_km, _ = st.columns([1, 3])
         with col_km:
@@ -1534,6 +1952,7 @@ def _abrir_detalle_por_id(caso_id: str, df: pd.DataFrame, sel_key: str) -> None:
         "caso_id": str(caso_id),
         "titulo": titulo,
         "sel_key": sel_key,
+        "modulo": "fletes" if sel_key == "fletes_sel" else "maestro",
     }
 
 
@@ -1543,6 +1962,8 @@ _META_GRILLA = (
     "_es_marcador_tarifario",
     "_alertas_celdas",
     "_alerta_motivo",
+    "_cedol_manual",
+    "_cedol_auto",
     "_zona_km_asignada",
     "_por_zona_tarifa",
 )
@@ -1618,14 +2039,17 @@ def _css_grilla_detalle() -> None:
             border-bottom: 1px solid #c8d4e0;
             box-sizing: border-box;
         }
+        .grilla-celda-dato[title] {
+            cursor: help;
+        }
         .alerta-luz {
             display: inline-block;
-            width: 9px;
-            height: 9px;
-            min-width: 9px;
+            width: 7px;
+            height: 7px;
+            min-width: 7px;
             border-radius: 50%;
             background: #e53935;
-            box-shadow: 0 0 0 2px rgba(229, 57, 53, 0.28);
+            box-shadow: 0 0 0 1px rgba(229, 57, 53, 0.28);
             cursor: help;
             flex-shrink: 0;
         }
@@ -1730,7 +2154,13 @@ def _celda_html(
     texto = _texto_celda_grilla(fila, col_name)
     tint = _hex_to_rgba(bg, 0.38)
     control = "border-left:2px solid #8FA8C8;" if col_name in MAESTRO_CONTROL else ""
-    title = f' title="{html_lib.escape(texto)}"' if len(texto) > 22 else ""
+    title = ""
+    if col_name == "PROVINCIA":
+        full = nombre_provincia_completo(fila.get("PROVINCIA"))
+        if full:
+            title = f' title="{html_lib.escape(full)}"'
+    elif len(texto) > 22:
+        title = f' title="{html_lib.escape(texto)}"'
     luz_motivo = _motivo_luz_columna(fila, col_name)
     luz = _html_luz_alerta(luz_motivo) if luz_motivo else ""
     if not texto and not luz:
@@ -1743,7 +2173,8 @@ def _celda_html(
     )
 
 
-_COL_BOTON_DETALLE = 0.14
+_COL_BOTON_DETALLE = 0.07
+_COL_ALERTA = 0.05
 _GRILLA_PAGE_SIZE = 150
 
 
@@ -1754,14 +2185,33 @@ def _df_grilla_rapida(df_page: pd.DataFrame, cols_grilla: list[str]) -> pd.DataF
         fila = row.to_dict()
         out: dict[str, str] = {}
         if fila.get("_regla_color") == "alerta":
-            out[" "] = "⚠"
+            out["!"] = "⚠"
         else:
-            out[" "] = ""
+            out["!"] = ""
         for col in cols_grilla:
             if col in df_page.columns:
                 out[etiqueta_columna(col)] = _texto_celda_grilla(fila, col)
         filas.append(out)
     return pd.DataFrame(filas)
+
+
+def _siglas_provincia_en_vista(df_page: pd.DataFrame) -> str:
+    """Leyenda compacta de siglas presentes en la página (para st.dataframe)."""
+    if df_page.empty or "PROVINCIA" not in df_page.columns:
+        return ""
+    vistos: dict[str, str] = {}
+    for raw in df_page["PROVINCIA"].dropna().unique():
+        abrev = abreviar_provincia(str(raw))
+        full = nombre_provincia_completo(raw)
+        if not abrev or not full:
+            continue
+        if abrev.upper() == full.upper():
+            continue
+        vistos[abrev] = full
+    if not vistos:
+        return ""
+    partes = [f"**{sigla}** = {nombre}" for sigla, nombre in sorted(vistos.items(), key=lambda x: x[1])]
+    return "Siglas en esta vista — Provincia: " + " · ".join(partes)
 
 
 def _sincronizar_seleccion_grilla(df_page: pd.DataFrame, sel_key: str) -> None:
@@ -1786,6 +2236,7 @@ def _sincronizar_seleccion_grilla(df_page: pd.DataFrame, sel_key: str) -> None:
         "caso_id": str(caso_id),
         "titulo": titulo,
         "sel_key": sel_key,
+        "modulo": "fletes" if sel_key == "fletes_sel" else "maestro",
     }
 
 
@@ -1827,7 +2278,7 @@ def _render_grilla_filas_click(
     if not cols_grilla:
         return
     ratios_datos = _ratios_columnas(cols_grilla)
-    ratios_fila = [_COL_BOTON_DETALLE] + ratios_datos
+    ratios_fila = [_COL_BOTON_DETALLE, _COL_ALERTA] + ratios_datos
 
     st.markdown(
         '<div class="grilla-wrap" style="border:1px solid #d5dde8;border-radius:12px;overflow:hidden;">',
@@ -1840,7 +2291,13 @@ def _render_grilla_filas_click(
         'text-align:center;" title="Ver detalle">🔍</div>',
         unsafe_allow_html=True,
     )
-    for col, name in zip(hdr[1:], cols_grilla):
+    hdr[1].markdown(
+        '<div style="font-size:0.78rem;font-weight:600;color:#2c3e50;'
+        'padding:6px 2px;background:#eceff3;border-bottom:1px solid #d5dde8;'
+        'text-align:center;" title="Revisar">!</div>',
+        unsafe_allow_html=True,
+    )
+    for col, name in zip(hdr[2:], cols_grilla):
         col.markdown(
             f'<div style="font-size:0.76rem;font-weight:600;color:#2c3e50;'
             f'padding:6px 5px;background:#eceff3;border-bottom:1px solid #d5dde8;">'
@@ -1885,8 +2342,15 @@ def _render_grilla_filas_click(
                     on_click=_fila_clic_detalle,
                     args=(caso_id, sel_key),
                 )
+            alerta_txt = "⚠" if fila.get("_regla_color") == "alerta" else ""
+            cols[1].markdown(
+                f'<div class="grilla-celda-dato" style="background:{tint};color:{fg};'
+                f'justify-content:center;font-size:0.82rem;"'
+                f' title="Revisar fila">{html_lib.escape(alerta_txt)}</div>',
+                unsafe_allow_html=True,
+            )
             for i, col_name in enumerate(cols_grilla):
-                col_widget = cols[i + 1]
+                col_widget = cols[i + 2]
                 if col_name == "PROVEEDOR" and key_prefix:
                     opciones, mapa = _opciones_select_proveedor(fila)
                     mapa_key = f"{key_prefix}_map_{caso_id}"
@@ -1944,6 +2408,7 @@ def _render_grilla_con_detalle(
     height: int = 480,
     key_prefix: str | None = None,
     paginar_cliente: bool = True,
+    ayuda_notas: str = "",
 ) -> None:
     """Grilla maestro/fletes/adrian: dataframe nativo + detalle al seleccionar fila."""
     _procesar_clic_grilla_pendiente(df, sel_key)
@@ -1971,13 +2436,11 @@ def _render_grilla_con_detalle(
         return
 
     display = _df_grilla_rapida(df_page, cols_grilla)
+    siglas = _siglas_provincia_en_vista(df_page)
+    paginacion = ""
     if paginar_cliente and total > len(df_page):
-        st.caption(
-            "Seleccioná **una fila** para ver el detalle abajo. "
-            f"Mostrando **{len(df_page)}** de **{total}** casos."
-        )
-    else:
-        st.caption("Seleccioná **una fila** para ver el detalle abajo.")
+        paginacion = f"Mostrando **{len(df_page)}** de **{total}** casos."
+    _render_ayuda_grilla(siglas=siglas, notas=ayuda_notas, paginacion=paginacion)
     _limpiar_seleccion_grilla_si_pendiente(sel_key)
     st.dataframe(
         display,
@@ -1994,7 +2457,14 @@ def _render_grilla_con_detalle(
 
 def _texto_celda_grilla(fila: dict[str, Any], col_name: str) -> str:
     raw = fila.get(col_name)
-    if col_name in ("PROVEEDOR", "DESTINATARIO", "LOCALIDAD", "PROVINCIA", "TRANSPORTE"):
+    if col_name in (
+        "PROVEEDOR",
+        "DESTINATARIO",
+        "LOCALIDAD",
+        "PROVINCIA",
+        "TRANSPORTE",
+        "ESTADO PEDIDO",
+    ):
         return fmt_celda_maestro(raw, col_name)
     return _celda_grilla_texto(raw, col_name)
 
@@ -2142,7 +2612,7 @@ def pagina_dashboard() -> None:
     st.caption(
         "Entregas sucursal → domicilio (BLAS, GAMA, ARMANDO…). "
         "Fuente operativa: Excel **Fletes solicitados sucursales** del Drive; "
-        "tarifa ref.: **FLETES_SUC**. No forma parte del LOG diario Modo Adrián."
+        "tarifa ref.: **FLETES_SUC**. No forma parte del LOG diario Modo TOP."
     )
     st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
     f1, f2, f3, f4, f5 = st.columns(5)
@@ -2246,8 +2716,6 @@ def pagina_casos(
     carga_por_quincena: bool = False,
 ) -> None:
     _render_page_header(etiqueta_pagina(titulo), subtitulo, titulo)
-    if not modo_elegir_proveedor:
-        _render_leyenda_operativa()
     sel_key = f"{key_prefix}_sel"
 
     if not check_health_cached():
@@ -2260,114 +2728,126 @@ def pagina_casos(
             "o corré `python scripts/kill_api_port.py` y volvé a iniciar."
         )
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    origen_f = c1.selectbox(
-        "Origen",
-        ["Todos", "Tortuguitas", "SA / Limansky"],
-        format_func=lambda x: {
-            "Todos": "Todos",
-            "Tortuguitas": "Wamaro Tortuguitas",
-            "SA / Limansky": "Wamaro SA",
-        }[x],
-        key=f"{key_prefix}_origen",
-    )
-    incluir_excl = c2.checkbox(
-        "Incluir Amba / GBA",
-        value=not modo_elegir_proveedor,
-        key=f"{key_prefix}_incl_excl",
-    )
-    solo_diff = c3.checkbox("Solo con dif.", value=False, key=f"{key_prefix}_solo_diff")
-    if c4.button("Reaplicar reglas y proveedores", key=f"{key_prefix}_reaplicar"):
-        with st.spinner("Reaplicando reglas y cobros (puede tardar 1–2 min)…"):
+    ayuda_secciones: list[tuple[str, str]] = [
+        (
+            "Leyenda",
+            _html_leyenda_operativa(),
+        ),
+        (
+            "Filas y alertas",
+            "Fila **roja** = hay algo para revisar. **Luz roja** en una columna = dónde está el problema. "
+            "**🔍** abre el detalle.",
+        ),
+    ]
+    if modo_elegir_proveedor:
+        ayuda_secciones.append(
+            (
+                "Proveedor a elegir",
+                "Solo casos excepcionales sin crossdock automático. **Crossdock** solo si el destino es "
+                "Córdoba, Rosario o NOA **y** hay tarifa de **CLICPAQ + última milla** (LBO/FRANSOF/ALFARO). "
+                "GBA u otro destino con CLICPAQ = un solo tramo. "
+                "Casos con **empate de tarifario**: elegí proveedor en la columna **Proveedor** de cada fila.",
+            )
+        )
+    _render_ayuda_referencia("Ayuda y referencia", ayuda_secciones, html_indices=frozenset({0}))
+
+    with _panel_acciones(titulo, "Filtros y acciones"):
+        c1, c2, c3, c4, c5 = st.columns(5)
+        origen_f = c1.selectbox(
+            "Origen",
+            ["Todos", "Tortuguitas", "SA / Limansky"],
+            format_func=lambda x: {
+                "Todos": "Todos",
+                "Tortuguitas": "Wamaro Tortuguitas",
+                "SA / Limansky": "Wamaro SA",
+            }[x],
+            key=f"{key_prefix}_origen",
+        )
+        incluir_excl = c2.checkbox(
+            "Incluir Amba / GBA",
+            value=not modo_elegir_proveedor,
+            key=f"{key_prefix}_incl_excl",
+        )
+        solo_diff = c3.checkbox("Solo con dif.", value=False, key=f"{key_prefix}_solo_diff")
+        if c4.button("Reaplicar reglas y proveedores", key=f"{key_prefix}_reaplicar"):
+            with st.spinner("Reaplicando reglas y cobros (puede tardar 1–2 min)…"):
+                with api_client() as c:
+                    r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                    r.raise_for_status()
+                    data = r.json()
+                msg = f"Procesados: {data.get('procesados', 0)}"
+                if data.get("remitos_corregidos"):
+                    msg += f" · Remitos X→RAR: {data['remitos_corregidos']}"
+                prov = data.get("proveedores") or {}
+                if prov.get("crossdock"):
+                    msg += f" · Crossdock: {prov['crossdock']}"
+                st.toast(msg)
+            st.rerun()
+        if c5.button("Cruce prefacturas", key=f"{key_prefix}_macheo"):
             with api_client() as c:
-                r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                r = c.post("/mundo1/macheo/ejecutar")
                 r.raise_for_status()
-                data = r.json()
-            msg = f"Procesados: {data.get('procesados', 0)}"
-            if data.get("remitos_corregidos"):
-                msg += f" · Remitos X→RAR: {data['remitos_corregidos']}"
-            prov = data.get("proveedores") or {}
-            if prov.get("crossdock"):
-                msg += f" · Crossdock: {prov['crossdock']}"
-            st.toast(msg)
-        st.rerun()
-    if c5.button("Cruce prefacturas", key=f"{key_prefix}_macheo"):
-        with api_client() as c:
-            r = c.post("/mundo1/macheo/ejecutar")
-            r.raise_for_status()
-            st.toast(r.json())
-        st.rerun()
+                st.toast(r.json())
+            st.rerun()
 
-    f1, f2, f3 = st.columns([2, 2, 3])
-    solo_alerta = f1.checkbox(
-        "Solo con alerta",
-        value=False,
-        key=f"{key_prefix}_solo_alerta",
-    )
-    solo_macheo = False
-    if not solo_pendiente_proveedor and not modo_elegir_proveedor:
-        solo_macheo = f2.checkbox(
-            "Solo prefactura conciliada", value=False, key=f"{key_prefix}_solo_macheo"
+        f1, f2, f3 = st.columns([2, 2, 3])
+        solo_alerta = f1.checkbox(
+            "Solo con alerta",
+            value=False,
+            key=f"{key_prefix}_solo_alerta",
         )
-    buscar = f3.text_input(
-        "Buscar remito o destinatario",
-        placeholder="Ej: 318022 — luego «Buscar en toda la base»",
-        key=f"{key_prefix}_buscar",
-    )
-
-    filtros_extra = _ui_filtros_fecha_remito(key_prefix)
-    anio_mes = int(filtros_extra["mes_control_anio"])
-    mes_num = int(filtros_extra["mes_control_mes"])
-    modo_carga_key = _gestionar_cambio_mes_quincena(
-        key_prefix,
-        anio_mes,
-        mes_num,
-        clear_cache_fn=get_maestro_filas_cached.clear,
-    )
-
-    firma_ui = _firma_filtros_maestro_ui(
-        origen_f=origen_f,
-        incluir_excl=incluir_excl,
-        solo_alerta=solo_alerta,
-        solo_macheo=solo_macheo,
-        solo_diff=solo_diff,
-        filtros_extra=filtros_extra,
-    )
-    if carga_por_quincena:
-        _invalidar_modo_quincena_si_cambian_filtros(
-            key_prefix,
-            firma_ui,
-            modo_carga_key,
-            clear_cache_fn=get_maestro_filas_cached.clear,
+        solo_macheo = False
+        if not solo_pendiente_proveedor and not modo_elegir_proveedor:
+            solo_macheo = f2.checkbox(
+                "Solo prefactura conciliada", value=False, key=f"{key_prefix}_solo_macheo"
+            )
+        buscar = f3.text_input(
+            "Buscar remito o destinatario",
+            placeholder="Ej: 318022 — luego «Buscar en toda la base»",
+            key=f"{key_prefix}_buscar",
         )
-    else:
-        st.session_state[f"{key_prefix}_ui_sig"] = firma_ui
 
-    modo_carga: str | None = None
-    if carga_por_quincena:
-        modo_carga = _render_botones_carga_quincena(
+        filtros_extra = _ui_filtros_fecha_remito(key_prefix)
+        anio_mes = int(filtros_extra["mes_control_anio"])
+        mes_num = int(filtros_extra["mes_control_mes"])
+        modo_carga_key = _gestionar_cambio_mes_quincena(
             key_prefix,
             anio_mes,
             mes_num,
-            buscar,
             clear_cache_fn=get_maestro_filas_cached.clear,
-            modulo="El maestro",
-            page_state_key=f"{key_prefix}_maestro_page",
         )
-        if not modo_carga:
-            return
 
-    if modo_elegir_proveedor:
-        st.caption(
-            "Solo casos excepcionales sin crossdock automático. "
-            "**Crossdock** solo si el destino es Córdoba, Rosario o NOA **y** hay tarifa de "
-            "**CLICPAQ + última milla** (LBO/FRANSOF/ALFARO). GBA u otro destino con CLICPAQ = un solo tramo."
+        firma_ui = _firma_filtros_maestro_ui(
+            origen_f=origen_f,
+            incluir_excl=incluir_excl,
+            solo_alerta=solo_alerta,
+            solo_macheo=solo_macheo,
+            solo_diff=solo_diff,
+            filtros_extra=filtros_extra,
         )
-    else:
-        st.caption(
-            "Fila **roja** = hay algo para revisar. **Luz roja** en una columna = dónde está el problema "
-            "(pasá el mouse sobre la luz). **🔍** abre el detalle."
-        )
+        if carga_por_quincena:
+            _invalidar_modo_quincena_si_cambian_filtros(
+                key_prefix,
+                firma_ui,
+                modo_carga_key,
+                clear_cache_fn=get_maestro_filas_cached.clear,
+            )
+        else:
+            st.session_state[f"{key_prefix}_ui_sig"] = firma_ui
+
+        modo_carga: str | None = None
+        if carga_por_quincena:
+            modo_carga = _render_botones_carga_quincena(
+                key_prefix,
+                anio_mes,
+                mes_num,
+                buscar,
+                clear_cache_fn=get_maestro_filas_cached.clear,
+                modulo="El maestro",
+                page_state_key=f"{key_prefix}_maestro_page",
+            )
+            if not modo_carga:
+                return
 
     params: dict[str, Any] = {"incluir_excluidos": incluir_excl}
     params.update(filtros_extra)
@@ -2471,11 +2951,11 @@ def pagina_casos(
 
         sel_key = f"{key_prefix}_sel"
         if modo_elegir_proveedor:
-            st.caption(
-                "Casos con **empate de tarifario**. Elegí proveedor en la columna **Proveedor** "
-                "de cada fila. **🔍** abre el detalle."
+            _render_grilla_elegir_proveedor(
+                df,
+                key_prefix,
+                sel_key=sel_key,
             )
-            _render_grilla_elegir_proveedor(df, key_prefix, sel_key=sel_key)
         else:
             _render_grilla_con_detalle(show_df, df, sel_key=sel_key, paginar_cliente=False)
 
@@ -2635,7 +3115,7 @@ def _page_lbo() -> None:
     )
 
 
-MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Modo Adrián", "Fletes", "Configuración"]
+MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Modo TOP", "Fletes", "Configuración"]
 
 
 def _nav_on_principal() -> None:
@@ -2708,10 +3188,10 @@ def pagina_envios_interior() -> None:
 def pagina_modo_adrian() -> None:
     """Vista micro: LOG WAMARO diario (mecánica Adrián) vs maestro macro."""
     _render_page_header(
-        etiqueta_pagina("Modo Adrián"),
+        etiqueta_pagina("Modo TOP"),
         "LOG WAMARO por día de entrega — interior y red Clickpack. "
         "Misma planilla Tango, recorte operativo de Adrián.",
-        "Modo Adrián",
+        "Modo TOP",
     )
 
     if not check_health_cached():
@@ -2720,195 +3200,228 @@ def pagina_modo_adrian() -> None:
 
     if not api_es_actual():
         st.error(
-            "La API es una versión anterior (falta **Modo Adrián**). "
+            "La API es una versión anterior (falta **Modo TOP**). "
             "Reiniciá con **Iniciar_Fletes.bat**."
         )
 
-    st.markdown(
-        "**Macro (Maestro / Fletes):** todos los casos Tango, tarifario completo, AMBA incluido. "
-        "Los **fleteros locales** (Blas, Gama, Armando…) se cargan desde el Excel Drive "
-        "y se ven en **Fletes** — no en esta planilla diaria.  \n"
-        "**Micro (Modo Adrián):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
-        "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
-        "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
-        "Adrián lo armaba a mano día a día."
+    _render_ayuda_referencia(
+        "¿Qué es esta vista?",
+        [
+            (
+                "",
+                "**Macro (Maestro / Fletes):** todos los casos Tango, tarifario completo, AMBA incluido. "
+                "Los **fleteros locales** (Blas, Gama, Armando…) se cargan desde el Excel Drive "
+                "y se ven en **Fletes** — no en esta planilla diaria.  \n\n"
+                "**Micro (Modo TOP):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
+                "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
+                "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
+                "Adrián lo armaba a mano día a día.",
+            ),
+        ],
     )
 
-    filtros = _ui_mes_control_adrian()
-    params_mes = {
-        "mes_control_anio": filtros["mes_control_anio"],
-        "mes_control_mes": filtros["mes_control_mes"],
-    }
-
-    # Modo Adrián = planilla diaria WAMARO TORTUGUITAS (CD Tortuguitas). Limansky/Wamaro SA
-    # es otro depósito y otra planilla en el maestro macro; acá no aplica con el Tango actual.
     planilla_api = "tortuguitas"
 
-    act1, act2, act3 = st.columns([1.4, 1.4, 2.2])
-    if act1.button("Cruce prefacturas CLICPAQ", key="adrian_macheo"):
-        with st.spinner("Cruzando prefacturas CLP con remitos…"):
-            with api_client() as c:
-                r = c.post("/mundo1/macheo/ejecutar")
-                r.raise_for_status()
-                st.toast(r.json())
-        _clear_adrian_cache()
-        get_maestro_filas_cached.clear()
-        st.rerun()
-    if act2.button("Reaplicar reglas y proveedores", key="adrian_reaplicar"):
-        with st.spinner("Reaplicando reglas y cobros…"):
-            with api_client() as c:
-                r = c.post("/envios/reaplicar-reglas", timeout=300.0)
-                r.raise_for_status()
-                st.toast(f"Procesados: {r.json().get('procesados', 0)}")
-        _clear_adrian_cache()
-        get_maestro_filas_cached.clear()
-        st.rerun()
-    act3.caption(
-        "Prefactura CLICPAQ **compartida** con el Maestro: importá en **Configuración** "
-        "y ejecutá **Cruce prefacturas** (acá o en Maestro)."
-    )
+    with _panel_acciones("Modo TOP", "Filtros y acciones"):
+        filtros = _ui_mes_control_adrian()
+        params_mes = {
+            "mes_control_anio": filtros["mes_control_anio"],
+            "mes_control_mes": filtros["mes_control_mes"],
+        }
 
-    try:
-        with st.spinner("Cargando resumen Modo Adrián…"):
-            resumen = get_adrian_resumen_cached(json.dumps(params_mes, sort_keys=True))
-            dias_resp = get_adrian_dias_cached(
-                json.dumps({**params_mes, "planilla": planilla_api}, sort_keys=True)
+        act1, act2, act3 = st.columns([1.4, 1.4, 2.2])
+        if act1.button("Cruce prefacturas CLICPAQ", key="adrian_macheo"):
+            with st.spinner("Cruzando prefacturas CLP con remitos…"):
+                with api_client() as c:
+                    r = c.post("/mundo1/macheo/ejecutar")
+                    r.raise_for_status()
+                    st.toast(r.json())
+            _clear_adrian_cache()
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        if act2.button("Reaplicar reglas y proveedores", key="adrian_reaplicar"):
+            with st.spinner("Reaplicando reglas y cobros…"):
+                with api_client() as c:
+                    r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                    r.raise_for_status()
+                    st.toast(f"Procesados: {r.json().get('procesados', 0)}")
+            _clear_adrian_cache()
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        act3.caption(
+            "Prefactura CLICPAQ **compartida** con el Maestro: importá en **Configuración** "
+            "y ejecutá **Cruce prefacturas** (acá o en Maestro)."
+        )
+
+        try:
+            with st.spinner("Cargando resumen Modo TOP…"):
+                resumen = get_adrian_resumen_cached(json.dumps(params_mes, sort_keys=True))
+                dias_resp = get_adrian_dias_cached(
+                    json.dumps({**params_mes, "planilla": planilla_api}, sort_keys=True)
+                )
+        except Exception as exc:
+            st.error(f"No se pudo cargar Modo TOP: {exc}")
+            return
+
+        pf = resumen.get("prefactura_clp") or {}
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Casos LOG (mes)", resumen.get("casos_tortuguitas", 0))
+        m2.metric("Con prefactura CLP", pf.get("con_prefactura_clp", 0))
+        m3.metric("Sin prefactura CLP", pf.get("sin_prefactura_clp", 0))
+        m4.metric("Días con entregas", len(dias_resp.get("dias") or []))
+        if pf.get("con_diferencia_prefactura"):
+            st.caption(
+                f"**{pf['con_diferencia_prefactura']}** caso(s) con diferencia prefactura vs tarifario."
             )
-    except Exception as exc:
-        st.error(f"No se pudo cargar Modo Adrián: {exc}")
-        return
+
+        dias = dias_resp.get("dias") or []
+        if not dias:
+            st.info(
+                "Sin casos LOG en este mes con los filtros Adrián. "
+                "Probá otro mes o importá Tango desde **Configuración**."
+            )
+            return
+
+        total_mes = int(resumen.get("casos_tortuguitas") or 0)
+        opciones_dia = ["__todos__"] + [d["fecha"] for d in dias]
+        labels_dia: dict[str, str] = {
+            "__todos__": f"Mostrar todo — {total_mes} caso(s)",
+        }
+        for d in dias:
+            labels_dia[d["fecha"]] = f"{d['fecha']} — {d['casos']} caso(s)"
+
+        mes_key = f"{params_mes['mes_control_anio']}-{params_mes['mes_control_mes']}"
+        if st.session_state.get("adrian_mes_prev") != mes_key:
+            st.session_state.adrian_dia_sel = "__todos__"
+            st.session_state.adrian_mes_prev = mes_key
+            st.session_state.pop("adrian_buscar_grilla", None)
+            st.session_state.pop("adrian_buscar_sig", None)
+        elif st.session_state.get("adrian_dia_sel") not in opciones_dia:
+            st.session_state.adrian_dia_sel = "__todos__"
+
+        sel_dia = st.selectbox(
+            "Día de entrega — WAMARO TORTUGUITAS",
+            opciones_dia,
+            format_func=lambda k: labels_dia[k],
+            key="adrian_dia_sel",
+        )
+        ver_todo = sel_dia == "__todos__"
+
+        page_key = "adrian_maestro_page"
+        if st.session_state.get("adrian_dia_prev") != sel_dia:
+            st.session_state[page_key] = 1
+        st.session_state.adrian_dia_prev = sel_dia
+
+        page = int(st.session_state.get(page_key, 1))
+        page_size = 150
+
+        buscar_key = "adrian_buscar_grilla"
+        _reset_page_si_buscar_cambia("adrian", buscar_key)
+        buscar = str(st.session_state.get(buscar_key, "") or "").strip()
+
+        try:
+            if ver_todo:
+                mes_params: dict[str, Any] = {
+                    "mes_control_anio": params_mes["mes_control_anio"],
+                    "mes_control_mes": params_mes["mes_control_mes"],
+                    "planilla": planilla_api,
+                    "page": page,
+                    "page_size": page_size,
+                }
+                if buscar:
+                    mes_params["q"] = buscar
+                with st.spinner("Cargando LOG del mes…"):
+                    payload = get_adrian_mes_cached(
+                        json.dumps(mes_params, sort_keys=True)
+                    )
+            else:
+                dia_params: dict[str, Any] = {
+                    "dia": sel_dia,
+                    "planilla": planilla_api,
+                    "page": page,
+                    "page_size": page_size,
+                }
+                if buscar:
+                    dia_params["q"] = buscar
+                with st.spinner(f"Cargando LOG del {sel_dia}…"):
+                    payload = get_adrian_dia_cached(
+                        json.dumps(dia_params, sort_keys=True)
+                    )
+        except Exception as exc:
+            st.error(str(exc))
+            return
+
+        filas = payload.get("filas") or []
+        total = int(payload.get("total") or 0)
+        page = int(payload.get("page") or page)
+        total_pages = int(payload.get("total_pages") or 1)
+        st.session_state[page_key] = page
+
+        if ver_todo:
+            st.caption(
+                f"**{total}** caso(s) con entrega en el mes · planilla **WAMARO TORTUGUITAS**. "
+                "Elegí un día arriba para ver el corte diario o exportar la planilla Adrián."
+            )
+        else:
+            st.caption(
+                f"**{total}** caso(s) con entrega **{sel_dia}** · planilla **WAMARO TORTUGUITAS**. "
+                "Columna TRANSPORTE en formato operativo (CLICPAQ / LA COSTA)."
+            )
+
+        if not filas:
+            st.warning("Sin filas para esta vista.")
+            _controles_paginacion_maestro_api(
+                "adrian",
+                total=total,
+                page=page,
+                page_size=page_size,
+                total_pages=total_pages,
+                buscar_key=buscar_key,
+            )
+            return
+
+        if buscar:
+            st.caption(f"Búsqueda **«{buscar}»** — **{total}** caso(s) encontrado(s).")
+        page = _controles_paginacion_maestro_api(
+            "adrian",
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            buscar_key=buscar_key,
+        )
 
     ref = resumen.get("referencia_adrian_abr_2026") or {}
-    pf = resumen.get("prefactura_clp") or {}
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Casos LOG (mes)", resumen.get("casos_tortuguitas", 0))
-    m2.metric("Con prefactura CLP", pf.get("con_prefactura_clp", 0))
-    m3.metric("Sin prefactura CLP", pf.get("sin_prefactura_clp", 0))
-    m4.metric("Días con entregas", len(dias_resp.get("dias") or []))
-    if pf.get("con_diferencia_prefactura"):
-        st.caption(
-            f"**{pf['con_diferencia_prefactura']}** caso(s) con diferencia prefactura vs tarifario."
-        )
-    with st.expander("Referencia validación (abr 2026)", expanded=False):
-        st.caption(
-            f"Carpeta manual Adrián — LOG Tortuguitas: **{ref.get('log_tortuguitas_remitos', '—')}** "
-            f"remitos · LOG SA: **{ref.get('log_sa_remitos', '—')}** remitos. "
-            "Solo referencia histórica; no limita el sistema."
-        )
-
-    dias = dias_resp.get("dias") or []
-    if not dias:
-        st.info(
-            "Sin casos LOG en este mes con los filtros Adrián. "
-            "Probá otro mes o importá Tango desde **Configuración**."
-        )
-        return
-
-    total_mes = int(resumen.get("casos_tortuguitas") or 0)
-    opciones_dia = ["__todos__"] + [d["fecha"] for d in dias]
-    labels_dia: dict[str, str] = {
-        "__todos__": f"Mostrar todo — {total_mes} caso(s)",
-    }
-    for d in dias:
-        labels_dia[d["fecha"]] = f"{d['fecha']} — {d['casos']} caso(s)"
-
-    mes_key = f"{params_mes['mes_control_anio']}-{params_mes['mes_control_mes']}"
-    if st.session_state.get("adrian_mes_prev") != mes_key:
-        st.session_state.adrian_dia_sel = "__todos__"
-        st.session_state.adrian_mes_prev = mes_key
-    elif st.session_state.get("adrian_dia_sel") not in opciones_dia:
-        st.session_state.adrian_dia_sel = "__todos__"
-
-    sel_dia = st.selectbox(
-        "Día de entrega — WAMARO TORTUGUITAS",
-        opciones_dia,
-        format_func=lambda k: labels_dia[k],
-        key="adrian_dia_sel",
+    _render_ayuda_referencia(
+        "Referencia validación (abr 2026)",
+        [
+            (
+                "",
+                f"Carpeta manual Adrián — LOG Tortuguitas: **{ref.get('log_tortuguitas_remitos', '—')}** "
+                f"remitos · LOG SA: **{ref.get('log_sa_remitos', '—')}** remitos. "
+                "Solo referencia histórica; no limita el sistema.",
+            ),
+        ],
     )
-    ver_todo = sel_dia == "__todos__"
-
-    page_key = "adrian_maestro_page"
-    if st.session_state.get("adrian_dia_prev") != sel_dia:
-        st.session_state[page_key] = 1
-    st.session_state.adrian_dia_prev = sel_dia
-
-    page = int(st.session_state.get(page_key, 1))
-    page_size = 150
-
-    try:
-        if ver_todo:
-            with st.spinner("Cargando LOG del mes…"):
-                payload = get_adrian_mes_cached(
-                    json.dumps(
-                        {
-                            "mes_control_anio": params_mes["mes_control_anio"],
-                            "mes_control_mes": params_mes["mes_control_mes"],
-                            "planilla": planilla_api,
-                            "page": page,
-                            "page_size": page_size,
-                        },
-                        sort_keys=True,
-                    )
-                )
-        else:
-            with st.spinner(f"Cargando LOG del {sel_dia}…"):
-                payload = get_adrian_dia_cached(
-                    json.dumps(
-                        {
-                            "dia": sel_dia,
-                            "planilla": planilla_api,
-                            "page": page,
-                            "page_size": page_size,
-                        },
-                        sort_keys=True,
-                    )
-                )
-    except Exception as exc:
-        st.error(str(exc))
-        return
-
-    filas = payload.get("filas") or []
-    total = int(payload.get("total") or 0)
-    page = int(payload.get("page") or page)
-    total_pages = int(payload.get("total_pages") or 1)
-    st.session_state[page_key] = page
-
-    if ver_todo:
-        st.caption(
-            f"**{total}** caso(s) con entrega en el mes · planilla **WAMARO TORTUGUITAS**. "
-            "Elegí un día arriba para ver el corte diario o exportar la planilla Adrián."
-        )
-    else:
-        st.caption(
-            f"**{total}** caso(s) con entrega **{sel_dia}** · planilla **WAMARO TORTUGUITAS**. "
-            "Mismas 29 columnas que Adrián. Columna TRANSPORTE en formato operativo (CLICPAQ / LA COSTA)."
-        )
-
-    if not filas:
-        st.warning("Sin filas para esta vista.")
-        return
 
     df = preparar_maestro_df(pd.DataFrame(filas))
-    page = _controles_paginacion_maestro_api(
-        "adrian",
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-    )
-
     cols_grilla = [c for c in MAESTRO_VISTA_GRILLA if c in df.columns]
     show_df = _as_dataframe(df[cols_grilla].copy())
     for meta in _META_GRILLA:
         if meta in df.columns:
             show_df[meta] = df[meta]
 
-    st.caption(
-        "Tarifario y **prefactura CLICPAQ compartidos con el Maestro**. "
-        "PRECIO NETO / dif se cargan con el cruce CLP. "
-        "Fila roja solo si falta tarifa o hay diferencia real."
+    _render_grilla_con_detalle(
+        show_df,
+        df,
+        sel_key="adrian_sel",
+        paginar_cliente=False,
+        ayuda_notas=(
+            "Tarifario y **prefactura CLICPAQ compartidos con el Maestro**. "
+            "PRECIO NETO / dif se cargan con el cruce CLP. "
+            "Fila roja solo si falta tarifa o hay diferencia real."
+        ),
     )
-    _render_grilla_con_detalle(show_df, df, sel_key="adrian_sel", paginar_cliente=False)
 
     if not ver_todo:
         export_key = "adrian_export_xlsx"
@@ -2948,76 +3461,89 @@ def pagina_fletes() -> None:
         "y tarifa ref. fletes sucursales (zona km).",
         "Fletes",
     )
-    _render_leyenda_operativa()
+    _render_ayuda_referencia(
+        "Ayuda y referencia",
+        [
+            ("Leyenda", _html_leyenda_operativa()),
+            (
+                "Alertas",
+                "Columnas **Fletero**, **Sucursal**, **Km** y **Zona km** marcan ⚠ cuando falta "
+                "completar datos locales. Seleccioná una fila para ver el detalle.",
+            ),
+        ],
+        html_indices=frozenset({0}),
+    )
 
     if not check_health_cached():
         st.warning("Ejecutá **Iniciar_Fletes.bat**.")
         st.stop()
 
-    filtros_extra = _ui_filtros_fecha_remito("fletes")
-    anio_mes = int(filtros_extra["mes_control_anio"])
-    mes_num = int(filtros_extra["mes_control_mes"])
     key_prefix = "fletes"
-    modo_carga_key = _gestionar_cambio_mes_quincena(
-        key_prefix,
-        anio_mes,
-        mes_num,
-        clear_cache_fn=_clear_fletes_cache,
-    )
 
-    f1, f2, f3, f4 = st.columns([2, 2, 2, 2])
-    origen_f = f1.selectbox(
-        "Origen CD",
-        ["Todos", "Tortuguitas", "SA / Limansky"],
-        format_func=lambda x: {
-            "Todos": "Todos",
-            "Tortuguitas": "Wamaro Tortuguitas",
-            "SA / Limansky": "Wamaro SA",
-        }[x],
-        key="fletes_origen",
-    )
-    solo_alerta_f = f2.checkbox("Solo con alerta", value=False, key="fletes_solo_alerta")
-    buscar = f3.text_input(
-        "Buscar remito o destinatario",
-        placeholder="Ej: 318022 — luego «Buscar en toda la base»",
-        key="fletes_buscar",
-    )
-    try:
-        fleteros_api = get_fleteros_cached()
-        opciones_f = ["Todos"] + [f["nombre_corto"] for f in fleteros_api]
-    except Exception:
-        opciones_f = ["Todos"]
-    fletero_f = f4.selectbox("Fletero local", opciones_f, key="fletes_fletero")
+    with _panel_acciones("Fletes", "Filtros y acciones"):
+        filtros_extra = _ui_filtros_fecha_remito("fletes")
+        anio_mes = int(filtros_extra["mes_control_anio"])
+        mes_num = int(filtros_extra["mes_control_mes"])
+        modo_carga_key = _gestionar_cambio_mes_quincena(
+            key_prefix,
+            anio_mes,
+            mes_num,
+            clear_cache_fn=_clear_fletes_cache,
+        )
 
-    firma_ui = json.dumps(
-        {
-            "origen": origen_f,
-            "solo_alerta": solo_alerta_f,
-            "fletero": fletero_f,
-            "pend_zona": bool(st.session_state.get("fletes_solo_pendiente_zona", False)),
-            "filtros_extra": filtros_extra,
-        },
-        sort_keys=True,
-        default=str,
-    )
-    _invalidar_modo_quincena_si_cambian_filtros(
-        key_prefix,
-        firma_ui,
-        modo_carga_key,
-        clear_cache_fn=_clear_fletes_cache,
-    )
+        f1, f2, f3, f4 = st.columns([2, 2, 2, 2])
+        origen_f = f1.selectbox(
+            "Origen CD",
+            ["Todos", "Tortuguitas", "SA / Limansky"],
+            format_func=lambda x: {
+                "Todos": "Todos",
+                "Tortuguitas": "Wamaro Tortuguitas",
+                "SA / Limansky": "Wamaro SA",
+            }[x],
+            key="fletes_origen",
+        )
+        solo_alerta_f = f2.checkbox("Solo con alerta", value=False, key="fletes_solo_alerta")
+        buscar = f3.text_input(
+            "Buscar remito o destinatario",
+            placeholder="Ej: 318022 — luego «Buscar en toda la base»",
+            key="fletes_buscar",
+        )
+        try:
+            fleteros_api = get_fleteros_cached()
+            opciones_f = ["Todos"] + [f["nombre_corto"] for f in fleteros_api]
+        except Exception:
+            opciones_f = ["Todos"]
+        fletero_f = f4.selectbox("Fletero local", opciones_f, key="fletes_fletero")
 
-    modo_carga = _render_botones_carga_quincena(
-        key_prefix,
-        anio_mes,
-        mes_num,
-        buscar,
-        clear_cache_fn=_clear_fletes_cache,
-        modulo="Fletes",
-        page_state_key=f"{key_prefix}_maestro_page",
-    )
-    if not modo_carga:
-        return
+        firma_ui = json.dumps(
+            {
+                "origen": origen_f,
+                "solo_alerta": solo_alerta_f,
+                "fletero": fletero_f,
+                "pend_zona": bool(st.session_state.get("fletes_solo_pendiente_zona", False)),
+                "filtros_extra": filtros_extra,
+            },
+            sort_keys=True,
+            default=str,
+        )
+        _invalidar_modo_quincena_si_cambian_filtros(
+            key_prefix,
+            firma_ui,
+            modo_carga_key,
+            clear_cache_fn=_clear_fletes_cache,
+        )
+
+        modo_carga = _render_botones_carga_quincena(
+            key_prefix,
+            anio_mes,
+            mes_num,
+            buscar,
+            clear_cache_fn=_clear_fletes_cache,
+            modulo="Fletes",
+            page_state_key=f"{key_prefix}_maestro_page",
+        )
+        if not modo_carga:
+            return
 
     params_base: dict[str, Any] = dict(filtros_extra)
     if origen_f == "Tortuguitas":
@@ -3093,10 +3619,7 @@ def pagina_fletes() -> None:
         elif solo_alerta_f:
             st.caption(f"**{total_fletes}** casos con alerta en el período.")
         else:
-            st.caption(
-                f"**{total_fletes}** casos en el período. "
-                "Seleccioná una fila para ver el detalle."
-            )
+            st.caption(f"**{total_fletes}** casos en el período.")
 
         page = _controles_paginacion_maestro_api(
             key_prefix,
@@ -3341,7 +3864,7 @@ def _config_fleteros_locales() -> None:
         "**Mirada macro (Mundo 2 / Fletes):** entregas sucursal → domicilio con fleteros "
         "de confianza (**Blas**, Gama, Armando…). El cliente puede ver **$0**; "
         "acá cargás el Excel del Drive y lo cruzás con el **maestro Fletes**. "
-        "**No aplica** al LOG diario Modo Adrián (micro — interior canal 51/83)."
+        "**No aplica** al LOG diario Modo TOP (micro — interior canal 51/83)."
     )
     plantilla_download(
         "plantilla_fletes_solicitud.xlsx",
@@ -3432,7 +3955,7 @@ def _config_fleteros_locales() -> None:
         key="cfg_fleteros_import",
     )
     b1, b2 = st.columns(2)
-    if b1.button("Importar Excel", type="primary", disabled=upl is None):
+    if b1.button("Importar Excel", type="primary", disabled=upl is None, key="cfg_flet_btn_import"):
         try:
             if upl is None:
                 raise RuntimeError("Seleccioná un archivo.")
@@ -3453,7 +3976,7 @@ def _config_fleteros_locales() -> None:
         except Exception as exc:
             st.error(str(exc))
 
-    if b2.button("Machear con maestro Fletes", disabled=n_sol == 0):
+    if b2.button("Machear con maestro Fletes", disabled=n_sol == 0, key="cfg_flet_btn_match"):
         try:
             with api_client() as c:
                 r = c.post("/fletes/internos/matchear")
@@ -3579,6 +4102,189 @@ def _config_fleteros_locales() -> None:
         )
 
 
+@st.dialog("Importar planilla desde Drive")
+def _dialog_import_cross_drive() -> None:
+    st.markdown(
+        "Pegá el link compartido de Google Sheets o Drive "
+        "(permiso **Lector con link**). El sistema descarga el Excel e importa "
+        "las pestañas **Retirado por …**."
+    )
+    url = st.text_input(
+        "Link de Google Sheets / Drive",
+        placeholder="https://docs.google.com/spreadsheets/d/…",
+        key="cfg_cross_drive_url",
+    )
+    nombre = st.text_input(
+        "Nombre (opcional)",
+        placeholder="ej. Cross Córdoba",
+        key="cfg_cross_drive_nombre",
+    )
+    matchear = st.checkbox(
+        "Machear con maestro al importar", value=True, key="cfg_cross_drive_match"
+    )
+    c_ok, c_cancel = st.columns(2)
+    if c_cancel.button("Cancelar", key="cfg_cross_drive_cancel"):
+        st.rerun()
+    if c_ok.button("Descargar e importar", type="primary", key="cfg_cross_drive_ok"):
+        link = (url or "").strip()
+        if not link:
+            st.error("Pegá el link del archivo.")
+            return
+        try:
+            with st.spinner("Descargando planilla…"):
+                data = post_json(
+                    "/cross/import-drive-link",
+                    {"url": link, "nombre": (nombre or "").strip() or None},
+                    matchear=matchear,
+                )
+            st.success(data.get("message", "Importado"))
+            if data.get("hojas_procesadas"):
+                st.caption(f"Hojas: {', '.join(data['hojas_procesadas'])}")
+            if data.get("macheo"):
+                m = data["macheo"]
+                st.info(
+                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                    f"{m.get('sin_maestro', 0)} solo en planilla"
+                )
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except httpx.HTTPStatusError as exc:
+            st.error(_detalle_error_api(exc))
+        except Exception as exc:
+            st.error(str(exc))
+
+
+def _config_cross_seguimiento() -> None:
+    """Planillas cross «Retirado por …» — revisión colaborativa por remito."""
+    st.subheader("Seguimiento cross (interior)")
+    st.caption(
+        "Importá las planillas de Drive donde cada sucursal registra retiros y entregas "
+        "(pestaña **Retirado por Logística Alfaro / Fransof / …**). "
+        "No factura: solo cruza por **remito** con el maestro para revisión."
+    )
+
+    try:
+        resumen = get_json("/cross/resumen")
+    except Exception:
+        resumen = {}
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Registros cross", resumen.get("total", 0))
+    c2.metric("En maestro", resumen.get("en_maestro", 0))
+    c3.metric("Entregado SI", resumen.get("entregado_si", 0))
+    c4.metric("Entregado NO", resumen.get("entregado_no", 0))
+
+    try:
+        planillas = get_json("/cross/planillas-drive")
+    except Exception:
+        planillas = []
+
+    with st.expander("Planillas Drive configuradas", expanded=bool(planillas)):
+        if planillas:
+            for p in planillas:
+                estado = "activa" if p.get("activo") else "off"
+                st.caption(f"**{p.get('label')}** — `{p.get('sheet_id')}` ({estado})")
+        st.caption(
+            "Las que devuelven 401 siguen privadas. Cuando te den el link con permiso "
+            "«Lector con link», usá **Importar desde link Drive** o **Sincronizar desde Drive**."
+        )
+
+    upl = st.file_uploader(
+        "Excel cross (pestaña Retirado por …)",
+        type=["xlsx"],
+        key="cfg_cross_import",
+    )
+    b1, b2, b3, b4 = st.columns(4)
+    if b1.button(
+        "Importar Excel", type="primary", disabled=upl is None, key="cfg_cross_btn_import"
+    ):
+        try:
+            if upl is None:
+                raise RuntimeError("Seleccioná un archivo.")
+            r = post_file("/cross/import", upl.name, upl.getvalue(), matchear="true")
+            st.success(r.get("message", "Importado"))
+            if r.get("hojas_procesadas"):
+                st.caption(f"Hojas: {', '.join(r['hojas_procesadas'])}")
+            if r.get("macheo"):
+                m = r["macheo"]
+                st.info(
+                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                    f"{m.get('sin_maestro', 0)} solo en planilla"
+                )
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
+
+    if b2.button("Sincronizar desde Drive", key="cfg_cross_btn_sync"):
+        try:
+            with st.spinner("Descargando planillas públicas…"):
+                with httpx.Client(base_url=API_URL, timeout=180.0) as c:
+                    r = c.post("/cross/sync-drive", params={"matchear": "true"})
+                    r.raise_for_status()
+                    data = r.json()
+            st.success(data.get("message", "Sync OK"))
+            for item in data.get("resultados") or []:
+                if item.get("ok"):
+                    st.caption(
+                        f"✓ {item.get('label')}: {item.get('insertados', 0)} nuevos · "
+                        f"{item.get('actualizados', 0)} act."
+                    )
+                else:
+                    st.warning(f"✗ {item.get('label')}: {item.get('motivo', 'error')}")
+            if data.get("macheo"):
+                m = data["macheo"]
+                st.info(
+                    f"Macheo total: {m.get('en_maestro', 0)} en maestro · "
+                    f"{m.get('sin_maestro', 0)} solo planilla"
+                )
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+    if b3.button("Importar desde link Drive", key="cfg_cross_btn_drive_link"):
+        _dialog_import_cross_drive()
+
+    if b4.button(
+        "Machear con maestro", disabled=not resumen.get("total"), key="cfg_cross_btn_match"
+    ):
+        try:
+            with api_client() as c:
+                r = c.post("/cross/matchear")
+                r.raise_for_status()
+                m = r.json()
+            st.success(
+                f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                f"{m.get('sin_maestro', 0)} solo en planilla"
+            )
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+    if resumen.get("total"):
+        try:
+            regs = get_json("/cross/registros", limit=100, solo_maestro=True)
+        except Exception:
+            regs = []
+        if regs:
+            st.markdown("**Últimos con match en maestro**")
+            df = pd.DataFrame(regs)
+            show = [
+                c
+                for c in (
+                    "remito",
+                    "proveedor",
+                    "entregado",
+                    "fecha_entrega_coord",
+                    "match_estado",
+                    "archivo_origen",
+                )
+                if c in df.columns
+            ]
+            st.dataframe(df[show], width="stretch", hide_index=True, height=220)
+
+
 def pagina_configuracion() -> None:
     _render_page_header(
         "Configuración",
@@ -3590,7 +4296,7 @@ def pagina_configuracion() -> None:
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
         st.stop()
 
-    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_sys = st.tabs(
+    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys = st.tabs(
         [
             "Tango (principal)",
             "Prefactura Clicpaq",
@@ -3598,6 +4304,7 @@ def pagina_configuracion() -> None:
             "Liquidación",
             "Tarifarios",
             "Fleteros locales",
+            "Cross seguimiento",
             "Sistema",
         ]
     )
@@ -3951,6 +4658,9 @@ def pagina_configuracion() -> None:
     with tab_flet:
         _config_fleteros_locales()
 
+    with tab_cross:
+        _config_cross_seguimiento()
+
     with tab_sys:
         st.subheader("Sistema")
         st.text_input("URL del API", value=API_URL, disabled=True)
@@ -4071,6 +4781,7 @@ st.set_page_config(
 )
 
 inject_theme()
+inject_top_watermark()
 
 # Limpiar enlaces viejos (?_gcaso=) que abrían pestaña duplicada
 if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
@@ -4083,7 +4794,7 @@ if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
 st.sidebar.markdown(
     '<div class="sidebar-brand-band">'
     '<p class="sidebar-brand-title">Control de Fletes</p>'
-    '<p class="sidebar-brand-caption">SommierCenter · Wamaro</p>'
+    '<p class="sidebar-brand-caption">SommierCenter · Wamaro · TOP</p>'
     "</div>",
     unsafe_allow_html=True,
 )
@@ -4114,7 +4825,7 @@ if pagina == "Dashboard":
     pagina_dashboard()
 elif pagina == "MAESTRO":
     pagina_casos(titulo="MAESTRO", key_prefix="maestro", carga_por_quincena=True)
-elif pagina == "Modo Adrián":
+elif pagina == "Modo TOP":
     pagina_modo_adrian()
 elif pagina == "CLICPAQ":
     _page_clicpaq()

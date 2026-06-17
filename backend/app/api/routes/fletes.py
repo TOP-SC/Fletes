@@ -28,6 +28,7 @@ from app.services.mundo2_service import (
     FLETES_COLUMNAS,
     _agrupar_por_caso,
     construir_fletes_pagina,
+    detalle_caso_fletes,
     es_envio_mundo2,
     stats_mundo2_liviano,
 )
@@ -217,6 +218,16 @@ def _resolver_grupo_caso(envios: list[Envio], caso_id: str):
         if any((e.remito or "") == caso_id for e in g):
             return g
     return None
+
+
+@router.get("/caso/{caso_id}")
+def get_caso_fletes(caso_id: str, db: Session = Depends(get_db)) -> dict:
+    """Detalle Fletes: tarifa ref., zona km, fletero Drive y alertas del módulo."""
+    envios = list(db.scalars(select(Envio)).all())
+    det = detalle_caso_fletes(envios, caso_id, db)
+    if not det:
+        raise HTTPException(status_code=404, detail="Caso no encontrado o no aplica Fletes")
+    return det
 
 
 @router.post("/caso/{caso_id}/calcular-km")

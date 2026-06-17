@@ -7,6 +7,8 @@ from collections import defaultdict
 from datetime import date
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.models import Envio, FleteDistancia, Tarifa
 from app.services.zona_km import zona_etiqueta
@@ -162,6 +164,57 @@ def _color_fila_fletes(
     return "verde", "Tarifa local de referencia calculada"
 
 
+def _alertas_grilla_fletes(
+    *,
+    retiro: bool,
+    por_zona: dict[str, float],
+    zona_km: str | None,
+    sucursal_cod: str,
+    km_txt: str,
+    fletero: str,
+    motivo: str | None,
+) -> tuple[str | None, list[dict[str, Any]]]:
+    """Alertas ⚠ en grilla Fletes — alineadas con campos vacíos visibles."""
+    if retiro:
+        return None, []
+    alertas: list[dict[str, Any]] = []
+    if not por_zona:
+        alertas.append(
+            {
+                "codigo": "tarifa_local",
+                "columnas": ["TARIFA REF"],
+                "motivo": motivo or "Sin tarifa local (importá hoja fletes sucursales)",
+            }
+        )
+    elif not zona_km:
+        alertas.append(
+            {
+                "codigo": "zona_km",
+                "columnas": ["ZONA KM", "KM", "SUCURSAL", "TARIFA REF"],
+                "motivo": motivo or "Pendiente asignar zona km",
+            }
+        )
+    elif not sucursal_cod or not km_txt:
+        alertas.append(
+            {
+                "codigo": "km_pendiente",
+                "columnas": ["KM", "SUCURSAL"],
+                "motivo": motivo or "Falta calcular km o confirmar sucursal",
+            }
+        )
+    if por_zona and not fletero:
+        alertas.append(
+            {
+                "codigo": "fletero",
+                "columnas": ["FLETERO"],
+                "motivo": "Sin fletero en planilla Drive (importá solicitudes en Configuración)",
+            }
+        )
+    if alertas:
+        return "alerta", alertas
+    return None, []
+
+
 def _fila_fletes_desde_grupo(
     key: str,
     lineas: list[Envio],
@@ -248,8 +301,6 @@ def _fila_fletes_desde_grupo(
             por_zona = _tarifas_zona_local(tarifas_grupo, tipo, medida)
         costo_ref = por_zona.get(zona_km)
 
-    from app.services.alerta_ui import color_fila_fletes_local
-
     color_raw, motivo = _color_fila_fletes(
         retiro=retiro,
         abona_wamaro=bool(base.abona_wamaro),
@@ -271,20 +322,26 @@ def _fila_fletes_desde_grupo(
                 f"Ref. ${pmin:,.0f}–${pmax:,.0f} (elegir zona km)".replace(",", ".")
             )
 
-    color_ui, alertas_celdas = color_fila_fletes_local(
+    fletero_txt = ""
+    solicitud_drive: dict[str, Any] | None = None
+    if mapa_fletero:
+        from app.services.remito_utils import normalizar_remito as _nr
+
+        rn = _nr(base.remito) or clave_agrupacion_caso(base)
+        info = mapa_fletero.get(rn or "")
+        if info:
+            fletero_txt = str(info.get("fletero_corto") or info.get("fletero") or "")
+            solicitud_drive = info
+
+    color_ui, alertas_celdas = _alertas_grilla_fletes(
         retiro=retiro,
-        tiene_tarifa=bool(por_zona),
-        zona_asignada=zona_km,
+        por_zona=por_zona,
+        zona_km=zona_km,
+        sucursal_cod=sucursal_cod,
+        km_txt=km_txt,
+        fletero=fletero_txt,
         motivo=motivo,
     )
-    if not alertas_celdas:
-        color_ui = None
-    elif zona_km and sucursal_cod and costo_ref is not None:
-        alertas_celdas = [
-            a for a in alertas_celdas if a.get("codigo") != "zona_km"
-        ]
-        if not alertas_celdas:
-            color_ui = None
 
     fila: dict[str, Any] = {
         "_caso_id": key,
@@ -326,17 +383,9 @@ def _fila_fletes_desde_grupo(
         fila["SEGURO"] = settings.seguro_fijo
         fila["LOGISTICA"] = round_pesos((tmp.costo_tarifario or 0) - settings.seguro_fijo)
 
-    if mapa_fletero:
-        from app.services.remito_utils import normalizar_remito as _nr
-
-        rn = _nr(base.remito) or clave_agrupacion_caso(base)
-        info = mapa_fletero.get(rn or "")
-        if info:
-            fila["FLETERO"] = info.get("fletero_corto") or info.get("fletero") or ""
-        else:
-            fila["FLETERO"] = ""
-    else:
-        fila["FLETERO"] = ""
+    fila["FLETERO"] = fletero_txt
+    if solicitud_drive:
+        fila["_solicitud_drive"] = solicitud_drive
 
     return normalize_maestro_montos(fila)
 
@@ -616,4 +665,65 @@ def stats_mundo2(
         ),
         "por_color": dict(por_color),
         "casos_con_fletero": sum(1 for f in filas if f.get("FLETERO")),
+    }
+
+
+def detalle_caso_fletes(
+    envios: list[Envio],
+    caso_id: str,
+    db: Session,
+) -> dict[str, Any] | None:
+    """Detalle operativo Fletes (zona km, fletero Drive, alertas) — no mezclar con maestro interior."""
+    from app.services.maestro_service import obtener_lineas_caso
+    from app.services.fletes_internos_service import mapa_fletero_por_remito
+    from app.services.fletes_km_service import info_distancia_sucursal_destino, preparar_contexto_km
+    from app.services.pedido_cobro_service import clasificar_linea
+    from app.services.tarifario_version_service import TarifarioContext
+
+    found = obtener_lineas_caso(envios, caso_id)
+    if not found:
+        return None
+    caso_id, lineas = found
+    if not es_envio_mundo2(lineas[0]):
+        return None
+
+    tarifario_ctx = TarifarioContext(db)
+    distancias = preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
+    mapa_f = mapa_fletero_por_remito(db)
+    rn = clave_agrupacion_caso(lineas[0]) or caso_id
+    dist = (distancias or {}).get(rn) if distancias else None
+    dist = _buscar_distancia_caso(lineas[0], caso_id, distancias, dist, db=db)
+    fila = _fila_fletes_desde_grupo(
+        caso_id,
+        lineas,
+        tarifario_ctx=tarifario_ctx,
+        dist=dist,
+        db=db,
+        mapa_fletero=mapa_f,
+    )
+
+    renglones = []
+    for ln in lineas:
+        renglones.append(
+            {
+                "remito": ln.remito,
+                "nro_pedido": ln.nro_pedido,
+                "cod_articulo": ln.cod_articulo,
+                "descripcion": ln.descripcion,
+                "cantidad": ln.cantidad,
+                "tipo_linea": clasificar_linea(ln).tipo_linea,
+                "localidad": ln.localidad,
+                "provincia": ln.provincia,
+                "transporte": ln.transporte_nombre,
+            }
+        )
+
+    return {
+        "caso_id": caso_id,
+        "fletes": fila,
+        "distancia_sucursal": info_distancia_sucursal_destino(
+            db, lineas[0], intentar_calculo=True
+        ),
+        "renglones": renglones,
+        "solicitud_drive": fila.get("_solicitud_drive"),
     }

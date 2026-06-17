@@ -173,6 +173,7 @@ def _grupos_modo_adrian(
     fecha_desde: date | None = None,
     fecha_hasta: date | None = None,
     dia: date | None = None,
+    q: str | None = None,
 ) -> list[tuple[str, list[Envio]]]:
     filtrados = filtrar_envios_modo_adrian(envios, planilla=planilla)
     grupos_raw = _agrupar_por_caso(filtrados)
@@ -190,6 +191,11 @@ def _grupos_modo_adrian(
         if fecha_hasta and fe > fecha_hasta:
             continue
         out.append((key, grupo))
+
+    if q and q.strip():
+        from app.services.maestro_service import _grupo_coincide_busqueda
+
+        out = [(k, g) for k, g in out if _grupo_coincide_busqueda(g, q)]
 
     out.sort(key=lambda x: str(_fecha_entrega_envio(x[1][0]) or ""), reverse=True)
     return out
@@ -341,15 +347,17 @@ def construir_log_adrian_pagina(
     tarifario_ctx: Any = None,
     page: int | None = None,
     page_size: int | None = None,
+    q: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     if dia is not None:
-        keys_grupos = _grupos_modo_adrian(envios, planilla=planilla, dia=dia)
+        keys_grupos = _grupos_modo_adrian(envios, planilla=planilla, dia=dia, q=q)
     else:
         keys_grupos = _grupos_modo_adrian(
             envios,
             planilla=planilla,
             fecha_desde=fecha_desde,
             fecha_hasta=fecha_hasta,
+            q=q,
         )
     total = len(keys_grupos)
 
@@ -375,6 +383,7 @@ def construir_log_dia_adrian(
     tarifario_ctx: Any = None,
     page: int | None = None,
     page_size: int | None = None,
+    q: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     return construir_log_adrian_pagina(
         envios,
@@ -384,6 +393,7 @@ def construir_log_dia_adrian(
         tarifario_ctx=tarifario_ctx,
         page=page,
         page_size=page_size,
+        q=q,
     )
 
 

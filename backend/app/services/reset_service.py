@@ -2,6 +2,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
+    CrossSeguimiento,
     Envio,
     FleteDistancia,
     FleteSolicitud,
@@ -23,6 +24,7 @@ def contar_registros(db: Session) -> dict[str, int]:
         "importaciones": db.scalar(select(func.count()).select_from(ImportBatch)) or 0,
         "flete_distancias": db.scalar(select(func.count()).select_from(FleteDistancia)) or 0,
         "flete_solicitudes": db.scalar(select(func.count()).select_from(FleteSolicitud)) or 0,
+        "cross_seguimiento": db.scalar(select(func.count()).select_from(CrossSeguimiento)) or 0,
         "tarifas": db.scalar(select(func.count()).select_from(Tarifa)) or 0,
     }
 
@@ -42,6 +44,7 @@ def cierre_mensual(db: Session, *, incluir_tarifarios: bool = False) -> dict[str
     db.execute(delete(ImportBatch))
     db.execute(delete(FleteDistancia))
     db.execute(delete(FleteSolicitud))
+    db.execute(delete(CrossSeguimiento))
 
     tarifas_borradas = 0
     if incluir_tarifarios:
@@ -66,6 +69,7 @@ def cierre_mensual(db: Session, *, incluir_tarifarios: bool = False) -> dict[str
             "importaciones": antes["importaciones"],
             "flete_distancias": antes["flete_distancias"],
             "flete_solicitudes": antes["flete_solicitudes"],
+            "cross_seguimiento": antes["cross_seguimiento"],
             "tarifas": tarifas_borradas,
         },
         "restantes": despues,

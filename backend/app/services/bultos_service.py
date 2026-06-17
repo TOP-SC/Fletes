@@ -2,6 +2,7 @@
 Bultos logísticos del envío.
 
   - Colchón, sommier, base y diván: 1 bulto por unidad (cantidad Tango).
+  - Blanquería (sábanas, almohadas, fundas, etc.): 1 bulto por unidad.
   - Patas sueltas (renglón accesorio): cantidad = patas; cada 6 = 1 bulto de patas.
 
 En el total del grupo, las patas sueltas de todos los renglones se agrupan antes de ÷6.
@@ -17,6 +18,27 @@ from app.services.pedido_cobro_service import clasificar_linea
 PATAS_POR_BULTO = 6
 
 _PATA_KEYWORDS = ("PATA", "PATAS", "PACK PAT")
+
+_BLANQUERIA_KEYWORDS = (
+    "ALMOH",
+    "ALM.",
+    "ALMOHADA",
+    "SABANA",
+    "SÁBANA",
+    "FUNDA",
+    "ACOLCH",
+    "PROTECTOR",
+    "CUBRE",
+    "TOALL",
+    "TOALLA",
+    "MANTA",
+    "EDREDON",
+    "EDREDÓN",
+    "FRAZADA",
+    "BLANQUER",
+    "COLCHA",
+    "CORTINA",
+)
 
 _TIPOS_BULTO_UNIDAD = frozenset({"COLCHON", "SOMIER", "BASE", "DIVAN"})
 
@@ -37,6 +59,17 @@ def es_renglon_patas_sueltas(envio: Envio) -> bool:
     """Solo accesorios explícitos de patas (no sommier/colchón)."""
     renglon = clasificar_linea(envio)
     return renglon.tipo_linea == "ACCESORIO" and _tiene_keyword_patas_texto(_texto_linea(envio))
+
+
+def es_renglon_blanqueria(envio: Envio) -> bool:
+    """Sábanas, almohadas, fundas y similares — 1 bulto por unidad."""
+    renglon = clasificar_linea(envio)
+    if renglon.tipo_linea != "ACCESORIO":
+        return False
+    texto = _texto_linea(envio)
+    if _tiene_keyword_patas_texto(texto):
+        return False
+    return any(k in texto for k in _BLANQUERIA_KEYWORDS)
 
 
 def _cantidad(envio: Envio) -> float:
@@ -71,8 +104,18 @@ def bultos_patas_linea(envio: Envio) -> int:
     return max(1, math.ceil(patas / PATAS_POR_BULTO))
 
 
+def bultos_blanqueria_linea(envio: Envio) -> int:
+    if not es_renglon_blanqueria(envio):
+        return 0
+    return max(1, int(math.ceil(_cantidad(envio))))
+
+
 def bultos_de_linea(envio: Envio) -> int:
-    return bultos_unidades_linea(envio) + bultos_patas_linea(envio)
+    return (
+        bultos_unidades_linea(envio)
+        + bultos_blanqueria_linea(envio)
+        + bultos_patas_linea(envio)
+    )
 
 
 def etiqueta_bultos(cantidad: int) -> str:
@@ -118,6 +161,8 @@ def etiqueta_cantidad_logistica(envio: Envio) -> str:
     if es_renglon_patas_sueltas(envio):
         cant = int(envio.cantidad or 0)
         return etiqueta_bultos_patas(bultos_patas_linea(envio), patas=cant or None)
+    if es_renglon_blanqueria(envio):
+        return etiqueta_bultos(bultos_blanqueria_linea(envio))
     unidades = bultos_unidades_linea(envio)
     if unidades > 0:
         return etiqueta_bultos(unidades)
@@ -153,8 +198,9 @@ def bultos_grupo(lineas: list[Envio]) -> int:
     if not lineas:
         return 0
     unidades = sum(bultos_unidades_linea(l) for l in lineas)
+    blanqueria = sum(bultos_blanqueria_linea(l) for l in lineas)
     total_patas = sum(patas_sueltas_en_linea(l) for l in lineas)
     bultos_patas = (
         max(1, math.ceil(total_patas / PATAS_POR_BULTO)) if total_patas > 0 else 0
     )
-    return unidades + bultos_patas
+    return unidades + blanqueria + bultos_patas

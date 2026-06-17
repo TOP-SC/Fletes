@@ -78,6 +78,8 @@ class Envio(Base):
     proveedor_tarifa: Mapped[str | None] = mapped_column(String(40), index=True)
     proveedores_candidatos: Mapped[str | None] = mapped_column(Text)
     requiere_elegir_proveedor: Mapped[bool] = mapped_column(default=False)
+    cedol_codigo: Mapped[str | None] = mapped_column(String(8))
+    cedol_manual: Mapped[bool] = mapped_column(default=False)
 
     raw_json: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -282,6 +284,32 @@ class FleteSolicitud(Base):
     articulos_raw: Mapped[str | None] = mapped_column(Text)
     match_estado: Mapped[str | None] = mapped_column(String(30), default="pendiente")
     import_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw_json: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+
+class CrossSeguimiento(Base):
+    """Seguimiento operativo cross (pestaña Retirado por …) — revisión colaborativa, no factura."""
+
+    __tablename__ = "cross_seguimiento"
+    __table_args__ = (UniqueConstraint("remito_norm", name="uq_cross_seg_remito"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    remito_norm: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    remito: Mapped[str | None] = mapped_column(String(50))
+    nro_pedido: Mapped[str | None] = mapped_column(String(50), index=True)
+    proveedor: Mapped[str | None] = mapped_column(String(40), index=True)
+    hoja_origen: Mapped[str | None] = mapped_column(String(120))
+    archivo_origen: Mapped[str | None] = mapped_column(String(255))
+    import_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fecha_retiro: Mapped[str | None] = mapped_column(String(30))
+    fecha_entrega_coord: Mapped[str | None] = mapped_column(String(30))
+    entregado: Mapped[str | None] = mapped_column(String(30), index=True)
+    observacion: Mapped[str | None] = mapped_column(Text)
+    match_estado: Mapped[str | None] = mapped_column(String(30), default="pendiente", index=True)
     raw_json: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

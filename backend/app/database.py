@@ -35,6 +35,8 @@ _MIGRATIONS: dict[str, list[tuple[str, str]]] = {
         ("requiere_elegir_proveedor", "BOOLEAN DEFAULT 0"),
         ("fecha_pedido_d", "DATE"),
         ("fecha_entrega_d", "DATE"),
+        ("cedol_codigo", "VARCHAR(8)"),
+        ("cedol_manual", "BOOLEAN DEFAULT 0"),
     ],
     "tarifas": [("cedol", "VARCHAR(40)"), ("version_id", "INTEGER")],
     "flete_distancias": [("domicilio_fp", "VARCHAR(64)")],

@@ -312,3 +312,155 @@ def lookup_tarifa_con_cedol(
         tarifas, prov_key, cedol, tipo_producto, medida
     )
     return precio, cedol
+
+
+def listar_cedoles_tarifario(tarifas: list[Any], proveedor: str) -> list[str]:
+    """Códigos CEDOL distintos del tarifario activo para un proveedor."""
+    idx = construir_indice_cedol(tarifas, proveedor)
+    return sorted({f.cedol for f in idx.filas}, key=lambda c: (c[0], int(c[1:])))
+
+
+def _linea_referencia_cedol(lineas: list[Any]) -> Any:
+    """Línea del caso con proveedor/transporte (no renglones Tango vacíos)."""
+    for l in lineas:
+        if normalizar_proveedor(l.proveedor_tarifa) in _PROVEEDORES_CEDOL:
+            return l
+    for l in lineas:
+        if l.transporte_cod or l.transporte_nombre:
+            return l
+    return lineas[0]
+
+
+def _proveedor_cedol_grupo(lineas: list[Any]) -> str | None:
+    for l in lineas:
+        prov = normalizar_proveedor(l.proveedor_tarifa)
+        if prov in _PROVEEDORES_CEDOL:
+            return prov
+    for l in lineas:
+        if not (l.transporte_cod or l.transporte_nombre):
+            continue
+        from app.services.proveedor_service import _circuito_envio
+
+        circuito = _circuito_envio(l)
+        prov = normalizar_proveedor(circuito.get("proveedor"))
+        if prov in _PROVEEDORES_CEDOL:
+            return prov
+    return None
+
+
+def info_cedol_grupo(lineas: list[Any], tarifas: list[Any] | None) -> dict[str, Any]:
+    """CEDOL automático vs manual para un caso (grupo de envíos)."""
+    if not lineas:
+        return {"aplica": False}
+    base = _linea_referencia_cedol(lineas)
+    prov = _proveedor_cedol_grupo(lineas)
+    if prov not in _PROVEEDORES_CEDOL:
+        return {"aplica": False, "proveedor": prov}
+    tarifas = tarifas or []
+    auto = resolver_cedol_destino(
+        base.provincia,
+        base.localidad,
+        cp=base.cp,
+        tarifas=tarifas,
+        proveedor=prov,
+    )
+    manual = any(l.cedol_manual and l.cedol_codigo for l in lineas)
+    codigo_guardado = next(
+        (l.cedol_codigo for l in lineas if l.cedol_manual and l.cedol_codigo),
+        None,
+    )
+    efectivo = codigo_guardado if manual else auto
+    return {
+        "aplica": True,
+        "proveedor": prov,
+        "cedol_efectivo": efectivo,
+        "cedol_auto": auto,
+        "cedol_manual": manual,
+        "cedol_codigo_guardado": codigo_guardado,
+        "localidad": base.localidad,
+        "provincia": base.provincia,
+    }
+
+
+def aplicar_cedol_caso(
+    db: Any,
+    lineas: list[Any],
+    *,
+    cedol: str | None,
+    restaurar_auto: bool = False,
+) -> dict[str, Any]:
+    """
+    Persiste override de CEDOL en todas las líneas del caso y recalcula tarifas.
+    ``cedol=None`` o ``restaurar_auto=True`` vuelve al CEDOL automático.
+    """
+    from app.services.rules_service import recalcular_costos_linea, recalcular_grupo
+    from app.services.tarifario_version_service import TarifarioContext
+
+    if not lineas:
+        raise ValueError("Caso sin líneas")
+
+    base = _linea_referencia_cedol(lineas)
+    prov = _proveedor_cedol_grupo(lineas)
+    if prov not in _PROVEEDORES_CEDOL:
+        raise ValueError(
+            f"CEDOL no aplica: el caso no tiene proveedor CLICPAQ/ALFARO asignado "
+            f"(remito {getattr(base, 'remito', '') or '—'})."
+        )
+
+    ctx = TarifarioContext(db)
+    tarifas = ctx.tarifas_para_grupo(lineas)
+    opciones = set(listar_cedoles_tarifario(tarifas, prov))
+
+    if restaurar_auto or not cedol:
+        for e in lineas:
+            e.cedol_manual = False
+            e.cedol_codigo = None
+        cedol_aplicado = resolver_cedol_destino(
+            base.provincia,
+            base.localidad,
+            cp=base.cp,
+            tarifas=tarifas,
+            proveedor=prov,
+        )
+        modo = "auto"
+    else:
+        cod = str(cedol).strip().upper()
+        if not cedol_valido(cod):
+            raise ValueError(f"Código CEDOL inválido: {cedol}")
+        if cod not in opciones:
+            raise ValueError(
+                f"CEDOL {cod} no está en el tarifario de {prov}. "
+                f"Opciones: {', '.join(sorted(opciones)[:12])}…"
+            )
+        for e in lineas:
+            e.cedol_manual = True
+            e.cedol_codigo = cod
+        cedol_aplicado = cod
+        modo = "manual"
+
+    from app.services.proveedor_service import precio_tarifa_linea
+
+    recalculadas = 0
+    for e in lineas:
+        prov_linea = normalizar_proveedor(e.proveedor_tarifa) or prov
+        if prov_linea not in _PROVEEDORES_CEDOL:
+            continue
+        precio = precio_tarifa_linea(e, tarifas, prov_linea)
+        recalcular_costos_linea(e, precio)
+        recalculadas += 1
+    if recalculadas == 0:
+        raise ValueError(
+            "No se pudo recalcular: ninguna línea del caso tiene tarifa CLICPAQ/ALFARO."
+        )
+
+    recalcular_grupo(lineas)
+    db.commit()
+
+    info = info_cedol_grupo(lineas, tarifas)
+    return {
+        "ok": True,
+        "modo": modo,
+        "cedol_aplicado": cedol_aplicado,
+        "lineas_recalculadas": recalculadas,
+        "cedol": info,
+    }

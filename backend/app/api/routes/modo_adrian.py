@@ -79,6 +79,7 @@ def get_log_dia_modo_adrian(
     planilla: str = Query("tortuguitas"),
     page: int = Query(1, ge=1),
     page_size: int = Query(150, ge=1, le=500),
+    q: str | None = Query(None, description="Buscar remito, destinatario, localidad…"),
 ) -> MaestroPaginaOut:
     if planilla not in ("tortuguitas", "sa"):
         raise HTTPException(status_code=400, detail="planilla debe ser tortuguitas o sa")
@@ -104,6 +105,7 @@ def get_log_dia_modo_adrian(
         tarifario_ctx=ctx,
         page=page,
         page_size=page_size,
+        q=q,
     )
     total_pages = max(1, (total + page_size - 1) // page_size)
     return MaestroPaginaOut(
@@ -123,6 +125,7 @@ def get_log_mes_modo_adrian(
     mes_control_mes: int = Query(..., ge=1, le=12),
     page: int = Query(1, ge=1),
     page_size: int = Query(150, ge=1, le=500),
+    q: str | None = Query(None, description="Buscar remito, destinatario, localidad…"),
 ) -> MaestroPaginaOut:
     if planilla not in ("tortuguitas", "sa"):
         raise HTTPException(status_code=400, detail="planilla debe ser tortuguitas o sa")
@@ -144,6 +147,7 @@ def get_log_mes_modo_adrian(
         tarifario_ctx=ctx,
         page=page,
         page_size=page_size,
+        q=q,
     )
     total_pages = max(1, (total + page_size - 1) // page_size)
     return MaestroPaginaOut(

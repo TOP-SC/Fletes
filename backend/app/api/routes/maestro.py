@@ -134,6 +134,36 @@ class PostventaCasoIn(BaseModel):
     accion: str  # aprobar_viaje | no_pagar
 
 
+class CedolCasoIn(BaseModel):
+    cedol: str | None = None
+    restaurar_auto: bool = False
+
+
+@router.post("/caso/{caso_id}/cedol")
+def actualizar_cedol_caso(
+    caso_id: str,
+    body: CedolCasoIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Corrige CEDOL manual (CLICPAQ/ALFARO) y recalcula logística del caso."""
+    envios = list(db.scalars(select(Envio)).all())
+    found = obtener_lineas_caso(envios, caso_id)
+    if not found:
+        raise HTTPException(status_code=404, detail="Caso no encontrado")
+    _, lineas = found
+    from app.services.cedol_service import aplicar_cedol_caso
+
+    try:
+        return aplicar_cedol_caso(
+            db,
+            lineas,
+            cedol=body.cedol,
+            restaurar_auto=body.restaurar_auto,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/caso/{caso_id}/postventa")
 def resolver_postventa_caso_api(
     caso_id: str,

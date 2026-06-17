@@ -1,2 +1,2 @@
 """Identificador de build — cambiar al desplegar lógica nueva."""
-API_BUILD = "cedol-tarifario-2026-06-12"
+API_BUILD = "fletes-ui-panel-acciones-2026-06-17"

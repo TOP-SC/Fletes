@@ -145,6 +145,7 @@ def _fila_maestro_desde_grupo(
     tarifario_ctx: Any = None,
     db: Any = None,
 ) -> dict[str, Any]:
+    lineas = ordenar_lineas_caso(lineas)
     base = lineas[0]
     excluir = any(l.excluir_planilla for l in lineas)
 
@@ -159,20 +160,41 @@ def _fila_maestro_desde_grupo(
     cobro = calcular_cobro_grupo(
         lineas, tarifas_grupo, proveedor_vista=vista, db=db
     )
+    cobro_full = (
+        calcular_cobro_grupo(lineas, tarifas_grupo, db=db)
+        if vista
+        else cobro
+    )
+    cobro_red, cobro_prov = cobro_red_y_provincia(cobro_full.tramos)
+    es_cross = cobro_full.modo == "crossdock" and bool(cobro_red or cobro_prov)
+
     costo_lineas = cobro.logistica
     seguro = cobro.seguro
-    total_lineas = cobro.total
     gestion = cobro.gestion
-    cobro_red, cobro_prov = cobro_red_y_provincia(cobro.tramos)
+    total_lineas = cobro.total
 
-    total_proveedor = round(costo_lineas + seguro + gestion, 2)
+    if es_cross:
+        logistica_grilla = cobro_prov if cobro_prov else costo_lineas
+        red_monto = cobro_red or 0.0
+        um_monto = cobro_prov or 0.0
+        total_lineas = round(red_monto + um_monto + seguro + gestion, 2)
+        total_proveedor = total_lineas
+    else:
+        logistica_grilla = costo_lineas
+        total_proveedor = round(costo_lineas + seguro + gestion, 2)
 
     precio_neto = base.prefactura_proveedor
-    if precio_neto is None and total_proveedor > 0:
-        precio_neto = None
+    if es_cross and precio_neto is None and cobro_red:
+        precio_neto_grilla = cobro_red
+    else:
+        precio_neto_grilla = precio_neto
 
     dif = None
-    if precio_neto is not None and total_proveedor > 0:
+    if es_cross:
+        ref_red = precio_neto if precio_neto is not None else cobro_red
+        if ref_red is not None and cobro_red:
+            dif = round(ref_red - cobro_red, 2)
+    elif precio_neto is not None and total_proveedor > 0:
         dif = round(precio_neto - total_proveedor, 2)
     elif base.diferencia is not None:
         dif = base.diferencia
@@ -208,6 +230,10 @@ def _fila_maestro_desde_grupo(
     bultos = _bultos_grupo(lineas)
     origen_key = _origen_planilla(base.deposito, base.origen_cd)
 
+    from app.services.cedol_service import info_cedol_grupo
+
+    cedol_info = info_cedol_grupo(lineas, tarifas_grupo)
+
     color_ui, alerta_motivo, alertas_celdas = color_fila_maestro(
         lineas,
         lineas_sin_tarifa=cobro.lineas_sin_tarifa or 0,
@@ -225,8 +251,9 @@ def _fila_maestro_desde_grupo(
         "_proveedor_tarifa": base.proveedor_tarifa,
         "_requiere_elegir_proveedor": base.requiere_elegir_proveedor,
         "_proveedores_candidatos": base.proveedores_candidatos,
-        "_cobro_modo": cobro.modo,
-        "_cobro_tramos": cobro.tramos,
+        "_cobro_modo": cobro_full.modo if es_cross else cobro.modo,
+        "_cobro_tramos": cobro_full.tramos if es_cross else cobro.tramos,
+        "_es_crossdock": es_cross,
         "_cobro_sin_tarifa": cobro.lineas_sin_tarifa,
         "_pedidos_cobro": cobro.pedidos,
         "_tarifario_fecha_ref": fecha_referencia_tarifa(base),
@@ -236,6 +263,8 @@ def _fila_maestro_desde_grupo(
             else {}
         ),
         "_transporte_cod": base.transporte_cod,
+        "_cedol_auto": cedol_info.get("cedol_auto"),
+        "_cedol_manual": cedol_info.get("cedol_manual"),
         "NRO TRANSP": normalizar_transporte_cod(
             base.transporte_cod, base.transporte_nombre
         )
@@ -247,6 +276,7 @@ def _fila_maestro_desde_grupo(
         "FECHA": base.fecha_entrega or base.fecha_pedido,
         "FECHA PEDIDO": formato_fecha_grilla(base.fecha_pedido),
         "FECHA ENTREGA": formato_fecha_grilla(base.fecha_entrega),
+        "ESTADO PEDIDO": (base.estado_pedido or "").strip(),
         "ENVIO": base.nro_pedido,
         "REMITOS": texto_remito_grupo(lineas),
         "ESTADO REMITO": etiqueta_estado_remito(estado_remito_envio(base)),
@@ -258,25 +288,26 @@ def _fila_maestro_desde_grupo(
         "TRANSPORTE": (base.transporte_nombre or "").upper(),
         "OBLEA TRANSPORTE": None,
         "PROVEEDOR": etiqueta_proveedor_maestro(base),
+        "CEDOL": cedol_info.get("cedol_efectivo") or "",
         "BULTOS": bultos,
         "PESO": 1 if bultos else 0,
         "VOLUMEN": round(sum(l.m3 or 0 for l in lineas), 2),
         "PESO FACTURADO": None,
-        "LOGISTICA": round_pesos(costo_lineas) if costo_lineas else 0.0,
+        "LOGISTICA": round_pesos(logistica_grilla) if logistica_grilla else 0.0,
         "COBRO RED": round_pesos(cobro_red) if cobro_red else None,
         "COBRO PROVINCIA": round_pesos(cobro_prov) if cobro_prov else None,
-        "SEGURO": round_pesos(seguro) if costo_lineas else 0.0,
+        "SEGURO": round_pesos(seguro) if (logistica_grilla or es_cross) else 0.0,
         "GESTION": round_pesos(gestion) if gestion else 0.0,
         "ADICIONAL": 0.0,
         "VALOR DECLARADO": round_pesos(_valor_declarado(base.leyenda_5)),
-        "PRECIO NETO": round_pesos(precio_neto),
+        "PRECIO NETO": round_pesos(precio_neto_grilla),
         "ARTICULOS": articulos,
         "ZONA ORIGEN": zo,
         "DESCRIPCION ZONA ORIGEN": desc_zo,
         "ZONA DESTINO": zona,
         "DESCRIPCION ZONA DESTINO": desc_zona,
         "obs": " | ".join(obs_parts) if obs_parts else None,
-        "costo": round_pesos(costo_lineas) if costo_lineas else 0.0,
+        "costo": round_pesos(logistica_grilla) if logistica_grilla else 0.0,
         "_total_proveedor": round_pesos(total_proveedor) if total_proveedor else 0.0,
         "total": round_pesos(total_lineas),
         "dif": round_pesos(dif),
@@ -338,11 +369,14 @@ def _grupo_coincide_busqueda(grupo: list[Envio], q: str) -> bool:
     for linea in grupo:
         for val in (
             linea.remito,
+            linea.remito_norm,
             linea.nro_pedido,
             linea.razon_social,
             linea.localidad,
             linea.provincia,
             linea.proveedor_tarifa,
+            linea.transporte_nombre,
+            linea.cedol_codigo,
         ):
             if val and needle in str(val).upper():
                 return True
@@ -570,6 +604,21 @@ def construir_maestro_pagina(
     return filas, total
 
 
+def _prioridad_linea_caso(l: Envio) -> tuple[int, int, int, int]:
+    """Preferir línea con proveedor, transporte y fecha (evita renglones Tango vacíos al frente)."""
+    prov = normalizar_proveedor(l.proveedor_tarifa)
+    return (
+        0 if prov else 1,
+        0 if (l.transporte_cod or l.transporte_nombre) else 1,
+        0 if (l.fecha_entrega_d or l.fecha_entrega) else 1,
+        l.id or 0,
+    )
+
+
+def ordenar_lineas_caso(lineas: list[Envio]) -> list[Envio]:
+    return sorted(lineas, key=_prioridad_linea_caso)
+
+
 def obtener_lineas_caso(
     envios: list[Envio],
     caso_id: str,
@@ -585,7 +634,7 @@ def obtener_lineas_caso(
                 break
     if not lineas:
         return None
-    return key, lineas
+    return key, ordenar_lineas_caso(lineas)
 
 
 def detalle_caso(
@@ -692,4 +741,17 @@ def detalle_caso(
                 for t in c.tramos
             ],
         }
+        from app.services.cedol_service import info_cedol_grupo, listar_cedoles_tarifario
+
+        cedol_info = info_cedol_grupo(lineas, tarifas_db)
+        result["cedol"] = cedol_info
+        if cedol_info.get("aplica") and cedol_info.get("proveedor"):
+            result["cedol_opciones"] = listar_cedoles_tarifario(
+                tarifas_db or [], cedol_info["proveedor"]
+            )
+        from app.services.cross_seguimiento_service import info_cross_caso
+
+        cross_info = info_cross_caso(lineas, db)
+        if cross_info:
+            result["cross_seguimiento"] = cross_info
     return result

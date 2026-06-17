@@ -139,3 +139,8 @@ class Mundo1Stats(BaseModel):
     sin_datos_tango: int = 0
     con_tarifa: int = 0
     por_color: dict[str, int] = {}
+
+
+class CrossDriveLinkIn(BaseModel):
+    url: str
+    nombre: str | None = None
