@@ -10,14 +10,15 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.config import DEPOSITO_CD_HURLINGHAM, DEPOSITO_CD_TORTUGUITAS
 from app.models import Envio, Sucursal
 from app.services.kilometrizador_service import GeoPoint, Kilometrizador, get_kilometrizador
 from app.services.sucursales_service import listar_sucursales
 from app.services.zona_km import km_a_zona
 
 DEPOSITO_SUCURSAL: dict[str, str] = {
-    "14": "CD",
-    "12": "TH",
+    DEPOSITO_CD_TORTUGUITAS: "CD",
+    DEPOSITO_CD_HURLINGHAM: "TH",
 }
 
 # Km de referencia cuando no hay coordenadas del domicilio pero la localidad coincide con la sucursal.

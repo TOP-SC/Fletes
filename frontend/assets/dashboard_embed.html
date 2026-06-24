@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --paper: #fff;
+      --hero-a: #0a1628;
+      --hero-b: #1e3a5f;
+      --accent: #2563eb;
+      --ok: #059669;
+      --warn: #d97706;
+      --bad: #dc2626;
+    }
+    html.theme-dark {
+      --ink: #e8eef6;
+      --muted: #94a3b8;
+      --line: #334155;
+      --paper: #1e293b;
+      --hero-a: #070d16;
+      --hero-b: #152a45;
+    }
+    html.theme-dark body { color: var(--ink); }
+    html.theme-dark .chart-card {
+      background: var(--paper);
+      border-color: var(--line);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    }
+    html.theme-dark .kpi-card {
+      background: var(--paper);
+      border-color: var(--line);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+    }
+    html.theme-dark .chart-empty {
+      background: #162032;
+      border-color: var(--line);
+      color: var(--muted);
+    }
+    html.theme-dark .alert-item.error { background: #3f1d1d; color: #fecaca; }
+    html.theme-dark .alert-item.info { background: #1e3a5f; color: #bfdbfe; }
+    html.theme-dark .alert-item.warn { background: #422006; color: #fde68a; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: transparent;
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+    .dash-root { padding: 0 0 0.5rem; }
+
+    .dash-hero {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      padding: 1.35rem 1.5rem 1.25rem;
+      background: linear-gradient(128deg, var(--hero-a), var(--hero-b) 50%, #1d4ed8 120%);
+      color: #fff;
+    }
+    .dash-hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(180deg, #000 20%, transparent 92%);
+    }
+    .dash-hero-glow {
+      position: absolute;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(37,99,235,.4), transparent 68%);
+      top: -60px; right: 10%;
+      pointer-events: none;
+    }
+    .dash-hero-inner { position: relative; z-index: 1; }
+    .dash-tag {
+      font-size: 0.65rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.5);
+      margin-bottom: 0.3rem;
+    }
+    .dash-hero h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .dash-hero p {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,.72);
+      margin-top: 0.3rem;
+      max-width: 40rem;
+      line-height: 1.45;
+    }
+    .dash-meta {
+      margin-top: 0.55rem;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,.48);
+    }
+    .dash-meta strong { color: rgba(255,255,255,.88); }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
+      margin: -2.5rem 0.15rem 0.85rem;
+      position: relative;
+      z-index: 2;
+    }
+    @media (max-width: 960px) { .kpi-strip { grid-template-columns: 1fr 1fr; } }
+
+    .kpi-card {
+      background: var(--paper);
+      border-radius: 14px;
+      padding: 0.9rem 1rem;
+      box-shadow: 0 10px 40px rgba(15,23,42,.12);
+      border: 1px solid rgba(255,255,255,.8);
+      border-top: 3px solid var(--kpi-accent, var(--accent));
+    }
+    .kpi-val {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+    }
+    .kpi-lbl {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.35rem;
+      color: var(--muted);
+    }
+    .kpi-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+
+    .alert-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .alert-item {
+      border-radius: 10px;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.76rem;
+      border-left: 4px solid;
+      line-height: 1.35;
+    }
+    .alert-item.error { background: #fef2f2; border-color: var(--bad); color: #991b1b; }
+    .alert-item.info { background: #eff6ff; border-color: var(--accent); color: #1e40af; }
+    .alert-item.warn { background: #fffbeb; border-color: var(--warn); color: #92400e; }
+
+    .charts-main,
+    .charts-row2 {
+      display: grid;
+      gap: 0.7rem;
+      margin-bottom: 0.7rem;
+      align-items: start;
+    }
+    .charts-main { grid-template-columns: 1fr 1fr; }
+    .charts-row2 { grid-template-columns: 1.05fr 0.95fr 1fr; }
+    @media (max-width: 1100px) {
+      .charts-row2 { grid-template-columns: 1fr 1fr; }
+      .charts-row2 .chart-card:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 900px) {
+      .charts-main, .charts-row2 { grid-template-columns: 1fr; }
+      .charts-row2 .chart-card:last-child { grid-column: auto; }
+    }
+
+    .chart-card {
+      background: var(--paper);
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 0.8rem 0.85rem 0.85rem;
+      box-shadow: 0 2px 14px rgba(15,23,42,.04);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .chart-card h3 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 0.1rem;
+      letter-spacing: -0.01em;
+      flex-shrink: 0;
+    }
+    .chart-card .sub {
+      font-size: 0.66rem;
+      color: var(--muted);
+      margin-bottom: 0.45rem;
+      flex-shrink: 0;
+    }
+    .chart-wrap {
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 200px;
+    }
+    .chart-wrap.bar-h { min-height: 200px; }
+
+    .chart-wrap.donut-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      align-items: center;
+      min-height: 220px;
+    }
+    @media (max-width: 520px) {
+      .chart-wrap.donut-layout { grid-template-columns: 1fr; }
+    }
+    .donut-canvas-box { position: relative; height: 200px; min-width: 0; }
+    .chart-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .chart-center .big { font-size: 1.15rem; font-weight: 800; color: var(--hero-b); }
+    .chart-center .small { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .chart-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="dash-root">
+    <section class="dash-hero">
+      <div class="dash-hero-glow"></div>
+      <div class="dash-hero-inner">
+        <div class="dash-tag">Vista gerencial · control de fletes</div>
+        <h1>¿Cómo está el mes?</h1>
+        <p>Volumen por provincia y zona tarifaria, mix de transportes y proveedores — la foto que sigue el negocio día a día.</p>
+        <div class="dash-meta" id="dash-meta"></div>
+      </div>
+    </section>
+
+    <div class="kpi-strip" id="kpi-strip"></div>
+    <div class="alert-list" id="alert-list"></div>
+
+    <div class="charts-main">
+      <div class="chart-card">
+        <h3>Envíos por provincia</h3>
+        <p class="sub">Remitos únicos en control interior — top destinos</p>
+        <div class="chart-wrap bar-h" id="wrap-prov"><canvas id="chart-prov"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Ranking de zonas</h3>
+        <p class="sub">Códigos tarifarios maestro (B3, S1, M1…) por volumen</p>
+        <div class="chart-wrap bar-h" id="wrap-zon"><canvas id="chart-zon"></canvas></div>
+      </div>
+    </div>
+
+    <div class="charts-row2">
+      <div class="chart-card">
+        <h3>Top transportes</h3>
+        <p class="sub">Modalidad logística más usada en remitos interior</p>
+        <div class="chart-wrap bar-h" id="wrap-transp"><canvas id="chart-transp"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Mix por proveedor</h3>
+        <p class="sub">Casos únicos por tarifario / vista operativa</p>
+        <div class="chart-wrap donut-layout" id="wrap-mix">
+          <div class="donut-canvas-box">
+            <canvas id="chart-prov-mix"></canvas>
+            <div class="chart-center" id="center-prov"></div>
+          </div>
+          <div id="mix-legend" class="mix-legend"></div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3 id="flet-title">Fleteros del período</h3>
+        <p class="sub" id="flet-sub">Entregas del mes en curso</p>
+        <div class="chart-wrap bar-h" id="wrap-flet"><canvas id="chart-flet"></canvas></div>
+        <div class="chart-empty" id="flet-empty" style="display:none">Sin datos de fleteros en el período</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="dash-payload">__DASHBOARD_DATA__</script>
+  <script>
+    const DATA = JSON.parse(document.getElementById("dash-payload").textContent);
+    if (DATA.dark) {
+      document.documentElement.classList.add("theme-dark");
+    }
+
+    function fmt(n) {
+      return (n ?? 0).toLocaleString("es-AR");
+    }
+
+    function barHeight(n) {
+      return Math.min(420, Math.max(200, n * 34 + 52));
+    }
+
+    function syncPairHeights(idA, idB, countA, countB) {
+      const h = barHeight(Math.max(countA, countB));
+      const elA = document.getElementById(idA);
+      const elB = document.getElementById(idB);
+      if (elA) elA.style.height = h + "px";
+      if (elB) elB.style.height = h + "px";
+      return h;
+    }
+
+    function notifyHeight() {
+      const root = document.querySelector(".dash-root");
+      if (!root) return;
+      const h = Math.ceil(root.getBoundingClientRect().height);
+      window.parent.postMessage({ type: "streamlit:setFrameHeight", height: h }, "*");
+    }
+
+    function scheduleHeightUpdates() {
+      [80, 250, 500, 900, 1400].forEach((ms) => setTimeout(notifyHeight, ms));
+      if (typeof ResizeObserver !== "undefined") {
+        const root = document.querySelector(".dash-root");
+        if (root) {
+          new ResizeObserver(() => notifyHeight()).observe(root);
+        }
+      }
+    }
+
+    document.getElementById("dash-meta").innerHTML =
+      `Última importación Tango: <strong>${DATA.meta.ultimo_import}</strong> · ` +
+      `Período fleteros: <strong>${DATA.meta.periodo}</strong>`;
+
+    const kpiEl = document.getElementById("kpi-strip");
+    DATA.kpis.forEach((k) => {
+      const el = document.createElement("div");
+      el.className = "kpi-card";
+      el.style.setProperty("--kpi-accent", k.accent || "#2563eb");
+      el.innerHTML = `
+        <div class="kpi-val">${k.valor}</div>
+        <div class="kpi-lbl">${k.titulo}</div>
+        <div class="kpi-sub">${k.detalle}</div>`;
+      kpiEl.appendChild(el);
+    });
+
+    const alertsEl = document.getElementById("alert-list");
+    (DATA.alertas || []).forEach((a) => {
+      const el = document.createElement("div");
+      el.className = `alert-item ${a.tipo}`;
+      el.textContent = a.texto;
+      alertsEl.appendChild(el);
+    });
+
+    Chart.defaults.font.family = '"Plus Jakarta Sans", sans-serif';
+    Chart.defaults.color = "#64748b";
+
+    const barOpts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 4, right: 12, bottom: 4, left: 4 } },
+      plugins: { legend: { display: false } },
+    };
+
+    const horizBarOpts = (maxTicks) => ({
+      ...barOpts,
+      indexAxis: "y",
+      scales: {
+        x: { grid: { color: "#f1f5f9" }, ticks: { font: { size: 10 }, maxTicksLimit: maxTicks || 6 } },
+        y: { grid: { display: false }, ticks: { font: { size: 10, weight: "600" }, autoSkip: false } },
+      },
+    });
+
+    const provLabels = DATA.charts.provincias.labels || [];
+    const provVals = DATA.charts.provincias.values || [];
+    const zon = DATA.charts.zonas || { labels: [], values: [], colors: [] };
+    if (provLabels.length) {
+      syncPairHeights("wrap-prov", "wrap-zon", provLabels.length, zon.labels.length);
+      new Chart(document.getElementById("chart-prov"), {
+        type: "bar",
+        data: {
+          labels: provLabels,
+          datasets: [{
+            data: provVals,
+            backgroundColor: "rgba(37, 99, 235, 0.78)",
+            borderRadius: 5,
+            barThickness: 16,
+          }],
+        },
+        options: horizBarOpts(6),
+      });
+    }
+
+    if (zon.labels.length) {
+      new Chart(document.getElementById("chart-zon"), {
+        type: "bar",
+        data: {
+          labels: zon.labels,
+          datasets: [{
+            data: zon.values,
+            backgroundColor: zon.colors || "rgba(13, 148, 136, 0.82)",
+            borderRadius: 5,
+            barThickness: 16,
+          }],
+        },
+        options: horizBarOpts(6),
+      });
+    } else {
+      document.getElementById("wrap-zon").innerHTML =
+        '<div class="chart-empty">Sin datos de zonas</div>';
+    }
+
+    const transp = DATA.charts.transportes || { labels: [], values: [] };
+    const flet = DATA.charts.fleteros || { labels: [], values: [], modo: "mes" };
+    const row2BarCount = Math.max(transp.labels.length, flet.labels.length, 4);
+    const row2H = barHeight(row2BarCount);
+
+    if (transp.labels.length) {
+      document.getElementById("wrap-transp").style.height = row2H + "px";
+      new Chart(document.getElementById("chart-transp"), {
+        type: "bar",
+        data: {
+          labels: transp.labels,
+          datasets: [{
+            data: transp.values,
+            backgroundColor: "rgba(13, 148, 136, 0.82)",
+            borderRadius: 5,
+            barThickness: 18,
+          }],
+        },
+        options: horizBarOpts(5),
+      });
+    } else {
+      document.getElementById("wrap-transp").innerHTML =
+        '<div class="chart-empty">Sin datos de transportes</div>';
+    }
+
+    const mix = DATA.charts.proveedores || { labels: [], values: [], colors: [] };
+    const legendEl = document.getElementById("mix-legend");
+    const wrapMix = document.getElementById("wrap-mix");
+    if (mix.labels.length) {
+      wrapMix.style.minHeight = Math.max(220, row2H) + "px";
+      if (DATA.charts.proveedores.center) {
+        document.getElementById("center-prov").innerHTML =
+          `<div class="big">${DATA.charts.proveedores.center}</div><div class="small">proveedores</div>`;
+      }
+      const total = mix.values.reduce((a, b) => a + b, 0);
+      legendEl.innerHTML = mix.labels.map((lbl, i) => {
+        const pct = total ? Math.round(100 * mix.values[i] / total) : 0;
+        const col = mix.colors[i] || "#94a3b8";
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.72rem">
+          <span style="width:10px;height:10px;border-radius:3px;background:${col};flex-shrink:0"></span>
+          <span style="flex:1;font-weight:600;color:#0f172a">${lbl}</span>
+          <span style="color:#64748b">${fmt(mix.values[i])} · ${pct}%</span>
+        </div>`;
+      }).join("");
+
+      new Chart(document.getElementById("chart-prov-mix"), {
+        type: "doughnut",
+        data: {
+          labels: mix.labels,
+          datasets: [{
+            data: mix.values,
+            backgroundColor: mix.colors,
+            borderWidth: 2,
+            borderColor: "#fff",
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "58%",
+          plugins: { legend: { display: false } },
+        },
+      });
+    } else {
+      document.getElementById("wrap-mix").innerHTML =
+        '<div class="chart-empty">Sin mix de proveedores</div>';
+    }
+
+    const wrapFlet = document.getElementById("wrap-flet");
+    const emptyFlet = document.getElementById("flet-empty");
+    if (flet.labels.length) {
+      if (flet.modo === "solicitudes") {
+        document.getElementById("flet-title").textContent = "Fleteros — solicitudes Drive";
+        document.getElementById("flet-sub").textContent = "Carga operativa sin período de entrega";
+      } else if (flet.modo === "sucursales") {
+        document.getElementById("flet-title").textContent = "Top orígenes / sucursales";
+        document.getElementById("flet-sub").textContent = "Mayor volumen de envíos por punto de despacho";
+      }
+      wrapFlet.style.height = row2H + "px";
+      const isHoriz = flet.modo === "sucursales" || flet.labels.some((l) => l.length > 12);
+      new Chart(document.getElementById("chart-flet"), {
+        type: "bar",
+        data: {
+          labels: flet.labels,
+          datasets: [{
+            label: flet.modo === "mes" ? "Entregas" : (flet.modo === "sucursales" ? "Remitos" : "Solicitudes"),
+            data: flet.values,
+            backgroundColor: flet.modo === "sucursales"
+              ? "rgba(37, 99, 235, 0.78)"
+              : "rgba(99, 102, 241, 0.78)",
+            borderRadius: 5,
+            maxBarThickness: isHoriz ? 18 : 48,
+          }],
+        },
+        options: isHoriz ? horizBarOpts(5) : {
+          ...barOpts,
+          scales: {
+            y: { grid: { color: "#f1f5f9" }, beginAtZero: true, ticks: { font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { font: { size: 9, weight: "600" }, maxRotation: 45 } },
+          },
+        },
+      });
+    } else {
+      wrapFlet.style.display = "none";
+      emptyFlet.style.display = "flex";
+    }
+
+    window.addEventListener("load", scheduleHeightUpdates);
+    scheduleHeightUpdates();
+  </script>
+</body>
+</html>

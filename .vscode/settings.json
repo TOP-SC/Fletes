@@ -1,9 +1,13 @@
 {
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
   "python.analysis.extraPaths": ["${workspaceFolder}/backend"],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none"
+  },
   "basedpyright.analysis.extraPaths": ["${workspaceFolder}/backend"],
-  "basedpyright.analysis.ignore": ["frontend/streamlit_app.py"],
-  "python.analysis.ignore": ["frontend/streamlit_app.py"],
   "basedpyright.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none",
     "reportMissingModuleSource": "none"
   }
 }

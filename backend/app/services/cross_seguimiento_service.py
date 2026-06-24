@@ -210,6 +210,13 @@ _SHEET_ID_RE = re.compile(r"docs\.google\.com/spreadsheets/d/([a-zA-Z0-9-_]+)")
 _DRIVE_FILE_RE = re.compile(r"drive\.google\.com/file/d/([a-zA-Z0-9-_]+)")
 _GID_RE = re.compile(r"gid=(\d+)")
 
+# Export anónimo (sin OAuth): Google exige «Cualquiera con el enlace → Lector».
+_DRIVE_UA = (
+    "Mozilla/5.0 (compatible; TOP-Fletes/1.0; +https://github.com/TOP-SC/Fletes) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+_MIN_XLSX_BYTES = 3000
+
 
 def parse_google_drive_url(url: str) -> dict[str, str]:
     """Extrae sheet_id/gid o file_id de un link compartido de Google."""
@@ -242,18 +249,95 @@ def export_url_google(meta: dict[str, str]) -> str:
     return f"https://drive.google.com/uc?export=download&id={meta['file_id']}"
 
 
+def _interpretar_respuesta_drive(r: httpx.Response) -> tuple[bool, str]:
+    """True si parece un xlsx válido; si no, mensaje legible."""
+    ct = (r.headers.get("content-type") or "").lower()
+    body = r.content or b""
+    if r.status_code == 401:
+        return False, (
+            "HTTP 401 — el servidor no puede leer el archivo. "
+            "En Drive: Compartir → «Cualquiera con el enlace» → Lector "
+            "(no alcanza compartir solo con mails @empresa)."
+        )
+    if r.status_code == 403:
+        return False, "HTTP 403 — acceso denegado. Revisá permisos del archivo."
+    if r.status_code == 404:
+        return False, "HTTP 404 — ID de planilla incorrecto en config.py."
+    if r.status_code != 200:
+        return False, f"HTTP {r.status_code}"
+    if "html" in ct[:24] or body[:15].strip().lower().startswith(b"<!doctype"):
+        return False, "Google devolvió HTML (login o permiso) en lugar del Excel."
+    if len(body) < _MIN_XLSX_BYTES:
+        return False, f"Archivo muy chico ({len(body)} bytes) — export vacío o pestaña gid incorrecta."
+    if not body[:2] == b"PK":
+        return False, "No es un .xlsx válido (falta firma ZIP/PK)."
+    return True, "OK"
+
+
+def descargar_bytes_drive(export_url: str, *, timeout: float = 180.0) -> tuple[bytes, str]:
+    """GET anónimo a export de Drive/Sheets."""
+    try:
+        r = httpx.get(
+            export_url,
+            follow_redirects=True,
+            timeout=timeout,
+            headers={"User-Agent": _DRIVE_UA},
+        )
+    except httpx.TimeoutException as exc:
+        raise ValueError(
+            f"Timeout ({int(timeout)}s) — planilla muy pesada o red lenta. "
+            "Probá de nuevo o importá el .xlsx manual."
+        ) from exc
+    ok, msg = _interpretar_respuesta_drive(r)
+    if not ok:
+        raise ValueError(msg)
+    return r.content, msg
+
+
+def probar_planilla_drive(cfg: dict[str, str | bool]) -> dict[str, Any]:
+    """Solo verifica si el export anónimo funciona (sin importar)."""
+    label = str(cfg.get("label") or cfg.get("sheet_id") or "?")
+    if not cfg.get("activo", True):
+        return {"label": label, "ok": False, "motivo": "desactivada en config"}
+    sid = cfg.get("sheet_id")
+    if not sid:
+        return {"label": label, "ok": False, "motivo": "sin sheet_id"}
+    gid = str(cfg.get("gid") or "0")
+    meta = {"tipo": "sheet", "sheet_id": str(sid), "gid": gid}
+    export_url = export_url_google(meta)
+    try:
+        r = httpx.get(
+            export_url,
+            follow_redirects=True,
+            timeout=90.0,
+            headers={"User-Agent": _DRIVE_UA},
+        )
+        ok, msg = _interpretar_respuesta_drive(r)
+        return {
+            "label": label,
+            "ok": ok,
+            "motivo": msg,
+            "sheet_id": str(sid),
+            "gid": gid,
+            "bytes": len(r.content) if ok else 0,
+            "http_status": r.status_code,
+        }
+    except httpx.TimeoutException:
+        return {"label": label, "ok": False, "motivo": "Timeout — archivo grande o red lenta", "sheet_id": str(sid)}
+    except Exception as exc:
+        return {"label": label, "ok": False, "motivo": str(exc), "sheet_id": str(sid)}
+
+
+def listar_estado_planillas_drive() -> list[dict[str, Any]]:
+    return [probar_planilla_drive(cfg) for cfg in CROSS_PLANILLAS_DRIVE]
+
+
 def descargar_planilla_drive(url: str) -> tuple[bytes, dict[str, str]]:
     """Descarga bytes de una planilla compartida (Sheets o archivo Drive)."""
     meta = parse_google_drive_url(url)
     export_url = export_url_google(meta)
-    r = httpx.get(export_url, follow_redirects=True, timeout=120)
-    ct = (r.headers.get("content-type") or "").lower()
-    if r.status_code != 200 or "html" in ct[:20] or len(r.content) < 5000:
-        raise ValueError(
-            f"No se pudo descargar (HTTP {r.status_code}). "
-            "Verificá que el archivo tenga permiso «Lector con link» / «Cualquier persona con el link»."
-        )
-    return r.content, meta
+    content, _msg = descargar_bytes_drive(export_url)
+    return content, meta
 
 
 def importar_cross_desde_url(
@@ -306,21 +390,11 @@ def intentar_sync_drive(
         meta = {"tipo": "sheet", "sheet_id": str(sid), "gid": gid}
         export_url = export_url_google(meta)
         try:
-            r = httpx.get(export_url, follow_redirects=True, timeout=120)
-            ct = (r.headers.get("content-type") or "").lower()
-            if r.status_code != 200 or "html" in ct[:20] or len(r.content) < 5000:
-                resultados.append(
-                    {
-                        "label": label,
-                        "ok": False,
-                        "motivo": f"HTTP {r.status_code} — permiso o URL inválida",
-                    }
-                )
-                continue
+            content, _msg = descargar_bytes_drive(export_url, timeout=180.0)
             fname = cfg.get("filename") or f"cross_{label}.xlsx"
             out = import_cross_workbook(
                 db,
-                r.content,
+                content,
                 fname,
                 ejecutar_macheo=False,
             )
@@ -330,7 +404,7 @@ def intentar_sync_drive(
         except Exception as exc:
             resultados.append({"label": label, "ok": False, "motivo": str(exc)})
 
-    macheo = ejecutar_macheo_cross(db) if ejecutar_macheo and (total_ins or total_upd) else None
+    macheo = ejecutar_macheo_cross(db) if ejecutar_macheo else None
     return {
         "resultados": resultados,
         "insertados": total_ins,

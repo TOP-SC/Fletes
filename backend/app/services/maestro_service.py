@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import DEPOSITO_ORIGEN, settings
+from app.config import DEPOSITO_ORIGEN, clave_planilla_origen, settings
 from app.models import Envio, Tarifa
 from app.proveedores import caso_en_vista_proveedor, normalizar_proveedor
 from app.transporte_reglas import (
@@ -78,14 +78,8 @@ COLUMNAS_CONTROL_MAESTRO = {"obs", "costo", "total", "dif", "suc", "LOGISTICA", 
 
 
 def _origen_planilla(deposito: str | None, origen_cd: str | None) -> str:
-    dep = (deposito or "").strip()
-    if dep == "12" or (origen_cd and "LIMANSKY" in origen_cd.upper()):
-        return "sa"
-    if dep == "14" or (origen_cd and "TORTUGUITAS" in origen_cd.upper()):
-        return "tortuguitas"
-    if origen_cd and "LIMANSKY" in origen_cd.upper():
-        return "sa"
-    return "tortuguitas"
+    """Delega en ``clave_planilla_origen`` (dep 12 = Hurlingham, dep 14 = Tortuguitas)."""
+    return clave_planilla_origen(deposito, origen_cd)
 
 
 def _zona_destino(

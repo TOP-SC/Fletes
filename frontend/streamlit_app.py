@@ -7,10 +7,12 @@ import json
 import os
 import sys
 from contextlib import contextmanager
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, cast
 
-import httpx  # pyright: ignore[reportMissingImports]
+import httpx
+from theme_css import theme_stylesheet
 import pandas as pd
 import streamlit as st
 
@@ -70,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-auth-usuarios-2026-06-17"
+API_BUILD_ESPERADO = "fletes-dashboard-kpi-dark-2026-06-25"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -80,7 +82,7 @@ AUTH_SUPER_KEY = "auth_is_super_admin"
 MODULE_THEMES: dict[str, dict[str, str]] = {
     "Dashboard": {"accent": "#1a365d", "accent2": "#3182ce", "bg": "#eef4fc", "icon": "◆"},
     "MAESTRO": {"accent": "#2b6cb0", "accent2": "#4299e1", "bg": "#ebf4ff", "icon": "▣"},
-    "Modo TOP": {"accent": "#7c2d12", "accent2": "#c2410c", "bg": "#fff7ed", "icon": "◈"},
+    "Resumen": {"accent": "#7c2d12", "accent2": "#c2410c", "bg": "#fff7ed", "icon": "◈"},
     "Fletes": {"accent": "#0f766e", "accent2": "#14b8a6", "bg": "#ecfdf5", "icon": "▶"},
     "Configuración": {"accent": "#475569", "accent2": "#64748b", "bg": "#f1f5f9", "icon": "⚙"},
     "CLICPAQ": {"accent": "#5b21b6", "accent2": "#7c3aed", "bg": "#f5f3ff", "icon": "◎"},
@@ -207,8 +209,8 @@ def fmt_fecha_sin_hora(value: Any) -> str:
     """Solo fecha (sin 00:00:00) para grillas y detalle."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
-    if isinstance(value, pd.Timestamp):
-        return value.strftime("%d/%m/%Y")
+    if isinstance(value, (pd.Timestamp, datetime, date)):
+        return pd.Timestamp(value).strftime("%d/%m/%Y")
     s = str(value).strip()
     if not s:
         return ""
@@ -325,182 +327,12 @@ def df_detalle_renglon(ren: dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-def inject_theme() -> None:
+def inject_theme(*, dark: bool = False) -> None:
+    st.markdown(theme_stylesheet(dark=dark), unsafe_allow_html=True)
     st.markdown(
         """
         <style>
-        :root {
-            --brand-navy: #1a365d;
-            --brand-blue: #2c5282;
-            --mod-accent: #2b6cb0;
-            --mod-accent2: #4299e1;
-            --mod-bg: #ebf4ff;
-        }
-        .stApp {
-            background: linear-gradient(165deg, #faf8f5 0%, #f0f4fa 42%, #f3eef8 100%);
-        }
-        [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #f8fafc 0%, #eef2f8 100%) !important;
-            border-right: 1px solid #d5dde8;
-        }
-        .sidebar-brand-band {
-            margin: -0.75rem -1rem 0.85rem -1rem;
-            padding: 1rem 1rem 0.9rem 1rem;
-            background: linear-gradient(135deg, #1a365d 0%, #2c5282 55%, #3182ce 100%);
-            border-radius: 0 0 14px 14px;
-            box-shadow: 0 4px 14px rgba(26, 54, 93, 0.22);
-        }
-        .sidebar-brand-band .sidebar-brand-title {
-            font-size: 1.12rem;
-            font-weight: 700;
-            color: #ffffff;
-            margin: 0;
-            line-height: 1.25;
-            letter-spacing: 0.01em;
-        }
-        .sidebar-brand-band .sidebar-brand-caption {
-            font-size: 0.76rem;
-            color: rgba(255, 255, 255, 0.88);
-            margin: 0.2rem 0 0 0;
-        }
-        .page-header {
-            background: var(--mod-bg);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            border-left: 6px solid var(--mod-accent);
-            border-radius: 0 14px 14px 0;
-            padding: 0.85rem 1.15rem 0.75rem 1rem;
-            margin: 0 0 1rem 0;
-            box-shadow: 0 2px 12px rgba(30, 42, 58, 0.06);
-        }
-        .page-header h1 {
-            font-size: 1.55rem !important;
-            font-weight: 700 !important;
-            color: #1e2a3a !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            line-height: 1.2 !important;
-        }
-        .page-header .page-header-icon {
-            color: var(--mod-accent);
-            margin-right: 0.35rem;
-        }
-        .page-header .page-header-caption {
-            font-size: 0.88rem;
-            color: #5c6b7d;
-            margin: 0.35rem 0 0 0;
-            line-height: 1.4;
-        }
-        section[data-testid="stSidebar"],
-        [data-testid="stSidebar"] > div,
-        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-            scrollbar-width: none !important;
-            -ms-overflow-style: none !important;
-        }
-        section[data-testid="stSidebar"]::-webkit-scrollbar,
-        [data-testid="stSidebar"] > div::-webkit-scrollbar,
-        [data-testid="stSidebar"] [data-testid="stSidebarContent"]::-webkit-scrollbar {
-            display: none !important;
-            width: 0 !important;
-            height: 0 !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
-            padding-top: 0.75rem !important;
-            padding-bottom: 0.5rem !important;
-            overflow-x: hidden !important;
-        }
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label,
-        [data-testid="stSidebar"] .stMarkdown {
-            color: #2c3e50 !important;
-        }
-        [data-testid="stSidebar"] div[role="radiogroup"] {
-            gap: 0.15rem !important;
-        }
-        [data-testid="stSidebar"] div[role="radiogroup"] label {
-            font-size: 0.92rem !important;
-            font-weight: 600 !important;
-            padding: 0.42rem 0.55rem 0.42rem 0.65rem !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-            border-radius: 8px !important;
-            border-left: 4px solid transparent !important;
-            transition: background 0.15s ease, border-color 0.15s ease;
-        }
-        [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-            background: color-mix(in srgb, var(--mod-accent) 14%, #ffffff) !important;
-            border-left-color: var(--mod-accent) !important;
-            color: #1e2a3a !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] label:has(input:checked),
-        [data-testid="stSidebar"] [data-testid="stExpander"] div[role="radiogroup"] label:has(input:checked) {
-            background: color-mix(in srgb, var(--mod-accent) 12%, #ffffff) !important;
-            border-left-color: var(--mod-accent) !important;
-        }
-        [data-testid="stSidebar"] div[role="radiogroup"] label p,
-        [data-testid="stSidebar"] div[role="radiogroup"] label span {
-            font-size: 0.95rem !important;
-            line-height: 1.2 !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] {
-            margin: 0.15rem 0 0.1rem 0 !important;
-            border: none !important;
-            background: transparent !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] summary {
-            font-size: 0.88rem !important;
-            font-weight: 700 !important;
-            color: #3d5a80 !important;
-            padding: 0.15rem 0 !important;
-            min-height: 0 !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-            padding: 0 0 0 0.65rem !important;
-            border-left: 2px solid color-mix(in srgb, var(--mod-accent) 35%, #b8c9de);
-            margin-left: 0.25rem !important;
-        }
-        .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-            border-bottom-color: var(--mod-accent) !important;
-            color: var(--mod-accent) !important;
-            font-weight: 600 !important;
-        }
-        .stButton button[kind="primary"] {
-            background: linear-gradient(135deg, var(--mod-accent) 0%, var(--mod-accent2) 100%) !important;
-            border: none !important;
-        }
-        [data-testid="stSidebar"] hr {
-            margin: 0.35rem 0 !important;
-        }
-        [data-testid="stSidebar"] .nav-status-ok,
-        [data-testid="stSidebar"] .nav-status-warn,
-        [data-testid="stSidebar"] .nav-status-err {
-            font-size: 0.82rem !important;
-            padding: 0.35rem 0.5rem !important;
-            border-radius: 6px !important;
-            margin: 0.25rem 0 0 !important;
-        }
-        [data-testid="stSidebar"] .nav-status-ok {
-            background: #d4edda !important;
-            color: #1f5c35 !important;
-        }
-        [data-testid="stSidebar"] .nav-status-warn {
-            background: #fff3cd !important;
-            color: #7a5c00 !important;
-        }
-        [data-testid="stSidebar"] .nav-status-err {
-            background: #f8d7da !important;
-            color: #8b2525 !important;
-        }
-        h1, h2, h3 { color: #2c3e50 !important; }
-        .block-container { padding-top: 1.25rem; }
         .module-metrics div[data-testid="stMetric"],
-        div[data-testid="stMetric"] {
-            background: #ffffffee;
-            border: 1px solid #dde5f0;
-            border-left: 5px solid var(--mod-accent, #8FA8C8);
-            border-radius: 14px;
-            padding: 0.65rem 0.85rem 0.65rem 1rem;
-            box-shadow: 0 2px 8px #0000000a;
-            overflow: hidden;
-        }
         div[data-testid="stMetric"] label {
             font-size: 0.78rem !important;
         }
@@ -514,159 +346,41 @@ def inject_theme() -> None:
         .module-metrics.pend-filter-on [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {
             color: #c53030 !important;
         }
-        .panel-acciones-label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--mod-accent);
-            margin: 0 0 0.15rem 0;
-            padding: 0;
-            line-height: 1.2;
-        }
-        section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label) {
-            background: var(--mod-bg) !important;
-            border: 1px solid rgba(30, 42, 58, 0.1) !important;
-            border-left: 5px solid var(--mod-accent) !important;
-            border-radius: 12px !important;
-            padding: 0.75rem 0.95rem 0.95rem !important;
-            margin-bottom: 1rem !important;
-            box-shadow: 0 2px 12px rgba(30, 42, 58, 0.06) !important;
-        }
-        section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
-            [data-testid="stMetric"] {
-            background: #ffffff !important;
-            border-color: rgba(30, 42, 58, 0.1) !important;
-        }
         .leyenda-wrap {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin: 0.35rem 0 0.75rem 0;
-            padding: 0;
-            width: 100%;
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            margin: 0.35rem 0 0.75rem 0; width: 100%;
         }
         .leyenda-chip {
-            display: inline-flex;
-            align-items: center;
-            flex: 0 0 auto;
-            margin: 0;
-            padding: 5px 12px;
-            border-radius: 999px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            line-height: 1.25;
-            white-space: nowrap;
-            border: 1px solid #00000014;
+            display: inline-flex; align-items: center; flex: 0 0 auto; margin: 0;
+            padding: 5px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+            line-height: 1.25; white-space: nowrap; border: 1px solid #00000014;
             box-shadow: 0 1px 3px #0000000c;
         }
-        .leyenda-chip.chip-alerta {
-            background: #ffe8e8;
-            color: #7a3030;
-            border-color: #e8b4b4;
-        }
-        .leyenda-chip.chip-ok {
-            background: #e8f5e9;
-            color: #1b5e20;
-            border-color: #a5d6a7;
-        }
-        .leyenda-chip.chip-info {
-            background: #e3f2fd;
-            color: #1565c0;
-            border-color: #90caf9;
-        }
-        .leyenda-chip.chip-luz {
-            background: #fff8e1;
-            color: #6d4c00;
-            border-color: #ffe082;
-        }
+        .leyenda-chip.chip-alerta { background: #ffe8e8; color: #7a3030; border-color: #e8b4b4; }
+        .leyenda-chip.chip-ok { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+        .leyenda-chip.chip-info { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
+        .leyenda-chip.chip-luz { background: #fff8e1; color: #6d4c00; border-color: #ffe082; }
         .dash-card {
-            position: relative;
-            border-radius: 16px;
-            border: 1px solid #dde5f0;
-            padding: 1rem 1rem 1rem 1.15rem;
-            margin-bottom: 0.35rem;
-            box-shadow: 0 2px 10px #0000000d;
-            min-height: 4.5rem;
-            transition: transform 0.12s ease, box-shadow 0.12s ease;
+            position: relative; border-radius: 16px; border: 1px solid var(--border);
+            padding: 1rem 1rem 1rem 1.15rem; margin-bottom: 0.35rem;
+            box-shadow: 0 2px 10px #0000000d; min-height: 4.5rem;
+            background: var(--surface);
         }
-        .dash-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 14px #00000012;
-        }
+        .dash-card:hover { transform: translateY(-1px); box-shadow: 0 4px 14px #00000012; }
         .dash-card-accent {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 6px;
+            position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
             border-radius: 16px 0 0 16px;
         }
-        .dash-card-body {
-            color: #2c3e50;
-            font-size: 0.92rem;
-            line-height: 1.45;
-        }
-        .dash-card-body strong {
-            font-size: 0.98rem;
-        }
-        .top-watermark {
-            position: fixed;
-            bottom: 0.65rem;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.7rem;
-            font-weight: 500;
-            color: rgba(30, 42, 58, 0.42);
-            letter-spacing: 0.03em;
-            pointer-events: none;
-            z-index: 999;
-            white-space: nowrap;
-            text-align: center;
-        }
-        @media (max-width: 720px) {
-            .top-watermark {
-                font-size: 0.62rem;
-                white-space: normal;
-                max-width: 92vw;
-                line-height: 1.35;
-            }
-        }
+        .dash-card-body { color: var(--ink); font-size: 0.92rem; line-height: 1.45; }
         .login-wrap {
-            max-width: 420px;
-            margin: 3rem auto 2rem auto;
-            padding: 2rem 2.25rem;
-            background: #ffffff;
-            border: 1px solid #dde5f0;
-            border-radius: 18px;
+            max-width: 420px; margin: 3rem auto 2rem auto; padding: 2rem 2.25rem;
+            background: #ffffff; border: 1px solid #dde5f0; border-radius: 18px;
             box-shadow: 0 12px 40px rgba(26, 54, 93, 0.12);
         }
-        .login-wrap h2 {
-            text-align: center;
-            color: #1a365d !important;
-            margin-bottom: 0.35rem !important;
-        }
-        .login-wrap .login-sub {
-            text-align: center;
-            color: #5c6b7d;
-            font-size: 0.88rem;
-            margin-bottom: 1.25rem;
-        }
         .users-tab-locked-banner {
-            background: #f1f5f9;
-            border: 1px dashed #94a3b8;
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
-            color: #64748b;
-            font-size: 0.88rem;
-            margin-bottom: 1rem;
-        }
-        .users-tab-disabled {
-            opacity: 0.48;
-            pointer-events: none;
-            user-select: none;
-            filter: grayscale(0.55);
+            background: var(--surface-2); border: 1px dashed var(--border);
+            border-radius: 10px; padding: 0.75rem 1rem; color: var(--ink-muted);
+            font-size: 0.88rem; margin-bottom: 1rem;
         }
         </style>
         """,
@@ -932,16 +646,33 @@ def inject_top_watermark() -> None:
     )
 
 
+MODULE_DARK_BG: dict[str, str] = {
+    "Dashboard": "#1a2740",
+    "MAESTRO": "#1a2f4a",
+    "Resumen": "#2a1f18",
+    "Fletes": "#142e2a",
+    "Configuración": "#1e293b",
+    "CLICPAQ": "#2e1065",
+    "FRANSOF": "#3b2206",
+    "ALFARO": "#3f0d1a",
+    "LBO": "#0c3d5c",
+    "Proveedor a elegir": "#2a1f18",
+}
+
+
 def inject_module_accent(pagina: str) -> None:
     """Variables CSS y acento del módulo activo."""
     theme = _theme_for(pagina)
+    mod_bg = theme["bg"]
+    if st.session_state.get("dark_mode"):
+        mod_bg = MODULE_DARK_BG.get(pagina, "#1e293b")
     st.markdown(
         f"""
         <style>
         :root {{
             --mod-accent: {theme["accent"]};
             --mod-accent2: {theme["accent2"]};
-            --mod-bg: {theme["bg"]};
+            --mod-bg: {mod_bg};
         }}
         </style>
         """,
@@ -1825,6 +1556,16 @@ def _clear_adrian_cache() -> None:
 @st.cache_data(ttl=300, show_spinner=False)
 def get_dashboard_stats_cached() -> tuple[dict, dict]:
     return get_json("/envios/stats"), get_json("/mundo1/stats")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_dashboard_gerencial_cached() -> dict:
+    return get_json("/dashboard/gerencial")
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_kpi_entregas_cached(params_key: str) -> dict:
+    return get_json("/dashboard/kpi-entregas", **json.loads(params_key))
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -3015,10 +2756,75 @@ def _dash_card(body: str, accent: str, bg: str = "#ffffff") -> str:
     )
 
 
-def _css_dashboard() -> None:
+def _fmt_num_ar(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def _fmt_pesos_compact(value: float) -> str:
+    n = float(value or 0)
+    if n >= 1_000_000_000:
+        return f"$ {n / 1_000_000_000:.2f} B"
+    if n >= 1_000_000:
+        return f"$ {n / 1_000_000:.1f} M"
+    if n >= 10_000:
+        return f"$ {n / 1_000:.0f} K"
+    return fmt_pesos_ar(n)
+
+
+_PROV_CHART_COLORS = ["#7c3aed", "#d97706", "#e11d48", "#0ea5e9", "#f59e0b", "#64748b"]
+_ZONA_CHART_COLORS = {
+    "B": "#2563eb",
+    "S": "#059669",
+    "M": "#7c3aed",
+    "C": "#0ea5e9",
+    "T": "#0891b2",
+    "R": "#db2777",
+    "N": "#16a34a",
+    "H": "#ca8a04",
+    "D": "#9333ea",
+    "J": "#ea580c",
+    "Z": "#64748b",
+    "CO": "#1d4ed8",
+    "TU": "#0284c7",
+    "NE": "#4f46e5",
+    "SA": "#0d9488",
+    "EN": "#c026d3",
+}
+
+
+def _zona_chart_color(codigo: str) -> str:
+    cod = (codigo or "?").strip().upper()
+    if cod in _ZONA_CHART_COLORS:
+        return _ZONA_CHART_COLORS[cod]
+    pref = cod[:1] if cod else "?"
+    return _ZONA_CHART_COLORS.get(pref, "#64748b")
+
+
+_DASHBOARD_EMBED = Path(__file__).parent / "assets" / "dashboard_embed.html"
+
+
+def _css_dashboard_embed() -> None:
     st.markdown(
         """
         <style>
+        [data-testid="stAppViewContainer"] .main .block-container {
+            padding-top: 1.25rem;
+        }
+        [data-testid="stIframe"] {
+            background: transparent !important;
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        [data-testid="stIframe"] iframe {
+            display: block;
+            background: transparent !important;
+            border: none !important;
+            min-height: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        .kpi-entregas-section {
+            margin-top: 0 !important;
+        }
         .dash-metrics div[data-testid="stMetric"] {
             border-left-width: 5px;
             border-left-style: solid;
@@ -3044,6 +2850,233 @@ def _css_dashboard() -> None:
     )
 
 
+def _render_dashboard_embed(payload: dict[str, Any], *, dark: bool = False) -> None:
+    template = _DASHBOARD_EMBED.read_text(encoding="utf-8")
+    payload = {**payload, "dark": dark}
+    data_json = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c")
+    html = template.replace("__DASHBOARD_DATA__", data_json)
+    # height="content": Streamlit mide el srcdoc y evita el hueco fijo del iframe antiguo.
+    st.iframe(html, height="content")
+
+
+def _kpi_entregas_a_df(bloque: dict[str, Any], *, mostrar_importes: bool) -> pd.DataFrame:
+    anio_prev = bloque.get("anio_prev")
+    anio_ctrl = bloque.get("anio_ctrl")
+    rows = []
+    for f in bloque.get("filas") or []:
+        prev_e = int(f.get("prev_entregas") or 0)
+        ctrl_e = int(f.get("ctrl_entregas") or 0)
+        prev_i = f.get("prev_importe")
+        ctrl_i = f.get("ctrl_importe")
+        if not mostrar_importes:
+            if prev_e == 0 and ctrl_e == 0:
+                continue
+        elif not any([prev_e, ctrl_e, float(prev_i or 0), float(ctrl_i or 0)]):
+            continue
+        row: dict[str, Any] = {
+            "Mes pedido": str(f.get("mes") or "").capitalize(),
+            f"Entregas {anio_prev}": prev_e,
+            f"Entregas {anio_ctrl}": ctrl_e,
+        }
+        if mostrar_importes:
+            row[f"Importe {anio_prev}"] = float(prev_i or 0)
+            row[f"Importe {anio_ctrl}"] = float(ctrl_i or 0)
+        rows.append(row)
+    tot_prev = bloque.get("total_prev") or {}
+    tot_ctrl = bloque.get("total_ctrl") or {}
+    total_row: dict[str, Any] = {
+        "Mes pedido": "TOTAL",
+        f"Entregas {anio_prev}": int(tot_prev.get("entregas") or 0),
+        f"Entregas {anio_ctrl}": int(tot_ctrl.get("entregas") or 0),
+    }
+    if mostrar_importes:
+        total_row[f"Importe {anio_prev}"] = float(tot_prev.get("importe") or 0)
+        total_row[f"Importe {anio_ctrl}"] = float(tot_ctrl.get("importe") or 0)
+    rows.append(total_row)
+    return pd.DataFrame(rows)
+
+
+def _render_kpi_entregas_section() -> None:
+    """Tablas «entregas x mes» — réplica Excel Grateful FC (volumen; importes = facturas pendientes)."""
+    hoy = date.today()
+
+    st.markdown('<div class="kpi-entregas-section">', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="kpi-entregas-wrap">'
+        "<h3>Entregas por mes — control LOG</h3>"
+        "<p class=\"sub\">Volumen por quincena y CD (Hurlingham dep. 12 / Tortuguitas dep. 14). "
+        "Estructura lista; importes cuando exista la fuente de <strong>facturas</strong> del proveedor.</p>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("¿Para qué sirve este informe?", expanded=False):
+        st.markdown(
+            """
+**Motivo de negocio**
+
+Adrián armaba a mano un Excel (*Grateful FC*) para responder cada mes:
+
+- ¿Cuántas entregas salieron por la red LOG (Clicpaq / La Costa) en cada quincena?
+- ¿Cuánto **facturó** el proveedor, comparado con el mismo mes del año anterior?
+- ¿Cuánto corresponde a **Hurlingham** (dep. 12) vs **Tortuguitas** (dep. 14)?
+
+**Importante — fuente de los importes**
+
+| Dato | Origen correcto (Excel Adrián) | Qué usa la app hoy |
+|---|---|---|
+| Entregas | Tango + reglas LOG | ✅ Activo |
+| Importes | **Facturas** del proveedor LOG | ⏳ Pendiente (origen a definir) |
+| Prefactura / tarifario Maestro | No es el cierre mensual | Solo referencia interna |
+
+Hasta integrar las facturas, el informe muestra **solo volumen** para no confundir con prefacturas.
+
+**Cómo leerlo**
+
+| Concepto | Regla |
+|---|---|
+| Mes de control | Quincenas que se comparan (ej. junio 2026 vs junio 2025) |
+| Corte | **Fecha de entrega** dentro de cada quincena |
+| Filas de la tabla | Mes de **fecha de pedido** |
+| Hurlingham | Depósito **12** — Clicpaq + Limansky desde ese CD |
+| Tortuguitas | Depósito **14** — centro de distribución principal |
+
+**Universo «LOG WAMARO»** = canales 51 y 83.
+            """
+        )
+
+    c1, c2, c3 = st.columns([1, 1, 1.4])
+    with c1:
+        mes_sel = st.selectbox(
+            "Mes de control",
+            list(range(1, 13)),
+            index=max(0, hoy.month - 1),
+            format_func=lambda m: (
+                "Ene Feb Mar Abr May Jun Jul Ago Sep Oct Nov Dic".split()[m - 1]
+            ),
+            key="kpi_ent_mes",
+        )
+    with c2:
+        anio_sel = st.number_input(
+            "Año",
+            min_value=2020,
+            max_value=2100,
+            value=hoy.year,
+            step=1,
+            key="kpi_ent_anio",
+        )
+    with c3:
+        circuito = st.selectbox(
+            "Universo",
+            ["adrian", "interior", "todos"],
+            format_func=lambda x: {
+                "adrian": "LOG WAMARO (canal 51/83 — como Adrián)",
+                "interior": "Maestro interior (sin AMBA/retiro)",
+                "todos": "Todos los casos maestro",
+            }[x],
+            key="kpi_ent_circuito",
+        )
+
+    params = json.dumps(
+        {"anio": int(anio_sel), "mes": int(mes_sel), "circuito": circuito},
+        sort_keys=True,
+    )
+    try:
+        kpi = get_kpi_entregas_cached(params)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            st.info(
+                "El servidor aún no expone `/dashboard/kpi-entregas`. "
+                "Reiniciá con **Iniciar_Fletes.bat**."
+            )
+        else:
+            st.warning(f"No se pudo cargar el informe de entregas: {exc}")
+        return
+    except Exception as exc:
+        st.warning(f"No se pudo cargar el informe de entregas: {exc}")
+        return
+
+    gran = kpi.get("gran_total") or {}
+    per = kpi.get("periodo") or {}
+    estado = kpi.get("estado") or {}
+    listo = bool(estado.get("listo_para_cierre"))
+    imp_ref = gran.get("importe_referencia_tarifario")
+
+    if not listo:
+        st.info(estado.get("mensaje") or (
+            "Importes pendientes: el Excel de Adrián usaba **facturas** del proveedor LOG, "
+            "no prefacturas ni tarifario. Hoy solo se muestra volumen."
+        ))
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total entregas (mes ctrl.)", int(gran.get("entregas") or 0))
+    if listo:
+        m2.metric("Costo total (facturas)", fmt_pesos_ar(gran.get("importe")))
+        m3.metric("Promedio por entrega", fmt_pesos_ar(gran.get("promedio")))
+    else:
+        m2.metric("Costo total (facturas)", "Pendiente")
+        m3.metric("Promedio", "—")
+    m4.metric(
+        f"Remitos emitidos ({per.get('mes_nombre', '')})",
+        int(kpi.get("remitos_emitidos_mes") or 0),
+    )
+
+    if not listo and imp_ref:
+        with st.expander("Referencia interna (tarifario Maestro — no usar para cierre)", expanded=False):
+            st.caption(
+                "Solo orientativo. El cierre mensual del Excel requiere facturas del proveedor, "
+                "no este valor calculado desde prefacturas/tarifario."
+            )
+            st.metric("Suma tarifario LOGISTICA (mes ctrl.)", fmt_pesos_ar(imp_ref))
+
+    proposito = kpi.get("proposito") or {}
+    depositos = proposito.get("depositos") or []
+    if depositos:
+        dep_txt = " · ".join(
+            f"**{d.get('bloque')}** (dep. {d.get('codigo')}): {d.get('descripcion')}"
+            for d in depositos
+        )
+        st.caption(dep_txt)
+
+    bloques = kpi.get("bloques") or []
+    if not bloques:
+        st.info("Sin datos para el período seleccionado.")
+        return
+
+    tabs = st.tabs([str(b.get("titulo") or "?") for b in bloques])
+    for tab, bloque in zip(tabs, bloques):
+        with tab:
+            df = _kpi_entregas_a_df(bloque, mostrar_importes=listo)
+            if df.empty:
+                st.caption("Sin movimientos en esta quincena / origen.")
+            else:
+                df_show = df.copy()
+                for col in df_show.columns:
+                    if str(col).startswith("Importe"):
+                        df_show[col] = df_show[col].map(
+                            lambda v: fmt_pesos_ar(v) if v is not None and pd.notna(v) else ""
+                        )
+                st.dataframe(
+                    df_show,
+                    width="stretch",
+                    hide_index=True,
+                    height=min(420, 38 + 32 * len(df)),
+                )
+            tot = bloque.get("total_ctrl") or {}
+            pie = (
+                f"Total {bloque.get('anio_ctrl')}: **{tot.get('entregas', 0)}** entregas"
+            )
+            if listo:
+                pie += f" · **{fmt_pesos_ar(tot.get('importe'))}** · prom. **{fmt_pesos_ar(tot.get('promedio'))}**"
+            if bloque.get("origen_descripcion"):
+                pie = f"*{bloque.get('origen_descripcion')}* · {pie}"
+            st.caption(pie)
+
+    for nota in kpi.get("notas") or []:
+        st.caption(f"· {nota}")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def plantilla_download(nombre: str, etiqueta: str) -> None:
     path = DATA_DIR / nombre
     if path.exists():
@@ -3054,138 +3087,157 @@ def plantilla_download(nombre: str, etiqueta: str) -> None:
 
 
 def pagina_dashboard() -> None:
-    _render_page_header(
-        "Dashboard",
-        "Vista general del control logístico. Los datos se acumulan con cada importación.",
-        "Dashboard",
-    )
-    _css_dashboard()
+    _css_dashboard_embed()
 
     if not check_health_cached():
         st.warning("El servidor no está activo. Ejecutá **Iniciar_Fletes.bat** en la carpeta del proyecto.")
         return
 
+    if not _DASHBOARD_EMBED.is_file():
+        st.error("No se encontró la plantilla del dashboard (`frontend/assets/dashboard_embed.html`).")
+        return
+
     try:
-        general, interior = get_dashboard_stats_cached()
+        general, _interior = get_dashboard_stats_cached()
     except Exception as exc:
         st.error(f"No se pudieron cargar estadísticas: {exc}")
         return
 
-    st.subheader("Resumen general")
-    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total envíos en base", general["total_envios"])
-    c2.metric("Excluidos Amba / retiro", general["excluidos"])
-    c3.metric("Canal red / crossdock", general["alertas_clickpack"])
-    c4.metric("Abona Wamaro", general["abona_wamaro"])
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.subheader("Envíos al interior")
-    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
-    i1, i2, i3, i4, i5 = st.columns(5)
-    i1.metric("Renglones interior", interior["envios_interior"])
-    i2.metric("Con tarifa calculada", interior.get("con_tarifa", 0))
-    i3.metric("Prefacturas cargadas", interior["prefacturas_clickpack"])
-    i4.metric("Cruces OK", interior["macheo_matcheados"])
-    i5.metric("Con diferencia $", interior["con_diferencia"])
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Conjuntos colchón+somier", interior["macheo_conjuntos"])
-    c2.metric("Sin datos Tango", interior.get("sin_datos_tango", 0))
-    c3.metric("Sin prefactura", interior.get("pendientes_sin_prefactura", 0))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    sin_datos = interior.get("sin_datos_tango", 0)
-    if sin_datos:
-        st.error(
-            f"Hay **{sin_datos}** renglones importados **sin remito ni artículo** "
-            "(columnas del Excel no reconocidas). Andá a **Configuración → Tango** "
-            "y usá **Revertir último lote erróneo**, luego volvé a importar."
-        )
-
-    pend = interior.get("pendientes_sin_prefactura", 0)
-    if pend and interior["prefacturas_clickpack"] == 0:
-        st.info(
-            f"Hay **{pend}** envíos sin prefactura del proveedor. "
-            "Importá el reporte en **Configuración → Prefactura Clicpaq** y ejecutá **Cruce prefacturas**."
-        )
-    elif pend:
-        st.info(f"Hay **{pend}** envíos aún sin cruce con prefactura.")
-
-    flet_stats: dict[str, Any] = {}
-    fd: dict[str, Any] = {}
-    fp: dict[str, Any] = {}
     try:
-        from datetime import date as _date_hoy
-
-        _hoy = _date_hoy.today()
-        flet_stats = get_fletes_stats_dashboard_cached(
-            json.dumps(
-                {"mes_control_mes": _hoy.month, "mes_control_anio": _hoy.year},
-                sort_keys=True,
+        ger = get_dashboard_gerencial_cached()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            st.error(
+                "El **servidor API** no tiene el dashboard nuevo (`/dashboard/gerencial`). "
+                "Cerrá todo y volvé a ejecutar **Iniciar_Fletes.bat** "
+                "(reinicia backend + interfaz con el código actual)."
             )
+        else:
+            st.error(f"No se pudieron cargar estadísticas gerenciales: {exc}")
+        return
+    except Exception as exc:
+        st.error(f"No se pudieron cargar estadísticas gerenciales: {exc}")
+        return
+
+    k = ger.get("kpis") or {}
+    ultimo = general.get("ultimo_import")
+    ultimo_txt = fmt_fecha_sin_hora(ultimo) if ultimo else "Sin importar"
+    per = ger.get("periodo") or {}
+    meses = ("", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+    periodo_txt = f"{meses[int(per.get('mes') or 0)]} {per.get('anio', '')}".strip()
+
+    costo = float(k.get("costo_tarifado") or 0)
+    remitos = int(k.get("remitos_interior") or 0)
+    pct_tar = float(k.get("pct_tarifados") or 0)
+    diff_abs = float(k.get("diferencias_abs") or 0)
+
+    alertas: list[dict[str, str]] = []
+    for p in ger.get("problemas") or []:
+        if int(p.get("valor") or 0) <= 0:
+            continue
+        tipo = "error" if p.get("label") in ("Sin datos Tango", "Sin tarifa") else "warn"
+        if p.get("label") == "Sin prefactura":
+            tipo = "info"
+        alertas.append(
+            {
+                "tipo": tipo,
+                "texto": f"{p.get('label')}: {p.get('valor')} — {p.get('hint', '')}",
+            }
         )
-        fd = flet_stats.get("fleteros_drive") or {}
-        fp = flet_stats.get("fleteros_periodo") or {}
-    except Exception:
-        pass
+    alertas = alertas[:4]
 
-    st.subheader("Fletes locales — mirada macro (Mundo 2)")
-    st.caption(
-        "Entregas sucursal → domicilio (BLAS, GAMA, ARMANDO…). "
-        "Fuente operativa: Excel **Fletes solicitados sucursales** del Drive; "
-        "tarifa ref.: **FLETES_SUC**. No forma parte del LOG diario Modo TOP."
-    )
-    st.markdown('<div class="dash-metrics module-metrics">', unsafe_allow_html=True)
-    f1, f2, f3, f4, f5 = st.columns(5)
-    f1.metric("Casos Amba/GBA", flet_stats.get("casos_fletes", 0))
-    f2.metric("Con fletero asignado", flet_stats.get("casos_con_fletero", 0))
-    f3.metric("Solicitudes Drive", fd.get("solicitudes", 0))
-    f4.metric("Matcheadas maestro", fd.get("matcheadas", 0))
-    f5.metric(
-        "Pend. cruce Drive",
-        fd.get("pendientes_cruce", 0),
-        help="Solicitudes sin remito en maestro Fletes.",
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    prov_rows = ger.get("top_provincias") or []
+    zona_rows = ger.get("top_zonas") or []
+    transp_rows = ger.get("top_transportes") or []
+    prov_mix = ger.get("proveedores") or []
+    fleteros_mes = ger.get("fleteros_mes") or []
+    fleteros_sol = ger.get("fleteros_solicitudes") or []
+    top_suc = ger.get("top_sucursales") or []
 
-    if fd.get("solicitudes", 0) == 0:
-        st.info(
-            "Sin Excel de fleteros cargado. En **Configuración → Fleteros locales** "
-            "podés importar desde la carpeta LOG en **S:** o subir el archivo manualmente."
-        )
-    elif fp.get("por_fletero"):
-        filas_f = fp["por_fletero"][:6]
-        txt = " · ".join(
-            f"**{r.get('nombre_corto', '?')}**: {r.get('matcheadas', 0)}/{r.get('entregas', 0)}"
-            for r in filas_f
-        )
-        st.caption(f"Período actual en Fletes: {txt}")
+    fleteros_chart: dict[str, Any]
+    if fleteros_mes and any(int(x.get("entregas") or 0) > 0 for x in fleteros_mes):
+        fleteros_chart = {
+            "modo": "mes",
+            "labels": [str(x.get("codigo") or "?") for x in fleteros_mes],
+            "values": [int(x.get("entregas") or 0) for x in fleteros_mes],
+        }
+    elif top_suc:
+        fleteros_chart = {
+            "modo": "sucursales",
+            "labels": [str(x.get("sucursal") or "?") for x in top_suc],
+            "values": [int(x.get("envios") or 0) for x in top_suc],
+        }
+    elif fleteros_sol:
+        fleteros_chart = {
+            "modo": "solicitudes",
+            "labels": [str(x.get("codigo") or "?") for x in fleteros_sol],
+            "values": [int(x.get("solicitudes") or 0) for x in fleteros_sol],
+        }
+    else:
+        fleteros_chart = {"modo": "vacio", "labels": [], "values": []}
 
-    if general.get("ultimo_import"):
-        st.caption(f"Última importación Tango: {general['ultimo_import']}")
+    payload: dict[str, Any] = {
+        "meta": {
+            "ultimo_import": ultimo_txt,
+            "periodo": periodo_txt or "—",
+        },
+        "kpis": [
+            {
+                "valor": _fmt_pesos_compact(costo) if costo else "—",
+                "titulo": "Costo tarifado",
+                "detalle": "Suma logística interior con tarifa calculada",
+                "accent": "#1e3a5f",
+            },
+            {
+                "valor": _fmt_num_ar(remitos),
+                "titulo": "Remitos interior",
+                "detalle": "Casos únicos en control (sin Amba/retiro)",
+                "accent": "#2563eb",
+            },
+            {
+                "valor": f"{pct_tar:.0f}%" if remitos else "—",
+                "titulo": "Cobertura tarifaria",
+                "detalle": f"{_fmt_num_ar(int(k.get('remitos_con_tarifa') or 0))} con tarifa asignada",
+                "accent": "#059669",
+            },
+            {
+                "valor": _fmt_pesos_compact(diff_abs) if diff_abs else "0",
+                "titulo": "Desvío acumulado",
+                "detalle": "Diferencia tarifa vs prefactura (absoluto)",
+                "accent": "#d97706" if diff_abs else "#059669",
+            },
+        ],
+        "alertas": alertas,
+        "charts": {
+            "provincias": {
+                "labels": [str(r.get("provincia") or "?") for r in prov_rows],
+                "values": [int(r.get("remitos") or 0) for r in prov_rows],
+            },
+            "zonas": {
+                "labels": [
+                    f"{r.get('codigo') or '?'} · {(r.get('zona') or '')[:22]}"
+                    for r in zona_rows
+                ],
+                "values": [int(r.get("remitos") or 0) for r in zona_rows],
+                "colors": [_zona_chart_color(str(r.get("codigo") or "")) for r in zona_rows],
+            },
+            "transportes": {
+                "labels": [str(r.get("transporte") or "?") for r in transp_rows],
+                "values": [int(r.get("remitos") or 0) for r in transp_rows],
+            },
+            "proveedores": {
+                "labels": [str(r.get("proveedor") or "?") for r in prov_mix],
+                "values": [int(r.get("casos") or 0) for r in prov_mix],
+                "colors": _PROV_CHART_COLORS[: len(prov_mix)],
+                "center": str(len(prov_mix)),
+            },
+            "fleteros": fleteros_chart,
+        },
+    }
 
-    st.subheader("Accesos rápidos")
-    a1, a2, a3 = st.columns(3)
-    cards = [
-        (
-            "**Maestro** — planilla, cruce prefacturas y conciliación.",
-            MODULE_THEMES["MAESTRO"]["accent"],
-            MODULE_THEMES["MAESTRO"]["bg"],
-        ),
-        (
-            "**Fletes** — control CABA/GBA, km y tarifa sucursal.",
-            MODULE_THEMES["Fletes"]["accent"],
-            MODULE_THEMES["Fletes"]["bg"],
-        ),
-        (
-            "**Configuración** — Excel Tango, tarifarios y plantillas.",
-            MODULE_THEMES["Configuración"]["accent"],
-            MODULE_THEMES["Configuración"]["bg"],
-        ),
-    ]
-    for col, (body, accent, bg) in zip((a1, a2, a3), cards):
-        col.markdown(_dash_card(body, accent, bg), unsafe_allow_html=True)
+    with st.container(border=False, gap=None):
+        _render_dashboard_embed(payload, dark=bool(st.session_state.get("dark_mode")))
+        _render_kpi_entregas_section()
 
 
 def _ratios_columnas(nombres: list[str]) -> list[float]:
@@ -3637,7 +3689,7 @@ def _page_lbo() -> None:
     )
 
 
-MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Modo TOP", "Fletes", "Configuración"]
+MENU_PRINCIPAL = ["Dashboard", "MAESTRO", "Resumen", "Fletes", "Configuración"]
 
 
 def _nav_on_principal() -> None:
@@ -3652,6 +3704,8 @@ def _sidebar_nav_tree() -> str:
     """Menú compacto: radios + carpeta Proveedores (sin scroll en pantallas normales)."""
     if "pagina_menu" not in st.session_state:
         st.session_state.pagina_menu = "Dashboard"
+    if st.session_state.pagina_menu == "Modo TOP":
+        st.session_state.pagina_menu = "Resumen"
 
     activa = st.session_state.pagina_menu
     idx_principal = (
@@ -3708,12 +3762,12 @@ def pagina_envios_interior() -> None:
 
 
 def pagina_modo_adrian() -> None:
-    """Vista micro: LOG WAMARO diario (Modo TOP) vs maestro macro."""
+    """Vista micro: LOG WAMARO diario (Resumen) vs maestro macro."""
     _render_page_header(
-        etiqueta_pagina("Modo TOP"),
+        etiqueta_pagina("Resumen"),
         "LOG WAMARO por día de entrega — interior y red Clickpack. "
         "Misma planilla Tango, recorte operativo del LOG diario (canal 51/83).",
-        "Modo TOP",
+        "Resumen",
     )
 
     if not check_health_cached():
@@ -3722,7 +3776,7 @@ def pagina_modo_adrian() -> None:
 
     if not api_es_actual():
         st.error(
-            "La API es una versión anterior (falta **Modo TOP**). "
+            "La API es una versión anterior (falta el módulo **Resumen**). "
             "Reiniciá con **Iniciar_Fletes.bat**."
         )
 
@@ -3734,7 +3788,7 @@ def pagina_modo_adrian() -> None:
                 "**Macro (Maestro / Fletes):** todos los casos Tango, tarifario completo, AMBA incluido. "
                 "Los **fleteros locales** (transportistas AMBA/GBA de confianza) se cargan desde el Excel Drive "
                 "y se ven en **Fletes** — no en esta planilla diaria.  \n\n"
-                "**Micro (Modo TOP):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
+                "**Resumen (LOG diario):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
                 "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
                 "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
                 "antes se armaba a mano, un archivo por día.",
@@ -3744,7 +3798,7 @@ def pagina_modo_adrian() -> None:
 
     planilla_api = "tortuguitas"
 
-    with _panel_acciones("Modo TOP", "Filtros y acciones"):
+    with _panel_acciones("Resumen", "Filtros y acciones"):
         filtros = _ui_mes_control_adrian()
         params_mes = {
             "mes_control_anio": filtros["mes_control_anio"],
@@ -3776,13 +3830,13 @@ def pagina_modo_adrian() -> None:
         )
 
         try:
-            with st.spinner("Cargando resumen Modo TOP…"):
+            with st.spinner("Cargando resumen…"):
                 resumen = get_adrian_resumen_cached(json.dumps(params_mes, sort_keys=True))
                 dias_resp = get_adrian_dias_cached(
                     json.dumps({**params_mes, "planilla": planilla_api}, sort_keys=True)
                 )
         except Exception as exc:
-            st.error(f"No se pudo cargar Modo TOP: {exc}")
+            st.error(f"No se pudo cargar el resumen: {exc}")
             return
 
         pf = resumen.get("prefactura_clp") or {}
@@ -4386,7 +4440,7 @@ def _config_fleteros_locales() -> None:
         "**Mirada macro (Mundo 2 / Fletes):** entregas sucursal → domicilio con "
         "**fleteros locales** (transportistas de confianza en AMBA/GBA). El cliente puede ver **$0**; "
         "acá cargás el Excel del Drive y lo cruzás con el **maestro Fletes**. "
-        "**No aplica** al LOG diario Modo TOP (micro — interior canal 51/83)."
+        "**No aplica** al LOG diario Resumen (interior canal 51/83)."
     )
     plantilla_download(
         "plantilla_fletes_solicitud.xlsx",
@@ -4613,6 +4667,8 @@ def _config_fleteros_locales() -> None:
                     get_fletes_pagina_cached.clear()
                     get_fletes_stats_cached.clear()
                     get_dashboard_stats_cached.clear()
+                    get_dashboard_gerencial_cached.clear()
+                    get_kpi_entregas_cached.clear()
                     st.rerun()
                 except Exception as exc:
                     st.error(str(exc))
@@ -4702,13 +4758,41 @@ def _config_cross_seguimiento() -> None:
         planillas = []
 
     with st.expander("Planillas Drive configuradas", expanded=bool(planillas)):
+        if st.button("Probar acceso a Drive (sin importar)", key="cfg_cross_probe"):
+            try:
+                with st.spinner("Probando export de cada planilla…"):
+                    probe = get_json("/cross/planillas-drive", probar=True)
+                st.session_state["cross_probe"] = probe
+            except Exception as exc:
+                st.error(str(exc))
+        probe = st.session_state.get("cross_probe") or []
+        probe_by_label = {p.get("label"): p for p in probe if p.get("label")}
+
         if planillas:
             for p in planillas:
-                estado = "activa" if p.get("activo") else "off"
-                st.caption(f"**{p.get('label')}** — `{p.get('sheet_id')}` ({estado})")
+                label = p.get("label")
+                estado_cfg = "activa" if p.get("activo") else "off"
+                pr = probe_by_label.get(label)
+                if pr:
+                    if pr.get("ok"):
+                        st.success(
+                            f"**{label}** — acceso OK · {pr.get('bytes', 0):,} bytes · "
+                            f"`{p.get('sheet_id')}`"
+                        )
+                    else:
+                        st.error(f"**{label}** — {pr.get('motivo', 'sin acceso')}")
+                        st.caption(f"`{p.get('sheet_id')}` · HTTP {pr.get('http_status', '—')}")
+                else:
+                    st.caption(f"**{label}** — `{p.get('sheet_id')}` ({estado_cfg})")
+        st.info(
+            "La app descarga **sin login de Google**. Cada planilla debe estar en "
+            "**Compartir → Cualquiera con el enlace → Lector**. "
+            "Si solo la compartieron con tu mail @empresa, desde el servidor sigue fallando (401)."
+        )
         st.caption(
-            "Las que devuelven 401 siguen privadas. Cuando te den el link con permiso "
-            "«Lector con link», usá **Importar desde link Drive** o **Sincronizar desde Drive**."
+            "**En maestro = 0** es distinto: los 779 registros cross pueden estar cargados, "
+            "pero los remitos aún no coinciden con Tango — usá **Machear con maestro** "
+            "después de importar envíos."
         )
 
     upl = st.file_uploader(
@@ -4903,6 +4987,8 @@ def pagina_configuracion() -> None:
                 get_fletes_stats_cached.clear()
                 _clear_adrian_cache()
                 get_dashboard_stats_cached.clear()
+                get_dashboard_gerencial_cached.clear()
+                get_kpi_entregas_cached.clear()
                 st.rerun()
             except Exception as exc:
                 st.error(str(exc))
@@ -4925,6 +5011,8 @@ def pagina_configuracion() -> None:
                 get_fletes_stats_cached.clear()
                 _clear_adrian_cache()
                 get_dashboard_stats_cached.clear()
+                get_dashboard_gerencial_cached.clear()
+                get_kpi_entregas_cached.clear()
                 st.rerun()
             except Exception as exc:
                 st.error(str(exc))
@@ -5192,8 +5280,8 @@ def pagina_configuracion() -> None:
             - **Seguro fijo:** $30 por envío (tarifario)
             - **Gestión retiro postventa:** +25%
             - **Depósitos** (editar en `backend/app/config.py`):
-              - `14` → CD Tortuguitas
-              - `12` → Limansky Hurlingham
+              - `14` → CD Tortuguitas (centro de distribución principal)
+              - `12` → CD Hurlingham (Clicpaq; Limansky también despacha desde ahí)
             """
         )
 
@@ -5306,20 +5394,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-inject_theme()
-inject_top_watermark()
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
 
 if not _restore_auth_session():
+    inject_theme(dark=False)
     _pagina_login()
     st.stop()
-
-# Limpiar enlaces viejos (?_gcaso=) que abrían pestaña duplicada
-if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
-    try:
-        del st.query_params["_gcaso"]
-        del st.query_params["_gsk"]
-    except Exception:
-        pass
 
 st.sidebar.markdown(
     '<div class="sidebar-brand-band">'
@@ -5338,8 +5419,24 @@ if _logged_user:
         _auth_logout()
         st.rerun()
 
+st.sidebar.toggle(
+    "Modo oscuro",
+    key="dark_mode",
+    help="Aplica tema oscuro en toda la aplicación",
+)
+inject_theme(dark=bool(st.session_state.dark_mode))
+inject_top_watermark()
+
 pagina = _sidebar_nav_tree()
 inject_module_accent(pagina)
+
+# Limpiar enlaces viejos (?_gcaso=) que abrían pestaña duplicada
+if st.query_params.get("_gcaso") or st.query_params.get("_gsk"):
+    try:
+        del st.query_params["_gcaso"]
+        del st.query_params["_gsk"]
+    except Exception:
+        pass
 
 st.sidebar.markdown("---")
 if check_health_cached():
@@ -5364,7 +5461,7 @@ if pagina == "Dashboard":
     pagina_dashboard()
 elif pagina == "MAESTRO":
     pagina_casos(titulo="MAESTRO", key_prefix="maestro", carga_por_quincena=True)
-elif pagina == "Modo TOP":
+elif pagina == "Resumen":
     pagina_modo_adrian()
 elif pagina == "CLICPAQ":
     _page_clicpaq()

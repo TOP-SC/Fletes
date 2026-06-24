@@ -9,6 +9,7 @@ from app.services.cross_seguimiento_service import (
     import_cross_workbook,
     importar_cross_desde_url,
     intentar_sync_drive,
+    listar_estado_planillas_drive,
     listar_registros_cross,
     resumen_cross,
 )
@@ -22,8 +23,10 @@ def cross_resumen(db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/planillas-drive")
-def cross_planillas_drive() -> list[dict]:
-    """Planillas configuradas para sync automático (estado permiso se ve al sincronizar)."""
+def cross_planillas_drive(probar: bool = Query(False)) -> list[dict]:
+    """Planillas configuradas. Con ?probar=true verifica acceso anónimo (export sin login)."""
+    if probar:
+        return listar_estado_planillas_drive()
     return [
         {
             "label": p.get("label"),

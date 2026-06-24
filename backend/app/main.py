@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import (
     auth,
     cross,
+    dashboard,
     envios,
     importacion,
     maestro,
@@ -37,6 +38,7 @@ app.add_middleware(
 prefix = settings.api_prefix
 app.include_router(auth.router, prefix=prefix)
 app.include_router(cross.router, prefix=prefix)
+app.include_router(dashboard.router, prefix=prefix)
 app.include_router(importacion.router, prefix=prefix)
 app.include_router(envios.router, prefix=prefix)
 app.include_router(tarifas.router, prefix=prefix)

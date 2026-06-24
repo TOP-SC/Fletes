@@ -2,8 +2,10 @@
   "include": ["streamlit_app.py"],
   "exclude": [],
   "extraPaths": ["../backend"],
-  "pythonVersion": "3.12",
-  "typeCheckingMode": "off",
+  "venvPath": "..",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic",
   "reportMissingImports": "none",
   "reportMissingModuleSource": false
 }

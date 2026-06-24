@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from app.config import DEPOSITO_ORIGEN
+from app.config import DEPOSITO_CD_HURLINGHAM, DEPOSITO_CD_TORTUGUITAS, DEPOSITO_ORIGEN
 
 _CABA_PROVINCIAS = frozenset(
     {
@@ -38,9 +38,9 @@ def _norm(value: str | None) -> str:
 
 def zona_origen_maestro(deposito: str | None, origen_cd: str | None) -> tuple[str, str]:
     dep = (deposito or "").strip()
-    if dep == "12":
+    if dep == DEPOSITO_CD_HURLINGHAM:
         return ("C0", "CAPITAL FEDERAL")
-    if dep == "14":
+    if dep == DEPOSITO_CD_TORTUGUITAS:
         return ("T0", "TORTUGUITAS")
     desc = origen_cd or DEPOSITO_ORIGEN.get(dep, "")
     if desc:

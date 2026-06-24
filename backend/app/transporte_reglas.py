@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from app.config import DEPOSITO_CD_HURLINGHAM
 from app.proveedores import (
     es_cordoba,
     es_zona_alfaro,
@@ -308,7 +309,7 @@ def es_canal_clicpaq(
     t = _norm(transporte_nombre)
     if any(h in t for h in ("CLICK", "CLICKPAC", "CLICKPACK", "CLICPAQ", "EXPRESO CLIC")):
         return True
-    if deposito and str(deposito).strip() == "12":
+    if deposito and str(deposito).strip() == DEPOSITO_CD_HURLINGHAM:
         return True
     return False
 
