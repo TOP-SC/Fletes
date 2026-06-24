@@ -1,0 +1,28 @@
+﻿=== CRUCE POR REMITO (app vs Adrian abril) ===
+                          metrica  valor
+      Casos Adrian (remito ·nico) 1162.0
+  Casos app export (remito ·nico) 5978.0
+                 Cruce por remito  420.0
+               % cobertura Adrian   36.1
+                      Solo Adrian  742.0
+                         Solo app 5558.0
+Casos 100% iguales (todos campos)    0.0
+        Casos con <=2 diferencias   33.0
+           Seguro app configurado 3000.0
+
+--- Por campo (casos comunes) ---
+                   campo  iguales  distintos  ambos_vacios  pct_igual
+            DESTINATARIO      393         27             0       93.6
+               LOCALIDAD      302        118             0       71.9
+               PROVINCIA      317        103             0       75.5
+            ZONA DESTINO      230        190             0       54.8
+DESCRIPCION ZONA DESTINO      301        119             0       71.7
+               ARTICULOS      105        315             0       25.0
+               LOGISTICA      260        160             0       61.9
+                  SEGURO      420          0             0      100.0
+                 GESTION      420          0             0      100.0
+               ADICIONAL      420          0             0      100.0
+             PRECIO NETO        0        420             0        0.0
+         VALOR DECLARADO       19        401             0        4.5
+
+Detalle: C:\Users\juan.billiot\Desktop\Juan Desarrollo\TOP\Fletes\data\comparacion_remito_abr_2026.xlsx

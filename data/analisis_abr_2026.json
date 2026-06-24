@@ -1,0 +1,309 @@
+{
+  "carpeta": "C:\\Users\\juan.billiot\\Desktop\\4 ABR 2026",
+  "archivos": [
+    {
+      "nombre": "1ª abril 2026 amba.xlsx",
+      "bytes": 3869068,
+      "hojas": [
+        "qmt_report (7)",
+        "Hoja1"
+      ],
+      "filas_qmt_report (7)": 8939,
+      "filas_Hoja1": 7920
+    },
+    {
+      "nombre": "2ª abril 2026 amba.xlsx",
+      "bytes": 3736080,
+      "hojas": [
+        "qmt_report (9)",
+        "Hoja1"
+      ],
+      "filas_qmt_report (9)": 7263,
+      "filas_Hoja1": 13293
+    },
+    {
+      "nombre": "centro de costos 1° abr 2026 amba y abast sc 3372.xlsx",
+      "bytes": 15937,
+      "hojas": [
+        "Hoja1"
+      ],
+      "filas_Hoja1": 21
+    },
+    {
+      "nombre": "centro de costos 1° abr 2026 hurl_int sc 3367.xlsx",
+      "bytes": 11980
+    },
+    {
+      "nombre": "centro de costos 1° abr 2026 tortu_int sc 3366.xlsx",
+      "bytes": 12157
+    },
+    {
+      "nombre": "centro de costos 2° abr 2026 amba y abast sc 3443.xlsx",
+      "bytes": 15454,
+      "hojas": [
+        "Hoja1"
+      ],
+      "filas_Hoja1": 17
+    },
+    {
+      "nombre": "centro de costos 2° abr 2026 hurl_int sc 3444.xlsx",
+      "bytes": 12176
+    },
+    {
+      "nombre": "centro de costos 2° abr 2026 tortu_int sc 3445.xlsx",
+      "bytes": 12301
+    },
+    {
+      "nombre": "CLP   A 9999-00000964 1ª abr 2026 tortu_int.xlsx",
+      "bytes": 875122,
+      "hojas": [
+        "Hoja1",
+        "Hoja2"
+      ],
+      "filas_hoja1": 1110,
+      "columnas_hoja1": [
+        "Fecha",
+        "Envio",
+        "Remito",
+        "Destinatario",
+        "Servicio",
+        "Transportadora",
+        "Documentacion",
+        "Valor Declarado",
+        "Bultos",
+        "Peso",
+        "Volumen",
+        "P. Fact"
+      ]
+    },
+    {
+      "nombre": "CLP   A 9999-00000965 1ª abr 2026 hurl_int.xlsx",
+      "bytes": 49456,
+      "hojas": [
+        "Hoja1",
+        "Hoja2"
+      ],
+      "filas_hoja1": 98,
+      "columnas_hoja1": [
+        "Fecha",
+        "Envio",
+        "Remito",
+        "Destinatario",
+        "Servicio",
+        "Transportadora",
+        "Documentacion",
+        "Valor Declarado",
+        "Bultos",
+        "Peso",
+        "Volumen",
+        "P. Fact"
+      ]
+    },
+    {
+      "nombre": "CLP   A 9999-00000971 2ª abr 2026 hurl_int.xlsx",
+      "bytes": 136479,
+      "hojas": [
+        "Hoja1",
+        "Hoja2"
+      ],
+      "filas_hoja1": 408,
+      "columnas_hoja1": [
+        "Fecha",
+        "Envio",
+        "Remito",
+        "Destinatario",
+        "Servicio",
+        "Transportadora",
+        "Documentacion",
+        "Valor Declarado",
+        "Bultos",
+        "Peso",
+        "Volumen",
+        "P. Fact"
+      ]
+    },
+    {
+      "nombre": "CLP   A 9999-00000972 2ª abr 2026 tortu_int.xlsx",
+      "bytes": 802928,
+      "hojas": [
+        "Hoja1",
+        "Hoja2"
+      ],
+      "filas_hoja1": 1330,
+      "columnas_hoja1": [
+        "Fecha",
+        "Envio",
+        "Remito",
+        "Destinatario",
+        "Servicio",
+        "Transportadora",
+        "Documentacion",
+        "Valor Declarado",
+        "Bultos",
+        "Peso",
+        "Volumen",
+        "P. Fact"
+      ]
+    },
+    {
+      "nombre": "Viajes 1 Quincena de Abril 2026 amba.xls",
+      "bytes": 283136
+    },
+    {
+      "nombre": "Viajes 2 Quincena de Abril 2026 amba.xls",
+      "bytes": 181760
+    },
+    {
+      "nombre": "WAMARO SA - 01_04_2026.xlsx",
+      "bytes": 17891,
+      "filas": 28
+    },
+    {
+      "nombre": "WAMARO SA - 08_04_2026.xlsx",
+      "bytes": 12512,
+      "filas": 4
+    },
+    {
+      "nombre": "WAMARO SA - 14_04_2026.xlsx",
+      "bytes": 23545,
+      "filas": 54
+    },
+    {
+      "nombre": "WAMARO SA - 24_04_2026.xlsx",
+      "bytes": 703476,
+      "filas": 33
+    },
+    {
+      "nombre": "WAMARO SA - 29_04_2026.xlsx",
+      "bytes": 10184,
+      "filas": 2
+    },
+    {
+      "nombre": "WAMARO SA - 30_04_2026.xlsx",
+      "bytes": 12249,
+      "filas": 11
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 01_04_2026.xlsx",
+      "bytes": 29999,
+      "filas": 87
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 06_04_2026.xlsx",
+      "bytes": 27682,
+      "filas": 75
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 07_04_2026.xlsx",
+      "bytes": 29064,
+      "filas": 84
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 08_04_2026.xlsx",
+      "bytes": 34679,
+      "filas": 112
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 09_04_2026.xlsx",
+      "bytes": 20846,
+      "filas": 41
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 10_04_2026.xlsx",
+      "bytes": 23371,
+      "filas": 54
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 13_04_2026.xlsx",
+      "bytes": 25590,
+      "filas": 66
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 14_04_2026.xlsx",
+      "bytes": 22406,
+      "filas": 50
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 15_04_2026.xlsx",
+      "bytes": 20121,
+      "filas": 37
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 16_04_2026.xlsx",
+      "bytes": 17331,
+      "filas": 26
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 17_04_2026.xlsx",
+      "bytes": 21685,
+      "filas": 46
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 20_04_2026.xlsx",
+      "bytes": 16576,
+      "filas": 22
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 21_04_2026.xlsx",
+      "bytes": 19019,
+      "filas": 32
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 22_04_2026.xlsx",
+      "bytes": 18916,
+      "filas": 35
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 23_04_2026.xlsx",
+      "bytes": 37333,
+      "filas": 126
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 24_04_2026.xlsx",
+      "bytes": 29352,
+      "filas": 96
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 27_04_2026.xlsx",
+      "bytes": 26041,
+      "filas": 87
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 28_04_2026.xlsx",
+      "bytes": 21385,
+      "filas": 62
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 29_04_2026.xlsx",
+      "bytes": 11773,
+      "filas": 11
+    },
+    {
+      "nombre": "WAMARO TORTUGUITAS - 30_04_2026.xlsx",
+      "bytes": 11412,
+      "filas": 9
+    }
+  ],
+  "totales": {
+    "archivos": 40,
+    "wamaro_filas": 1290,
+    "clp_filas_hoja1": 2946,
+    "obs_top": {
+      "logistica en entregas amba": 173,
+      "conj 1 pl": 22,
+      "col 2 pl": 19,
+      "col 1 pl": 15,
+      "conj 2 pl": 13,
+      "conj q/k": 12,
+      "col q/k": 11,
+      "2 col 1 pl": 8,
+      "logistica en entrregas amba": 8,
+      "col 1 pl + divan": 8,
+      "logistica en entrergas amba": 8,
+      "2 conj 1 pl": 7,
+      "repo rotura": 6,
+      "el renglon duplica el costo de envio en ": 5,
+      "retiro x rotura": 4
+    }
+  }
+}

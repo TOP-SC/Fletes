@@ -1,0 +1,322 @@
+[
+  {
+    "archivo": "cross_salta.xlsx",
+    "hojas_total": 3,
+    "hojas": [
+      "Cross Salta",
+      "Preparado para Retirar por Alfa",
+      "Retirado por Logistica Alfaro"
+    ],
+    "pestanas_retirado": [
+      {
+        "sheet": "Retirado por Logistica Alfaro",
+        "error": null,
+        "header_row": 2,
+        "columns": [
+          "REMITO",
+          "FECHA RETIRO",
+          "PEDIDO",
+          "CODIGO CLIENTE",
+          "RAZON SOCIAL",
+          "DIRECCION",
+          "LOCALIDAD",
+          "CP",
+          "SKU",
+          "DESCRIPCION",
+          "CANT.",
+          "TEL",
+          "OBSERVACION",
+          "Fecha de entrega coordinada",
+          "Entregado",
+          "Fecha de rendicion del remito",
+          "Observacion",
+          "Remitos Firmados",
+          "Entrega Registrada"
+        ],
+        "rows": 2111,
+        "tipo": "retirado",
+        "proveedor_inferido": "ALFARO",
+        "remitos_unicos": 762,
+        "remitos_con_pedido_col": true,
+        "cols_seguimiento": [
+          "FECHA RETIRO",
+          "OBSERVACION",
+          "Fecha de entrega coordinada",
+          "Entregado",
+          "Observacion"
+        ],
+        "entregado_distrib": {
+          "Entregado": {
+            "SI": 790,
+            "NO": 7,
+            "-": 7,
+            "si": 2,
+            "Si": 1
+          }
+        },
+        "macheo_db": {
+          "en_db": 0,
+          "pct_db": 0.0,
+          "transporte_82": 0,
+          "proveedor_coherente": 0,
+          "proveedor_distinto": 0
+        }
+      }
+    ],
+    "otras_pestanas": [
+      {
+        "sheet": "Cross Salta",
+        "error": null,
+        "header_row": 2,
+        "columns": [
+          "FECHA DE RETIRO",
+          "REMITO",
+          "PEDIDO",
+          "CODIGO DE CLIENTE",
+          "CLIENTE",
+          "DIRECCION",
+          "LOCALIDAD",
+          "PROVINCIA",
+          "CP",
+          "TELEFONO",
+          "SKU",
+          "DESCRIPCION",
+          "CANTIDAD",
+          "MAIL",
+          "OBSERVACION"
+        ],
+        "rows": 2420,
+        "tipo": "otra",
+        "proveedor_inferido": null,
+        "remitos_unicos": 1183,
+        "remitos_con_pedido_col": true,
+        "cols_seguimiento": [
+          "FECHA DE RETIRO",
+          "OBSERVACION"
+        ],
+        "entregado_distrib": {},
+        "macheo_db": {
+          "en_db": 69,
+          "pct_db": 5.8,
+          "transporte_82": 69,
+          "proveedor_coherente": null,
+          "proveedor_distinto": null
+        }
+      },
+      {
+        "sheet": "Preparado para Retirar por Alfa",
+        "error": null,
+        "tipo_hoja": "preparado",
+        "header_row": null,
+        "columns": [
+          "REMITO",
+          "(sin encabezado — col A remito, B fecha, C pedido…)"
+        ],
+        "rows": 3456,
+        "tipo": "preparado",
+        "proveedor_inferido": null,
+        "remitos_unicos": 1568,
+        "remitos_con_pedido_col": false,
+        "cols_seguimiento": [],
+        "entregado_distrib": {},
+        "macheo_db": {
+          "en_db": 0,
+          "pct_db": 0.0,
+          "transporte_82": 0,
+          "proveedor_coherente": null,
+          "proveedor_distinto": null
+        }
+      }
+    ],
+    "resumen_libro": {
+      "remitos_unicos_todas_hojas": 2760,
+      "en_db": 69,
+      "pct_en_db": 2.5
+    }
+  },
+  {
+    "archivo": "EXPEDICION_ROSARIO_ENTREGAS_ENVIOS.xlsx",
+    "hojas_total": 1,
+    "hojas": [
+      "Retirado por  Logística Fransof"
+    ],
+    "pestanas_retirado": [
+      {
+        "sheet": "Retirado por  Logística Fransof",
+        "error": null,
+        "header_row": 2,
+        "columns": [
+          "REMITO",
+          "FECHA DE RETIRO",
+          "PEDIDO",
+          "C CLIENTE",
+          "R SOCIAL",
+          "DIRECCION",
+          "LOCALIDAD",
+          "CP",
+          "SKU",
+          "DESCRIPCION",
+          "CANTIDAD",
+          "TEL",
+          "OBS",
+          "RETIRO FRANSOF",
+          "FECHA DE ENTREGA COORDINADA",
+          "ENTREGADO OK",
+          "OBS.1"
+        ],
+        "rows": 5476,
+        "tipo": "retirado",
+        "proveedor_inferido": "FRANSOF",
+        "remitos_unicos": 3167,
+        "remitos_con_pedido_col": true,
+        "cols_seguimiento": [
+          "FECHA DE RETIRO",
+          "OBS",
+          "RETIRO FRANSOF",
+          "FECHA DE ENTREGA COORDINADA",
+          "ENTREGADO OK",
+          "OBS.1"
+        ],
+        "entregado_distrib": {
+          "ENTREGADO OK": {
+            "ok": 618,
+            "OK": 502,
+            "oik": 1,
+            "DEVUELTO A DEPOSITO": 1
+          }
+        },
+        "macheo_db": {
+          "en_db": 0,
+          "pct_db": 0.0,
+          "transporte_82": 0,
+          "proveedor_coherente": 0,
+          "proveedor_distinto": 0
+        }
+      }
+    ],
+    "otras_pestanas": [],
+    "resumen_libro": {
+      "remitos_unicos_todas_hojas": 3167,
+      "en_db": 0,
+      "pct_en_db": 0.0
+    }
+  },
+  {
+    "archivo": "SEGUIMIENTO_CROSS_SUC_SALTA.xlsx",
+    "hojas_total": 1,
+    "hojas": [
+      "Cross Salta"
+    ],
+    "pestanas_retirado": [],
+    "otras_pestanas": [
+      {
+        "sheet": "Cross Salta",
+        "error": null,
+        "header_row": 2,
+        "columns": [
+          "FECHA DE RETIRO",
+          "REMITO",
+          "PEDIDO",
+          "CODIGO DE CLIENTE",
+          "CLIENTE",
+          "DIRECCION",
+          "LOCALIDAD",
+          "PROVINCIA",
+          "CP",
+          "TELEFONO",
+          "SKU",
+          "DESCRIPCION",
+          "CANTIDAD",
+          "MAIL",
+          "OBSERVACION"
+        ],
+        "rows": 2420,
+        "tipo": "otra",
+        "proveedor_inferido": null,
+        "remitos_unicos": 1183,
+        "remitos_con_pedido_col": true,
+        "cols_seguimiento": [
+          "FECHA DE RETIRO",
+          "OBSERVACION"
+        ],
+        "entregado_distrib": {},
+        "macheo_db": {
+          "en_db": 69,
+          "pct_db": 5.8,
+          "transporte_82": 69,
+          "proveedor_coherente": null,
+          "proveedor_distinto": null
+        }
+      }
+    ],
+    "resumen_libro": {
+      "remitos_unicos_todas_hojas": 1183,
+      "en_db": 69,
+      "pct_en_db": 5.8
+    }
+  },
+  {
+    "archivo": "TOP_A7F42D8E_Logistica_Fletes_ENVIO.xlsx",
+    "hojas_total": 2,
+    "hojas": [
+      "TOP - Completar y enviar",
+      "Notas (no enviar)"
+    ],
+    "pestanas_retirado": [],
+    "otras_pestanas": [
+      {
+        "sheet": "TOP - Completar y enviar",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      },
+      {
+        "sheet": "Notas (no enviar)",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      }
+    ],
+    "resumen_libro": {
+      "remitos_unicos_todas_hojas": 0,
+      "en_db": 0,
+      "pct_en_db": 0
+    }
+  },
+  {
+    "archivo": "TOP_Logistica_Fletes_A7F42D8E.xlsx",
+    "hojas_total": 4,
+    "hojas": [
+      "Registro TOP",
+      "Cronograma horas",
+      "Metricas proyecto",
+      "Alternativas mercado"
+    ],
+    "pestanas_retirado": [],
+    "otras_pestanas": [
+      {
+        "sheet": "Registro TOP",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      },
+      {
+        "sheet": "Cronograma horas",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      },
+      {
+        "sheet": "Metricas proyecto",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      },
+      {
+        "sheet": "Alternativas mercado",
+        "error": "sin columna REMITO en primeras 8 filas",
+        "tipo": "otra"
+      }
+    ],
+    "resumen_libro": {
+      "remitos_unicos_todas_hojas": 0,
+      "en_db": 0,
+      "pct_en_db": 0
+    }
+  }
+]

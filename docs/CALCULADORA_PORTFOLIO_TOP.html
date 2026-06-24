@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Calculadora portfolio TOP — cruza Seguimiento de Automatizaciones con metodología de valor (ARS, USD, FTE).">
+  <title>TOP · Calculadora portfolio automatizaciones</title>
+  <style>
+    /* Autocontenido — no requiere pack-theme.css ni servidor (doble clic) */
+    :root {
+      --bg: #f4f6fa; --paper: #fff; --ink: #1e2a3a; --muted: #5c6b7d;
+      --accent: #2c5282; --accent2: #2b6cb0; --ok: #276749; --ok-bg: #f0fff4;
+      --bad: #c53030; --border: #dde4ee; --shadow: 0 4px 20px rgba(30,42,58,0.08);
+      --radius: 16px; --top-grad: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1a4d3e 100%);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(160deg, #eef2f8 0%, #f8f6fc 50%, #eef4f8 100%);
+      color: var(--ink); line-height: 1.55; padding: 1.5rem; min-height: 100vh;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; }
+    header {
+      background: var(--top-grad); color: #fff; border-radius: 18px;
+      padding: 2rem 2.25rem; margin-bottom: 1rem; box-shadow: var(--shadow);
+    }
+    header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.35rem; color: #fff; }
+    header p { color: rgba(255,255,255,0.92); font-size: 0.95rem; max-width: 820px; }
+    header .meta { margin-top: 0.75rem; font-size: 0.8rem; color: rgba(255,255,255,0.78); }
+    header a { color: #bee3f8; }
+    .callout {
+      padding: 1rem 1.15rem; margin-bottom: 1.25rem; border-radius: 10px;
+      border-left: 4px solid var(--accent2); background: #f0f6fc; font-size: 0.9rem;
+    }
+    .callout.blue { background: #ebf8ff; border: 1px solid #b8d4f0; border-left: 4px solid var(--accent2); }
+    .callout strong { color: var(--accent); }
+    .callout a { color: var(--accent2); }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0; }
+    .tab-btn {
+      font-family: inherit; font-size: 0.88rem; font-weight: 600; padding: 0.55rem 1rem;
+      border: 1px solid var(--border); border-bottom: none; border-radius: 10px 10px 0 0;
+      background: #e8eef6; color: var(--muted); cursor: pointer;
+    }
+    .tab-btn.active { background: var(--paper); color: var(--accent); border-color: var(--border); }
+    .tab-panel-wrap {
+      background: var(--paper); border: 1px solid var(--border); border-radius: 0 14px 14px 14px;
+      padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .card {
+      background: var(--paper); border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    .kpi {
+      background: var(--paper); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1rem; box-shadow: var(--shadow);
+    }
+    .kpi.hero-kpi { border-top: 3px solid var(--ok); }
+    .kpi .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
+    .kpi .value { font-size: 1.5rem; font-weight: 700; color: var(--ok); margin: 0.15rem 0; }
+    .kpi .sub { font-size: 0.78rem; color: var(--muted); }
+    .muted { color: var(--muted); }
+    footer, .footer { margin-top: 2rem; font-size: 0.82rem; color: var(--muted); }
+    footer a { color: var(--accent2); }
+    table { width: 100%; border-collapse: collapse; }
+    table th, table td { padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--border); text-align: left; }
+    table th { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); background: #f8fafc; }
+  </style>
+  <style>
+    .top-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center;
+      margin-bottom: 1.25rem; font-size: 0.88rem;
+    }
+    .top-nav a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .top-nav a:hover { text-decoration: underline; }
+    .top-nav .sep { color: var(--muted); }
+    .field-group { margin-bottom: 1rem; }
+    .field-group label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+    }
+    .field-group .hint {
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;
+      font-weight: 400; text-transform: none; letter-spacing: 0;
+    }
+    .field-group input, .field-group select {
+      width: 100%; padding: 0.6rem 0.75rem; font-size: 0.95rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: inherit; color: var(--ink);
+    }
+    .field-group input:focus {
+      outline: none; border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+    }
+    .input-prefix { display: flex; align-items: stretch; }
+    .input-prefix .prefix {
+      display: flex; align-items: center; padding: 0 0.75rem;
+      background: #f0f4fa; border: 1px solid var(--border); border-right: none;
+      border-radius: 8px 0 0 8px; font-size: 0.85rem; color: var(--muted); font-weight: 600;
+    }
+    .input-prefix input { border-radius: 0 8px 8px 0; flex: 1; }
+    .params-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem; align-items: end;
+    }
+    .params-grid .field-group { margin-bottom: 0; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .btn {
+      font-family: inherit; font-size: 0.88rem; font-weight: 600;
+      padding: 0.55rem 1.1rem; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); background: #fff; color: var(--accent);
+    }
+    .btn:hover { background: #ebf4ff; }
+    .btn-primary {
+      background: var(--ok); color: #fff; border-color: var(--ok);
+    }
+    .btn-primary:hover { background: #22543d; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      font-size: 0.85rem; padding: 0.65rem 0.9rem; border-radius: 8px;
+      margin-top: 0.75rem; display: none;
+    }
+    .status.show { display: block; }
+    .status.ok { background: var(--ok-bg); border: 1px solid #a7f3d0; color: var(--ok); }
+    .status.warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+    .status.err { background: #fff5f5; border: 1px solid #feb2b2; color: var(--bad); }
+    .kpi-portfolio {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.85rem; margin: 1.25rem 0;
+    }
+    .kpi-portfolio .kpi { text-align: center; padding: 1rem; }
+    .kpi-portfolio .kpi .value { font-size: 1.5rem; }
+    .kpi-portfolio .kpi.hero-kpi {
+      background: linear-gradient(145deg, #f0fff4, #fff);
+      border: 2px solid #86efac;
+    }
+    .table-wrap { overflow-x: auto; margin-top: 0.5rem; }
+    table.portfolio { font-size: 0.82rem; }
+    table.portfolio th { white-space: nowrap; }
+    table.portfolio td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.portfolio tr[data-idx] { cursor: pointer; }
+    table.portfolio tr[data-idx]:hover td { background: #ebf4ff; }
+    table.portfolio tr.selected td { background: #dbeafe !important; }
+    table.portfolio tr.totals td {
+      font-weight: 700; background: #f0f4fa; border-top: 2px solid var(--border);
+    }
+    table.portfolio .muted-cell { color: var(--muted); }
+    .calc-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;
+    }
+    @media (max-width: 820px) { .calc-grid { grid-template-columns: 1fr; } }
+    .results {
+      background: linear-gradient(145deg, #f0fff4 0%, #fafbfd 100%);
+      border: 1px solid #c6f6d5; border-radius: 14px; padding: 1.25rem;
+    }
+    .results h3 { margin-top: 0; color: var(--ok); }
+    .result-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.55rem 0; border-bottom: 1px solid #e2e8f0; font-size: 0.88rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .label { color: var(--muted); }
+    .result-row .value { font-weight: 700; text-align: right; }
+    .result-row.hero {
+      background: var(--ok-bg); margin: 0 -0.5rem; padding: 0.75rem 0.5rem;
+      border-radius: 8px; border-bottom: none; margin-bottom: 0.35rem;
+    }
+    .result-row.hero .value { font-size: 1.1rem; color: var(--ok); }
+    .result-row .usd { font-size: 0.8rem; color: var(--muted); font-weight: 500; display: block; }
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 1rem;
+      text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 0.75rem;
+    }
+    .upload-zone input { margin-top: 0.5rem; }
+    .step-list .formula {
+      background: #f0f4fa; padding: 0.5rem 0.75rem; border-radius: 6px;
+      font-family: Consolas, monospace; font-size: 0.82rem; margin-top: 0.35rem;
+    }
+    .badge-src {
+      display: inline-block; font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 999px;
+      background: #e0e7ff; color: #3730a3; margin-left: 0.35rem;
+    }
+    .sync-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+      padding: 0.75rem 1rem; background: #f0fff4; border: 1px solid #a7f3d0;
+      border-radius: 10px; margin-top: 0.75rem; font-size: 0.88rem;
+    }
+    .sync-bar label { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; color: var(--ok); }
+    .sync-bar select { padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-family: inherit; }
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;
+    }
+    .sync-dot.live { background: #22c55e; animation: pulse 2s infinite; }
+    .sync-dot.syncing { background: #f59e0b; animation: pulse 0.8s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    #lastSync { font-size: 0.8rem; color: var(--muted); }
+    table.portfolio tr.row-new td { background: #fef9c3 !important; }
+    table.portfolio tr.row-new td:first-child::before { content: "● "; color: #ca8a04; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Calculadora portfolio TOP</h1>
+    <p>
+      Cruza el <strong>Seguimiento de Automatizaciones</strong> (Google Sheet) con la
+      <strong>metodología de valor</strong> usada en proyectos TOP: ahorro anual en ARS y USD
+      y <strong>FTE equivalente</strong> por proyecto y en total.
+    </p>
+    <div class="meta">
+      Un solo archivo · doble clic · sincroniza con Google Sheet (internet + sheet público en lectura)
+    </div>
+  </header>
+
+  <nav class="top-nav" aria-label="Enlaces">
+    <a href="https://docs.google.com/spreadsheets/d/1xjKnaJBcKVPBQAY-DLJQQeFP9oW3A2o5TDszKSJm4_o/edit?gid=1156348848" target="_blank" rel="noopener">Abrir sheet TOP</a>
+    <span class="sep">·</span>
+    <a href="CALCULADORA_VALOR.html">Metodología ref. (Fletes)</a>
+    <span class="sep">·</span>
+    <span style="color:var(--muted)">Motor compartido: sueldo × factor ÷ h lab × horas ahorradas</span>
+  </nav>
+
+  <div class="callout blue">
+    <strong>Un solo archivo — doble clic y listo.</strong>
+    No hace falta Python ni servidor: al abrir, se conecta al sheet de Automatizaciones y
+    <strong>vuelve a leerlo automáticamente</strong> cada minuto.
+    Solo necesitás <em>internet</em> y que el sheet esté en
+    <strong>cualquiera con el enlace puede ver</strong> (lector).
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" type="button" data-tab="portfolio" aria-selected="true">Portfolio</button>
+    <button class="tab-btn" type="button" data-tab="detalle" aria-selected="false">Detalle proyecto</button>
+    <button class="tab-btn" type="button" data-tab="metodo" aria-selected="false">Metodología</button>
+  </div>
+
+  <div class="tab-panel-wrap">
+    <!-- PORTFOLIO -->
+    <div class="tab-panel active" id="panel-portfolio">
+      <section class="card" style="padding:1.25rem;margin-bottom:1rem">
+        <h2 style="margin-top:0;font-size:1.05rem">Parámetros de cálculo</h2>
+        <div class="params-grid">
+          <div class="field-group">
+            <label for="sueldo">Sueldo mensual ref.</label>
+            <div class="input-prefix">
+              <span class="prefix">ARS</span>
+              <input type="text" id="sueldo" inputmode="numeric" value="1.500.000" autocomplete="off">
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="factor">Factor cargado</label>
+            <input type="number" id="factor" min="1" max="4" step="0.1" value="2">
+          </div>
+          <div class="field-group">
+            <label for="horasLab">Horas lab/mes</label>
+            <input type="number" id="horasLab" min="1" max="220" value="176">
+          </div>
+          <div class="field-group">
+            <label for="tc">Tipo de cambio</label>
+            <div class="input-prefix">
+              <span class="prefix">ARS</span>
+              <input type="text" id="tc" inputmode="numeric" value="1.150" autocomplete="off">
+            </div>
+          </div>
+          <div class="field-group">
+            <label>Valor hora (derivado)</label>
+            <input type="text" id="valorHoraOut" readonly style="background:#f0f4fa;color:var(--ok);font-weight:700">
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="padding:1.25rem;margin-bottom:1rem">
+        <h2 style="margin-top:0;font-size:1.05rem">Fuente de datos — Seguimiento Automatizaciones</h2>
+        <div class="field-group">
+          <label for="sheetUrl">URL del Google Sheet</label>
+          <input type="url" id="sheetUrl" value="https://docs.google.com/spreadsheets/d/1xjKnaJBcKVPBQAY-DLJQQeFP9oW3A2o5TDszKSJm4_o/edit?gid=1156348848#gid=1156348848">
+          <span class="hint">Compartí el libro como <strong>cualquiera con el enlace puede ver</strong> (lector).
+          Podés copiar solo este .html a Escritorio o mail — funciona igual.</span>
+        </div>
+        <div class="sync-bar">
+          <label><input type="checkbox" id="autoSync" checked> <span class="sync-dot live" id="syncDot"></span> Sincronizar automáticamente</label>
+          <span>cada</span>
+          <select id="syncInterval" aria-label="Intervalo de sincronización">
+            <option value="15">15 seg</option>
+            <option value="30" selected>30 seg</option>
+            <option value="60">1 min</option>
+            <option value="120">2 min</option>
+            <option value="300">5 min</option>
+          </select>
+          <span id="lastSync">Sin sincronizar aún</span>
+          <span style="font-size:0.75rem;color:var(--muted)">· Google puede tardar ~1 min en publicar cambios del sheet</span>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary" id="btnLoad">Actualizar ahora</button>
+          <button type="button" class="btn" id="btnRecalc">Recalcular parámetros (sin leer sheet)</button>
+        </div>
+        <div class="upload-zone">
+          Si el navegador bloquea la carga remota, exportá el sheet como CSV y subilo acá:
+          <br><input type="file" id="csvFile" accept=".csv,text/csv">
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </section>
+
+      <div class="kpi-portfolio" id="kpiRow" hidden>
+        <div class="kpi hero-kpi">
+          <div class="label">Proyectos con beneficio</div>
+          <div class="value" id="kpi-count">—</div>
+          <div class="sub">con reducción h/mes &gt; 0</div>
+        </div>
+        <div class="kpi hero-kpi">
+          <div class="label">Ahorro anual total</div>
+          <div class="value" id="kpi-ars">—</div>
+          <div class="sub" id="kpi-ars-sub"></div>
+        </div>
+        <div class="kpi hero-kpi">
+          <div class="label">Ahorro anual USD</div>
+          <div class="value" id="kpi-usd">—</div>
+          <div class="sub">TC editable arriba</div>
+        </div>
+        <div class="kpi hero-kpi">
+          <div class="label">FTE total portfolio</div>
+          <div class="value" id="kpi-fte">—</div>
+          <div class="sub">suma equivalentes tiempo completo</div>
+        </div>
+      </div>
+
+      <section class="card" style="padding:1rem 1.25rem">
+        <h2 style="margin-top:0;font-size:1.05rem">Proyectos <span class="badge-src">sheet + calc</span></h2>
+        <p class="muted" style="font-size:0.85rem;margin-bottom:0.75rem">
+          Clic en una fila para ver detalle. Columnas calculadas se actualizan al cambiar parámetros o horas del sheet.
+        </p>
+        <div class="table-wrap">
+          <table class="portfolio" id="tablaPortfolio">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Proyecto</th>
+                <th>Asignado</th>
+                <th class="num">H. invertidas</th>
+                <th class="num">Reducción h/mes</th>
+                <th class="num">Costo constr. ARS</th>
+                <th class="num">Ahorro/año ARS</th>
+                <th class="num">Ahorro/año USD</th>
+                <th class="num">FTE</th>
+              </tr>
+            </thead>
+            <tbody id="portfolioBody">
+              <tr><td colspan="9" class="muted-cell" style="text-align:center;padding:2rem">
+                Presioná <strong>Actualizar desde sheet</strong> o subí un CSV exportado.
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- DETALLE -->
+    <div class="tab-panel" id="panel-detalle">
+      <h2 id="detalle-titulo">Detalle de proyecto</h2>
+      <p class="muted" id="detalle-sub" style="margin-bottom:1rem">Elegí un proyecto en la pestaña Portfolio.</p>
+      <div class="calc-grid" id="detalle-grid" hidden>
+        <div>
+          <div class="field-group">
+            <label>Reducción h/mes (desde sheet)</label>
+            <input type="text" id="detalle-horas" readonly style="background:#f0f4fa">
+          </div>
+          <div class="field-group">
+            <label>Horas invertidas desarrollo</label>
+            <input type="text" id="detalle-inv" readonly style="background:#f0f4fa">
+          </div>
+          <pre id="detalle-desglose" style="font-size:0.8rem;background:#1e293b;color:#e2e8f0;padding:1rem;border-radius:10px;overflow-x:auto"></pre>
+        </div>
+        <div class="results" id="detalle-results"></div>
+      </div>
+    </div>
+
+    <!-- METODOLOGÍA -->
+    <div class="tab-panel" id="panel-metodo">
+      <h2>Metodología — portfolio TOP</h2>
+      <p>Misma lógica que la <a href="CALCULADORA_VALOR.html">calculadora de beneficio operativo</a> (originada en Control de Fletes), aplicada fila a fila sobre el sheet de automatizaciones.</p>
+      <ol class="step-list" style="list-style:none;margin:1rem 0;padding:0">
+        <li style="margin-bottom:1rem;padding-left:0">
+          <strong>Entrada desde sheet</strong>
+          <p style="margin:0.35rem 0;font-size:0.9rem;color:var(--muted)">
+            Por proyecto: <code>Horas Invertidas</code>, <code>Reducción hs hombre/mes</code>, nombre y asignado.
+          </p>
+        </li>
+        <li style="margin-bottom:1rem">
+          <strong>Valor hora cargada</strong>
+          <div class="formula">valor_hora = (sueldo × factor) ÷ horas_laborables_mes</div>
+        </li>
+        <li style="margin-bottom:1rem">
+          <strong>Beneficio operativo (3 KPIs)</strong>
+          <div class="formula">ahorro_año_ars = valor_hora × reducción_h_mes × 12</div>
+          <div class="formula">ahorro_año_usd = ahorro_año_ars ÷ TC</div>
+          <div class="formula">FTE = (reducción_h_mes × 12) ÷ 2.112</div>
+          <p style="font-size:0.85rem;color:var(--muted);margin-top:0.5rem">2.112 = 22 días × 8 h × 12 meses.</p>
+        </li>
+        <li style="margin-bottom:1rem">
+          <strong>Costo construcción (opcional por fila)</strong>
+          <div class="formula">costo_constr_ars = valor_hora × horas_invertidas</div>
+          <p style="font-size:0.85rem;color:var(--muted);margin-top:0.5rem">Misma tarifa hora; no incluye licencias ni infra.</p>
+        </li>
+      </ol>
+      <div class="callout">
+        <strong>Rangos en el sheet</strong> (ej. «100-130» en Fletes): se usa el <em>promedio</em> para calcular.
+        Para un valor fijo, cargá un solo número en el sheet.
+      </div>
+      <div class="callout blue" style="margin-top:1rem">
+        <strong>Menú en el Google Sheet (opcional):</strong> copiá el script
+        <code>docs/TOP_SHEET_MENU.gs</code> en Extensiones → Apps Script del sheet
+        para tener «TOP · Calculadora → Abrir portfolio» y abrir esta página con el enlace correcto.
+      </div>
+    </div>
+  </div>
+
+  <footer style="margin-top:2rem;font-size:0.82rem;color:var(--muted)">
+    TOP · Calculadora portfolio · Sheet:
+    <a href="https://docs.google.com/spreadsheets/d/1xjKnaJBcKVPBQAY-DLJQQeFP9oW3A2o5TDszKSJm4_o/edit">Seguimiento Automatizaciones 2026</a> ·
+    Metodología ref.:
+    <a href="CALCULADORA_VALOR.html">CALCULADORA_VALOR.html</a> (pack Fletes)
+  </footer>
+</div>
+
+<script>
+(function () {
+  const FTE_HORAS_ANIO = 2112;
+  const DEFAULT_SHEET_ID = "1xjKnaJBcKVPBQAY-DLJQQeFP9oW3A2o5TDszKSJm4_o";
+  const DEFAULT_GID = "1156348848";
+
+  const $ = (id) => document.getElementById(id);
+  const LS_AUTO = "top_portfolio_auto";
+  const LS_INTERVAL = "top_portfolio_interval";
+  const LS_SHEET_URL = "top_portfolio_sheet_url";
+  const LS_CACHE = "top_portfolio_sheet_cache";
+
+  let projects = [];
+  let selectedIdx = -1;
+  let refreshTimer = null;
+  let isLoading = false;
+  let knownProjectKeys = new Set();
+  let newProjectKeys = new Set();
+  let syncQueued = false;
+  let lastGvizSig = "";
+  let gvizActiveResolve = null;
+  let gvizActiveReject = null;
+  let gvizActiveReq = 0;
+
+  function parseNum(str) {
+    if (typeof str === "number") return str;
+    if (!str || str === "—") return 0;
+    const s = String(str).trim().replace(/\s/g, "");
+    if (!s) return 0;
+    const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  }
+
+  /** "100-130", "100 - 130", "48" → número o promedio */
+  function parseHours(raw) {
+    if (raw == null) return 0;
+    const s = String(raw).trim();
+    if (!s || s === "0" || s === "—") return 0;
+    const range = s.match(/^(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+    if (range) {
+      const a = parseNum(range[1]);
+      const b = parseNum(range[2]);
+      return (a + b) / 2;
+    }
+    return parseNum(s);
+  }
+
+  function fmtARS(n) {
+    if (!n || n <= 0) return "—";
+    return "ARS " + Math.round(n).toLocaleString("es-AR");
+  }
+
+  function fmtUSD(n) {
+    if (!n || n <= 0) return "—";
+    return "USD " + Math.round(n).toLocaleString("es-AR");
+  }
+
+  function fmtFTE(n) {
+    if (!n || n <= 0) return "—";
+    return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getParams() {
+    const sueldo = parseNum($("sueldo").value);
+    const factor = parseNum($("factor").value) || 2;
+    const horasLab = parseNum($("horasLab").value) || 176;
+    const tc = parseNum($("tc").value) || 1150;
+    const valorHora = horasLab > 0 ? (sueldo * factor) / horasLab : 0;
+    return { sueldo, factor, horasLab, tc, valorHora };
+  }
+
+  function calcRow(row, p) {
+    const hInv = parseHours(row.horasInvertidasRaw);
+    const hRed = parseHours(row.reduccionRaw);
+    const costoConstr = hInv > 0 ? p.valorHora * hInv : 0;
+    const ahorroAnio = hRed > 0 ? p.valorHora * hRed * 12 : 0;
+    const ahorroUsd = hRed > 0 && p.tc > 0 ? ahorroAnio / p.tc : 0;
+    const fte = hRed > 0 ? (hRed * 12) / FTE_HORAS_ANIO : 0;
+    return { hInv, hRed, costoConstr, ahorroAnio, ahorroUsd, fte };
+  }
+
+  function showStatus(msg, type) {
+    const el = $("status");
+    el.textContent = msg;
+    el.className = "status show " + (type || "ok");
+  }
+
+  function parseSheetUrl(url) {
+    const idMatch = String(url).match(/\/d\/([a-zA-Z0-9-_]+)/);
+    const gidMatch = String(url).match(/[?&#]gid=(\d+)/);
+    return {
+      id: idMatch ? idMatch[1] : DEFAULT_SHEET_ID,
+      gid: gidMatch ? gidMatch[1] : DEFAULT_GID,
+    };
+  }
+
+  function csvExportUrl(id, gid) {
+    return "https://docs.google.com/spreadsheets/d/" + id + "/gviz/tq?tqx=out:csv&gid=" + gid;
+  }
+
+  function gvizJsonUrl(id, gid) {
+    return "https://docs.google.com/spreadsheets/d/" + id + "/gviz/tq?tqx=out:json&gid=" + gid + "&headers=0";
+  }
+
+  /** Google gviz llama a google.visualization.Query.setResponse — hay que definirlo antes del &lt;script&gt;. */
+  function ensureGoogleVizStub() {
+    window.google = window.google || {};
+    window.google.visualization = window.google.visualization || {};
+    window.google.visualization.Query = window.google.visualization.Query || {};
+    if (typeof window.google.visualization.Query.setResponse !== "function") {
+      window.google.visualization.Query.setResponse = function () {};
+    }
+  }
+  ensureGoogleVizStub();
+
+  function gvizToTableRows(data) {
+    if (!data || data.status !== "ok") {
+      const msg = data && data.errors && data.errors[0] ? data.errors[0].detailed_message : "Error al leer gviz";
+      throw new Error(msg);
+    }
+    const rows = (data.table.rows || []).map((r) =>
+      (r.c || []).map((cell) => {
+        if (!cell) return "";
+        if (cell.v != null && cell.v !== "") return cell.v;
+        if (cell.f != null) return cell.f;
+        return "";
+      })
+    );
+    return { rows: rows, sig: String(data.sig || "") };
+  }
+
+  function installGvizResponseHandler() {
+    ensureGoogleVizStub();
+    google.visualization.Query.setResponse = function (data) {
+      if (!gvizActiveResolve) return;
+      const resolve = gvizActiveResolve;
+      const reject = gvizActiveReject;
+      gvizActiveResolve = gvizActiveReject = null;
+      try {
+        resolve(gvizToTableRows(data));
+      } catch (e) {
+        reject(e);
+      }
+    };
+  }
+  installGvizResponseHandler();
+
+  /** Una petición a la vez; URL única cada vez para evitar caché del navegador. */
+  function fetchSheetViaJsonp(id, gid) {
+    installGvizResponseHandler();
+    const reqId = ++gvizActiveReq;
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let script = null;
+
+      const timeout = setTimeout(() => {
+        if (settled || reqId !== gvizActiveReq) return;
+        settled = true;
+        gvizActiveResolve = gvizActiveReject = null;
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error("Timeout — ¿sheet compartido como lector con enlace?"));
+      }, 35000);
+
+      gvizActiveResolve = (payload) => {
+        if (settled || reqId !== gvizActiveReq) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        resolve(payload);
+      };
+      gvizActiveReject = (err) => {
+        if (settled || reqId !== gvizActiveReq) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        reject(err);
+      };
+
+      script = document.createElement("script");
+      script.charset = "UTF-8";
+      script.src = gvizJsonUrl(id, gid) +
+        "&nocache=" + encodeURIComponent(Date.now() + "." + Math.random().toString(36).slice(2));
+      script.onerror = () => {
+        if (gvizActiveReject) gvizActiveReject(new Error("Sin acceso al sheet — compartilo como «cualquiera con el enlace · lector»"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  async function fetchSheetData(id, gid) {
+    return await fetchSheetViaJsonp(id, gid);
+  }
+
+  function saveSheetCache(rows) {
+    try {
+      localStorage.setItem(LS_CACHE, JSON.stringify({
+        ts: Date.now(),
+        rows: rows,
+      }));
+    } catch (_) { /* quota */ }
+  }
+
+  function loadSheetCache() {
+    try {
+      const raw = localStorage.getItem(LS_CACHE);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || !o.rows || !o.rows.length) return null;
+      return o;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function restoreFromCache(showMsg) {
+    const c = loadSheetCache();
+    if (!c) return false;
+    ingestTableRows(c.rows);
+    const ts = new Date(c.ts).toLocaleString("es-AR");
+    setLastSync("Datos en caché · " + ts);
+    if (showMsg) {
+      showStatus(
+        "Mostrando última sync guardada (" + ts + "). Reintentando conexión al sheet…",
+        "warn"
+      );
+    }
+    return true;
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+      if (inQuotes) {
+        if (c === '"' && next === '"') { cell += '"'; i++; }
+        else if (c === '"') inQuotes = false;
+        else cell += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ",") { row.push(cell); cell = ""; }
+        else if (c === "\r") { /* skip */ }
+        else if (c === "\n") {
+          row.push(cell);
+          if (row.some((x) => String(x).trim())) rows.push(row);
+          row = [];
+          cell = "";
+        } else cell += c;
+      }
+    }
+    if (cell || row.length) {
+      row.push(cell);
+      if (row.some((x) => String(x).trim())) rows.push(row);
+    }
+    return rows;
+  }
+
+  function normHeader(h) {
+    return String(h || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function findCol(headers, patterns) {
+    for (let i = 0; i < headers.length; i++) {
+      const h = normHeader(headers[i]);
+      if (!h) continue;
+      for (const p of patterns) {
+        if (h.includes(p)) return i;
+      }
+    }
+    return -1;
+  }
+
+  /** Layout pestaña Listado — gviz a veces no trae todos los labels en fila 1. */
+  const SHEET_LAYOUT = {
+    listado: 0,
+    codigo: 1,
+    proceso: 2,
+    asignado: 5,
+    horasInvertidas: 12,
+    reduccion: 14,
+  };
+
+  function buildCompositeHeaders(tableRows, scanRows) {
+    const n = Math.min(scanRows, tableRows.length);
+    let width = 0;
+    for (let i = 0; i < n; i++) {
+      width = Math.max(width, (tableRows[i] || []).length);
+    }
+    const headers = [];
+    for (let c = 0; c < width; c++) {
+      const parts = [];
+      for (let r = 0; r < n; r++) {
+        const v = String((tableRows[r] && tableRows[r][c]) || "").trim();
+        if (v) parts.push(v);
+      }
+      headers.push(parts.join(" ").trim());
+    }
+    return headers;
+  }
+
+  function cellStr(row, idx) {
+    if (!row || idx < 0 || idx >= row.length) return "";
+    const v = row[idx];
+    return v == null ? "" : String(v).trim();
+  }
+
+  function isHeaderOrMetaRow(row, cols) {
+    const proceso = normHeader(cellStr(row, cols.proceso));
+    const listado = normHeader(cellStr(row, cols.listado));
+    if (proceso === "reporte/proceso" || listado === "listado") return true;
+    if (proceso === "codigo unico") return true;
+    if (proceso.includes("reporte/proceso")) return true;
+    return false;
+  }
+
+  function resolveColumns(headers) {
+    const fromHeader = {
+      listado: findCol(headers, ["listado"]),
+      codigo: findCol(headers, ["codigo unico", "codigo"]),
+      proceso: findCol(headers, ["reporte/proceso", "reporte", "proceso"]),
+      asignado: findCol(headers, ["asignado"]),
+      horasInvertidas: findCol(headers, ["horas invertidas"]),
+      reduccion: findCol(headers, ["reduccion hs", "reduccion hombre", "reduccion"]),
+    };
+    const cols = { ...SHEET_LAYOUT };
+    Object.keys(fromHeader).forEach((k) => {
+      if (fromHeader[k] >= 0) cols[k] = fromHeader[k];
+    });
+    return cols;
+  }
+
+  function rowsToProjects(tableRows) {
+    if (!tableRows || !tableRows.length) return [];
+
+    let headerIdx = -1;
+    let headers = null;
+
+    for (let i = 0; i < Math.min(tableRows.length, 25); i++) {
+      const row = tableRows[i].map((x) => String(x == null ? "" : x));
+      const iHInv = findCol(row, ["horas invertidas"]);
+      const iHRed = findCol(row, ["reduccion hs", "reduccion hombre", "reduccion"]);
+      if (iHInv >= 0 && iHRed >= 0) {
+        headerIdx = i;
+        headers = row;
+        break;
+      }
+    }
+
+    if (headerIdx < 0) {
+      headers = buildCompositeHeaders(tableRows, 5);
+      if (findCol(headers, ["horas invertidas"]) >= 0 && findCol(headers, ["reduccion"]) >= 0) {
+        headerIdx = 0;
+      }
+    }
+
+    const cols = headers ? resolveColumns(headers) : { ...SHEET_LAYOUT };
+    const dataStart = headerIdx >= 0 ? headerIdx + 1 : 0;
+
+    const out = [];
+    for (let r = dataStart; r < tableRows.length; r++) {
+      const row = tableRows[r];
+      const proceso = cellStr(row, cols.proceso) || cellStr(row, cols.codigo);
+      const listado = cellStr(row, cols.listado);
+      const nombre = proceso;
+      if (isHeaderOrMetaRow(row, cols)) continue;
+      if (!nombre && !listado) continue;
+      if (/^0+$/.test(listado) && !nombre) continue;
+
+      const hInvRaw = cellStr(row, cols.horasInvertidas);
+      const hRedRaw = cellStr(row, cols.reduccion);
+      if (!nombre && !parseHours(hInvRaw) && !parseHours(hRedRaw)) continue;
+
+      out.push({
+        listado: listado || String(out.length + 1),
+        nombre: nombre || ("Proyecto " + listado),
+        asignado: cellStr(row, cols.asignado),
+        horasInvertidasRaw: hInvRaw,
+        reduccionRaw: hRedRaw,
+      });
+    }
+    return out;
+  }
+
+  function projectKey(p) {
+    return String(p.listado) + "|" + String(p.nombre);
+  }
+
+  function fingerprintProjects(projs) {
+    return projs.map((p) =>
+      [p.listado, p.nombre, p.horasInvertidasRaw, p.reduccionRaw, p.asignado].join("|")
+    ).join("\n");
+  }
+
+  function updateSyncDot(state) {
+    const dot = $("syncDot");
+    dot.className = "sync-dot " + (state || "");
+  }
+
+  function setLastSync(msg) {
+    $("lastSync").textContent = msg;
+  }
+
+  function stopAutoSync() {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  }
+
+  function startAutoSync() {
+    stopAutoSync();
+    const on = $("autoSync").checked;
+    localStorage.setItem(LS_AUTO, on ? "1" : "0");
+    localStorage.setItem(LS_INTERVAL, $("syncInterval").value);
+    if (!on) {
+      updateSyncDot("");
+      return;
+    }
+    const sec = parseInt($("syncInterval").value, 10) || 60;
+    refreshTimer = setInterval(() => loadFromSheet(true), sec * 1000);
+    updateSyncDot("live");
+  }
+
+  function onWindowFocus() {
+    if ($("autoSync").checked) loadFromSheet(true);
+  }
+
+  function applyUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    const gid = params.get("gid") || DEFAULT_GID;
+    if (id) {
+      $("sheetUrl").value =
+        "https://docs.google.com/spreadsheets/d/" + id + "/edit?gid=" + gid + "#gid=" + gid;
+    } else if (params.get("gid")) {
+      const { id: curId } = parseSheetUrl($("sheetUrl").value);
+      $("sheetUrl").value =
+        "https://docs.google.com/spreadsheets/d/" + curId + "/edit?gid=" + gid + "#gid=" + gid;
+    }
+    if (params.get("auto") === "0") $("autoSync").checked = false;
+  }
+
+  function renderPortfolio() {
+    const p = getParams();
+    $("valorHoraOut").value = p.valorHora > 0
+      ? Math.round(p.valorHora).toLocaleString("es-AR") + " ARS/h"
+      : "—";
+
+    const tbody = $("portfolioBody");
+    if (!projects.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="muted-cell" style="text-align:center;padding:2rem">Sin proyectos cargados.</td></tr>';
+      $("kpiRow").hidden = true;
+      return;
+    }
+
+    let totArs = 0, totUsd = 0, totFte = 0, countBenef = 0;
+    const rowsHtml = projects.map((proj, idx) => {
+      const c = calcRow(proj, p);
+      if (c.hRed > 0) {
+        totArs += c.ahorroAnio;
+        totUsd += c.ahorroUsd;
+        totFte += c.fte;
+        countBenef++;
+      }
+      const sel = idx === selectedIdx ? " selected" : "";
+      const isNew = newProjectKeys.has(projectKey(proj)) ? " row-new" : "";
+      const redDisplay = String(proj.reduccionRaw || "").trim() || (c.hRed > 0 ? c.hRed : "—");
+      return (
+        '<tr data-idx="' + idx + '"' + sel + isNew + ">" +
+        "<td>" + escapeHtml(proj.listado) + "</td>" +
+        "<td>" + escapeHtml(proj.nombre) + "</td>" +
+        "<td>" + escapeHtml(proj.asignado || "—") + "</td>" +
+        '<td class="num">' + (c.hInv > 0 ? c.hInv.toLocaleString("es-AR") : "—") + "</td>" +
+        '<td class="num">' + escapeHtml(String(redDisplay)) + "</td>" +
+        '<td class="num">' + (c.costoConstr > 0 ? Math.round(c.costoConstr).toLocaleString("es-AR") : "—") + "</td>" +
+        '<td class="num">' + (c.ahorroAnio > 0 ? Math.round(c.ahorroAnio).toLocaleString("es-AR") : "—") + "</td>" +
+        '<td class="num">' + (c.ahorroUsd > 0 ? Math.round(c.ahorroUsd).toLocaleString("es-AR") : "—") + "</td>" +
+        '<td class="num">' + fmtFTE(c.fte) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    tbody.innerHTML = rowsHtml +
+      '<tr class="totals">' +
+      '<td colspan="4"><strong>Totales portfolio</strong> (' + countBenef + " con beneficio)</td>" +
+      '<td class="num">—</td><td class="num">—</td>' +
+      '<td class="num">' + Math.round(totArs).toLocaleString("es-AR") + "</td>" +
+      '<td class="num">' + Math.round(totUsd).toLocaleString("es-AR") + "</td>" +
+      '<td class="num">' + fmtFTE(totFte) + "</td></tr>";
+
+    $("kpiRow").hidden = false;
+    $("kpi-count").textContent = countBenef + " / " + projects.length;
+    $("kpi-ars").textContent = fmtARS(totArs).replace("ARS ", "");
+    $("kpi-ars-sub").textContent = fmtARS(totArs) + "/año";
+    $("kpi-usd").textContent = fmtUSD(totUsd).replace("USD ", "");
+    $("kpi-fte").textContent = fmtFTE(totFte);
+
+    tbody.querySelectorAll("tr[data-idx]").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        selectedIdx = parseInt(tr.dataset.idx, 10);
+        renderPortfolio();
+        showDetalle(selectedIdx);
+        document.querySelector('[data-tab="detalle"]').click();
+      });
+    });
+
+    if (selectedIdx >= 0 && selectedIdx < projects.length) showDetalle(selectedIdx);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function showDetalle(idx) {
+    const proj = projects[idx];
+    if (!proj) return;
+    const p = getParams();
+    const c = calcRow(proj, p);
+    $("detalle-titulo").textContent = proj.nombre;
+    $("detalle-sub").textContent = (proj.asignado ? "Asignado: " + proj.asignado + " · " : "") +
+      "Listado #" + proj.listado;
+    $("detalle-grid").hidden = false;
+    $("detalle-horas").value = String(proj.reduccionRaw || c.hRed || "—") +
+      (c.hRed > 0 ? " → " + c.hRed + " h/mes (calc.)" : "");
+    $("detalle-inv").value = String(proj.horasInvertidasRaw || c.hInv || "—") +
+      (c.hInv > 0 ? " → " + c.hInv + " h" : "");
+
+    $("detalle-results").innerHTML =
+      '<h3>Beneficio operativo</h3>' +
+      '<div class="result-row hero"><span class="label">Ahorro anual ARS</span><span class="value">' + fmtARS(c.ahorroAnio) +
+      '<span class="usd">' + fmtUSD(c.ahorroUsd) + "/año</span></span></div>" +
+      '<div class="result-row hero"><span class="label">FTE equivalente</span><span class="value">' + fmtFTE(c.fte) + " FTE</span></div>" +
+      '<div class="result-row"><span class="label">Ahorro mensual</span><span class="value">' +
+      fmtARS(c.hRed > 0 ? p.valorHora * c.hRed : 0) + "</span></div>" +
+      '<div class="result-row"><span class="label">Costo construcción ref.</span><span class="value">' +
+      fmtARS(c.costoConstr) + "</span></div>";
+
+    $("detalle-desglose").textContent =
+      "valor_hora = (" + p.sueldo.toLocaleString("es-AR") + " × " + p.factor + ") ÷ " + p.horasLab +
+      " = " + Math.round(p.valorHora).toLocaleString("es-AR") + " ARS/h\n\n" +
+      "ahorro_año = " + Math.round(p.valorHora) + " × " + c.hRed + " × 12 = " +
+      Math.round(c.ahorroAnio).toLocaleString("es-AR") + " ARS\n" +
+      "ahorro_usd = " + Math.round(c.ahorroAnio).toLocaleString("es-AR") + " ÷ " + p.tc +
+      " = " + Math.round(c.ahorroUsd).toLocaleString("es-AR") + " USD\n" +
+      "FTE = (" + c.hRed + " × 12) ÷ " + FTE_HORAS_ANIO + " = " + c.fte.toFixed(2);
+  }
+
+  async function loadFromSheet(silent) {
+    if (isLoading) {
+      syncQueued = true;
+      return;
+    }
+    isLoading = true;
+    const btn = $("btnLoad");
+    if (!silent) {
+      btn.disabled = true;
+      showStatus("Cargando datos del sheet…", "warn");
+    } else {
+      updateSyncDot("syncing");
+    }
+    try {
+      localStorage.setItem(LS_SHEET_URL, $("sheetUrl").value);
+      const { id, gid } = parseSheetUrl($("sheetUrl").value);
+      const sheetData = await fetchSheetData(id, gid);
+      const sig = sheetData.sig || "";
+      const sigUnchanged = sig && sig === lastGvizSig;
+      lastGvizSig = sig || lastGvizSig;
+
+      const result = ingestTableRows(sheetData.rows);
+      saveSheetCache(sheetData.rows);
+      const ts = new Date().toLocaleString("es-AR");
+      setLastSync("Última sync: " + ts + (sigUnchanged ? " · sin cambios en origen" : " · actualizado"));
+
+      if (result.changed) {
+        const msg = "Datos actualizados: " + projects.length + " proyectos · " + ts;
+        if (!silent || result.added > 0) showStatus(msg, "ok");
+        else showStatus(msg, "ok");
+      } else if (!silent) {
+        showStatus(
+          sigUnchanged
+            ? "Sincronizado — Google aún no refleja cambios (puede tardar ~1 min). Proyectos: " + projects.length
+            : "Sincronizado: " + projects.length + " proyectos · " + ts,
+          sigUnchanged ? "warn" : "ok"
+        );
+      }
+    } catch (e) {
+      const hadCache = restoreFromCache(false);
+      const hint = hadCache
+        ? " Se muestran datos guardados de la última vez que funcionó. Subí CSV o revisá permisos del sheet."
+        : " Compartí el sheet como «cualquiera con el enlace · lector» o subí CSV abajo.";
+      if (!silent) {
+        showStatus("No se pudo leer el sheet (" + e.message + ")." + hint, "err");
+      } else if (hadCache) {
+        showStatus("Sin conexión al sheet — datos en caché.", "warn");
+      }
+      setLastSync("Error de sync — " + new Date().toLocaleTimeString("es-AR"));
+    } finally {
+      isLoading = false;
+      if (!silent) btn.disabled = false;
+      if ($("autoSync").checked) updateSyncDot("live");
+      else updateSyncDot("");
+      if (syncQueued) {
+        syncQueued = false;
+        setTimeout(() => loadFromSheet(true), 200);
+      }
+    }
+  }
+
+  function ingestTableRows(tableRows) {
+    const prevFp = fingerprintProjects(projects);
+    const prevProjects = projects.slice();
+    const prevKeys = new Set(projects.map(projectKey));
+    const prevSelected = selectedIdx >= 0 ? projects[selectedIdx] : null;
+
+    const newProjects = rowsToProjects(tableRows);
+    const newFp = fingerprintProjects(newProjects);
+
+    newProjectKeys = new Set();
+    newProjects.forEach((p) => {
+      const k = projectKey(p);
+      if (!prevKeys.has(k)) {
+        newProjectKeys.add(k);
+        return;
+      }
+      const old = prevProjects.find((x) => projectKey(x) === k);
+      if (old && (String(old.reduccionRaw) !== String(p.reduccionRaw) ||
+          String(old.horasInvertidasRaw) !== String(p.horasInvertidasRaw))) {
+        newProjectKeys.add(k);
+      }
+    });
+
+    projects = newProjects;
+    knownProjectKeys = new Set(projects.map(projectKey));
+
+    if (prevSelected) {
+      const k = projectKey(prevSelected);
+      selectedIdx = projects.findIndex((p) => projectKey(p) === k);
+      if (selectedIdx < 0) selectedIdx = -1;
+    }
+
+    renderPortfolio();
+
+    const added = newProjectKeys.size;
+    const changed = newFp !== prevFp;
+    if (added > 0) {
+      setTimeout(() => { newProjectKeys = new Set(); renderPortfolio(); }, 12000);
+    }
+
+    return { changed, added, count: projects.length };
+  }
+
+  function ingestCSV(text) {
+    return ingestTableRows(parseCSV(text));
+  }
+
+  function formatInputThousands(input) {
+    const raw = parseNum(input.value);
+    if (raw >= 1000) input.value = Math.round(raw).toLocaleString("es-AR");
+  }
+
+  ["sueldo", "tc"].forEach((id) => {
+    const el = $(id);
+    el.addEventListener("blur", () => formatInputThousands(el));
+    el.addEventListener("input", renderPortfolio);
+  });
+  ["factor", "horasLab"].forEach((id) => {
+    $(id).addEventListener("input", renderPortfolio);
+  });
+
+  $("btnLoad").addEventListener("click", () => loadFromSheet(false));
+  $("btnRecalc").addEventListener("click", renderPortfolio);
+
+  $("autoSync").addEventListener("change", startAutoSync);
+  $("syncInterval").addEventListener("change", startAutoSync);
+  $("sheetUrl").addEventListener("change", () => localStorage.setItem(LS_SHEET_URL, $("sheetUrl").value));
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && $("autoSync").checked) {
+      loadFromSheet(true);
+    }
+  });
+  window.addEventListener("focus", onWindowFocus);
+
+  $("csvFile").addEventListener("change", (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        ingestCSV(e.target.result);
+        showStatus("CSV importado: " + projects.length + " proyectos.", "ok");
+      } catch (err) {
+        showStatus("Error al leer CSV: " + err.message, "err");
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+  });
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+      $("panel-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  applyUrlParams();
+  const savedUrl = localStorage.getItem(LS_SHEET_URL);
+  if (savedUrl) $("sheetUrl").value = savedUrl;
+  if (localStorage.getItem(LS_AUTO) === "0") $("autoSync").checked = false;
+  const savedInt = localStorage.getItem(LS_INTERVAL);
+  if (savedInt) $("syncInterval").value = savedInt;
+
+  renderPortfolio();
+  restoreFromCache(false);
+  startAutoSync();
+  loadFromSheet(true);
+})();
+</script>
+</body>
+</html>

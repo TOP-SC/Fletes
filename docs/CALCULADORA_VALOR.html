@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Calculadora de valor operativo — Control de Fletes. Ahorro en ARS y USD a partir de sueldo y horas liberadas.">
+  <title>Control de Fletes · Calculadora beneficio operativo del cliente</title>
+  <link rel="stylesheet" href="pack-theme.css">
+  <style>
+    .field-group { margin-bottom: 1rem; }
+    .field-group label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+      margin-bottom: 0.35rem;
+    }
+    .field-group .hint {
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;
+      font-weight: 400; text-transform: none; letter-spacing: 0;
+    }
+    .field-group input, .field-group select {
+      width: 100%; padding: 0.6rem 0.75rem; font-size: 0.95rem;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: inherit; color: var(--ink);
+    }
+    .field-group input:focus {
+      outline: none; border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+    }
+    .input-prefix { display: flex; align-items: stretch; }
+    .input-prefix .prefix {
+      display: flex; align-items: center; padding: 0 0.75rem;
+      background: #f0f4fa; border: 1px solid var(--border); border-right: none;
+      border-radius: 8px 0 0 8px; font-size: 0.85rem; color: var(--muted); font-weight: 600;
+    }
+    .input-prefix input { border-radius: 0 8px 8px 0; flex: 1; }
+    .calc-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;
+    }
+    @media (max-width: 820px) { .calc-grid { grid-template-columns: 1fr; } }
+    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0.5rem; }
+    .preset-btn {
+      font-family: inherit; font-size: 0.78rem; padding: 0.4rem 0.75rem;
+      border: 1px solid var(--border); border-radius: 999px;
+      background: #fafbfd; color: var(--accent); cursor: pointer;
+    }
+    .preset-btn:hover { background: #ebf4ff; border-color: #bee3f8; }
+    .results {
+      background: linear-gradient(145deg, #f0fff4 0%, #fafbfd 100%);
+      border: 1px solid #c6f6d5; border-radius: 14px; padding: 1.25rem;
+    }
+    .results h3 { margin-top: 0; color: var(--ok); }
+    .result-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 0.55rem 0; border-bottom: 1px solid #e2e8f0; font-size: 0.88rem;
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .label { color: var(--muted); }
+    .result-row .value { font-weight: 700; text-align: right; }
+    .result-row.hero {
+      background: var(--ok-bg); margin: 0 -0.5rem; padding: 0.75rem 0.5rem;
+      border-radius: 8px; border-bottom: none; margin-bottom: 0.35rem;
+    }
+    .result-row.hero .value { font-size: 1.15rem; color: var(--ok); }
+    .result-row .usd { font-size: 0.82rem; color: var(--muted); font-weight: 500; display: block; }
+    .step-list { counter-reset: step; list-style: none; margin-left: 0; padding: 0; }
+    .step-list li {
+      counter-increment: step; position: relative; padding-left: 2.5rem;
+      margin-bottom: 1rem; border-left: 2px solid #e2e8f0; padding-bottom: 0.5rem;
+    }
+    .step-list li::before {
+      content: counter(step); position: absolute; left: -0.65rem; top: 0;
+      width: 1.5rem; height: 1.5rem; background: var(--accent); color: #fff;
+      border-radius: 50%; font-size: 0.75rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-list .formula {
+      background: #f0f4fa; padding: 0.5rem 0.75rem; border-radius: 6px;
+      font-family: Consolas, monospace; font-size: 0.82rem; margin-top: 0.35rem;
+    }
+    pre .comment { color: #94a3b8; }
+    pre .highlight { color: #86efac; font-weight: 600; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: #ebf4ff; }
+
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Calculadora de beneficio operativo del cliente</h1>
+    <p>
+      Estima cuánto <strong>ahorra el operador LOG</strong> al usar la app vs Excel (horas liberadas × sueldo).
+      Es el <strong>eje cliente</strong> — distinto del valor de construcción del activo (~760 h en
+      <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a>).
+      Metodología: <a href="DOCUMENTACION_SISTEMA.html#estandar">estándar KPI § beneficio cliente</a>.
+    </p>
+    <div class="meta">
+      Control de Fletes · SommierCenter / Wamaro · Jun 2026 ·
+      Autocontenido (sin servidor) · Los cambios se calculan en el navegador
+    </div>
+  </header>
+
+  <nav class="pack-nav" aria-label="Pack documental">
+    <span>Pack</span>
+    <a href="AVANCE_PROYECTO.html">Avance del proyecto</a>
+    <a href="DOCUMENTACION_SISTEMA.html">Documentación maestra</a>
+    <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a>
+    <a href="COTIZACION_PROYECTO.html">Cotización comparativa</a>
+    <a href="CALCULADORA_VALOR.html" class="active">Calculadora valor</a>
+  </nav>
+
+  <div class="callout">
+    <strong>Eje cliente — no confundir con valor de construcción.</strong>
+    Esta calculadora responde: «¿cuánto deja de gastar el cliente en horas de operador?».
+    El costo de <em>crear</em> la app (~760 h, USD 50k–80k reposición) está en
+    <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager valor</a> y
+    <a href="COTIZACION_PROYECTO.html">Cotización comparativa</a>.
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Secciones calculadora">
+    <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-calc" id="tab-calc" data-tab="calc">Calculadora</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-metodo" id="tab-metodo" data-tab="metodo">Metodología detallada</button>
+    <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-escenarios" id="tab-escenarios" data-tab="escenarios">Escenarios del pack</button>
+  </div>
+
+  <div class="tab-panel-wrap">
+    <!-- CALCULADORA -->
+    <div class="tab-panel active" id="panel-calc" role="tabpanel" aria-labelledby="tab-calc">
+      <h2>Parámetros</h2>
+      <p style="color:var(--muted);margin-bottom:1rem">
+        Completá sueldo y horas ahorradas. El resto tiene valores por defecto del pack (factor ×2, 176 h/mes, TC 1.150).
+      </p>
+
+      <div class="calc-grid">
+        <div class="inputs">
+          <div class="field-group">
+            <label for="sueldo">Sueldo mensual bruto del operador</label>
+            <div class="input-prefix">
+              <span class="prefix">ARS</span>
+              <input type="text" id="sueldo" inputmode="numeric" value="2.000.000" autocomplete="off">
+            </div>
+            <span class="hint">Salario base de referencia, sin bonos variables.</span>
+          </div>
+
+          <div class="field-group">
+            <label for="factor">Factor costo cargado</label>
+            <input type="number" id="factor" min="1" max="4" step="0.1" value="2">
+            <span class="hint">×2 = cargas sociales, aguinaldo prorrateado, overhead mínimo del puesto.</span>
+          </div>
+
+          <div class="field-group">
+            <label for="horasLab">Horas laborables por mes</label>
+            <input type="number" id="horasLab" min="1" max="220" step="1" value="176">
+            <span class="hint">22 días × 8 h = 176 h (estándar Argentina).</span>
+          </div>
+
+          <div class="field-group">
+            <label for="horasAhorro">Horas ahorradas por mes</label>
+            <input type="number" id="horasAhorro" min="0" max="200" step="1" value="78">
+            <span class="hint">horas_manual − horas_con_app. Referencia Etapa 1: 78 h/mes.</span>
+          </div>
+
+          <div class="field-group">
+            <label for="tc">Tipo de cambio</label>
+            <div class="input-prefix">
+              <span class="prefix">ARS</span>
+              <input type="text" id="tc" inputmode="numeric" value="1.150" autocomplete="off">
+            </div>
+            <span class="hint">Por cada USD 1. TC referencia pack: 1.150 (jun 2026).</span>
+          </div>
+
+          <p style="font-size:0.82rem;color:var(--muted);margin-top:0.5rem"><strong>Atajos:</strong></p>
+          <div class="presets">
+            <button type="button" class="preset-btn" data-preset="ref">Etapa 1 ref. (78 h)</button>
+            <button type="button" class="preset-btn" data-preset="min">Etapa 1 mín. (54 h)</button>
+            <button type="button" class="preset-btn" data-preset="max">Etapa 1 máx. (95 h)</button>
+            <button type="button" class="preset-btn" data-preset="etapa2">Potencial Etapa 2+ (~158 h)</button>
+          </div>
+        </div>
+
+        <div class="results" id="results">
+          <h3>Resultado en vivo</h3>
+          <div class="result-row">
+            <span class="label">Costo mensual cargado</span>
+            <span class="value" id="out-costo-mes">—</span>
+          </div>
+          <div class="result-row">
+            <span class="label">Valor hora cargada</span>
+            <span class="value" id="out-valor-hora">—</span>
+          </div>
+          <div class="result-row hero">
+            <span class="label">Ahorro mensual</span>
+            <span class="value" id="out-ahorro-mes">—</span>
+          </div>
+          <div class="result-row hero">
+            <span class="label">Ahorro anual (×12)</span>
+            <span class="value" id="out-ahorro-anio">—</span>
+          </div>
+          <div class="result-row">
+            <span class="label">FTE equivalente anual</span>
+            <span class="value" id="out-fte">—</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Desglose paso a paso (con tus valores)</h3>
+      <pre id="desglose"><span class="comment">// Los números se actualizan al cambiar cualquier campo</span></pre>
+    </div>
+
+    <!-- METODOLOGÍA -->
+    <div class="tab-panel" id="panel-metodo" role="tabpanel" aria-labelledby="tab-metodo">
+      <h2>Metodología — de sueldo a ahorro en pesos y dólares</h2>
+      <p>
+        El pack usa una fórmula simple y auditable: partimos del sueldo mensual del operador que
+        deja de hacer trabajo manual repetitivo, lo convertimos en costo hora cargado y lo multiplicamos
+        por las horas que la app libera cada mes.
+      </p>
+
+      <ol class="step-list">
+        <li>
+          <strong>Costo mensual cargado del puesto</strong>
+          <div class="formula">costo_mes = sueldo_mes × factor_cargado</div>
+          <p>El factor ×2 es conservador: incluye cargas sociales (~35–40%), aguinaldo prorrateado y overhead mínimo. No incluye infraestructura IT ni licencias.</p>
+        </li>
+        <li>
+          <strong>Valor hora cargada</strong>
+          <div class="formula">valor_hora = costo_mes ÷ horas_laborables_mes</div>
+          <p>Con sueldo ARS 2.000.000, factor 2 y 176 h/mes: <strong>ARS 22.727/h</strong> ≈ <strong>USD 19,76/h</strong> (TC 1.150).</p>
+        </li>
+        <li>
+          <strong>Horas ahorradas (input operativo)</strong>
+          <div class="formula">horas_ahorradas = horas_manual − horas_con_app</div>
+          <p>Por mes, mismo operador de referencia. Etapa 1 (LOG + CLP + maestro): rango <strong>54–95 h/mes</strong>, referencia central <strong>78 h/mes</strong>.</p>
+        </li>
+        <li>
+          <strong>Ahorro mensual en pesos</strong>
+          <div class="formula">ahorro_mes_ars = valor_hora × horas_ahorradas_mes</div>
+        </li>
+        <li>
+          <strong>Ahorro anual</strong>
+          <div class="formula">ahorro_anio_ars = ahorro_mes_ars × 12</div>
+          <p>Alternativa equivalente: <code>valor_hora × horas_ahorradas_anio</code> donde horas anuales = mensuales × 12 (ej. 78 × 12 = 936 h/año).</p>
+        </li>
+        <li>
+          <strong>Conversión a dólares</strong>
+          <div class="formula">ahorro_usd = ahorro_ars ÷ tipo_cambio</div>
+          <p>TC de referencia del pack: <strong>USD 1 = ARS 1.150</strong> (jun 2026). Ajustable en la calculadora.</p>
+        </li>
+        <li>
+          <strong>FTE liberado (opcional)</strong>
+          <div class="formula">FTE = (horas_ahorradas_mes × 12) ÷ 2.112</div>
+          <p>2.112 = 22 días × 8 h × 12 meses. Con 78 h/mes → FTE ≈ 0,44.</p>
+        </li>
+      </ol>
+
+      <h3>Qué NO incluye este cálculo</h3>
+      <ul>
+        <li>Errores evitados en prefactura / cobros (impacto cualitativo, no monetizado aquí).</li>
+        <li>Costo de reposición del software (USD 50k–80k — ver <a href="COTIZACION_PROYECTO.html">cotización</a>).</li>
+        <li>Horas de Etapa 2+ (AMBA quincena, centro de costos, devolución CLP) — ver pestaña Escenarios.</li>
+        <li>Inflación salarial futura: el cálculo es snapshot al sueldo y TC que ingreses hoy.</li>
+      </ul>
+
+      <h3>Fórmula compacta</h3>
+      <pre>ahorro_mes = (sueldo × factor ÷ horas_lab) × horas_ahorradas
+ahorro_anio = ahorro_mes × 12
+ahorro_usd = ahorro_ars ÷ TC</pre>
+    </div>
+
+    <!-- ESCENARIOS -->
+    <div class="tab-panel" id="panel-escenarios" role="tabpanel" aria-labelledby="tab-escenarios">
+      <h2>Escenarios predefinidos del pack</h2>
+      <p style="color:var(--muted)">
+        Tabla con sueldo estándar ARS 2.000.000, factor ×2, 176 h/mes, TC 1.150.
+        Clic en una fila para cargar esas horas en la calculadora.
+      </p>
+
+      <div class="kpi-row" id="escenario-kpis">
+        <div class="kpi"><div class="label">Valor hora</div><div class="value">ARS 22.727</div><div class="sub">USD 19,76/h</div></div>
+        <div class="kpi"><div class="label">Ref. Etapa 1</div><div class="value">78 h/mes</div><div class="sub">936 h/año</div></div>
+        <div class="kpi"><div class="label">Ahorro anual ref.</div><div class="value">~ARS 21 M</div><div class="sub">~USD 18,5 k</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabla-escenarios">
+          <thead>
+            <tr>
+              <th>Escenario</th>
+              <th class="num">h/mes</th>
+              <th class="num">h/año</th>
+              <th class="num">Ahorro/mes ARS</th>
+              <th class="num">Ahorro/mes USD</th>
+              <th class="num">Ahorro/año ARS</th>
+              <th class="num">Ahorro/año USD</th>
+            </tr>
+          </thead>
+          <tbody id="escenarios-body"></tbody>
+        </table>
+      </div>
+
+      <h3>Desglose Etapa 1 — referencia 78 h/mes</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Proceso</th><th class="num">Manual/mes</th><th class="num">Con app/mes</th><th class="num">Ahorradas/mes</th></tr></thead>
+          <tbody>
+            <tr><td>LOG Tortuguitas (20 días)</td><td class="num">50–70 h</td><td class="num">8–12 h</td><td class="num">42–58 h</td></tr>
+            <tr><td>Prefactura CLP (quincenal)</td><td class="num">8–12 h</td><td class="num">1–2 h</td><td class="num">7–10 h</td></tr>
+            <tr><td>Maestro mensual + export</td><td class="num">15–25 h</td><td class="num">3–5 h</td><td class="num">12–20 h</td></tr>
+            <tr class="highlight"><td><strong>Total Etapa 1</strong></td><td class="num">73–107 h</td><td class="num">12–19 h</td><td class="num"><strong>54–95 h</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:0.85rem;color:var(--muted)">
+        Punto central del desglose: LOG 55 + CLP 10 + import/reglas 8 + export 5 = <strong>78 h/mes</strong>.
+        Potencial Etapa 2+: ~80–110 h/mes adicionales sobre lo ya automatizado (estimado).
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    Estándar KPI: <a href="DOCUMENTACION_SISTEMA.html#estandar">DOCUMENTACION_SISTEMA#estandar</a> ·
+    Valor del activo: <a href="ONE_PAGER_VALOR_PROYECTO.html">One pager</a> ·
+    Repositorio: <a href="https://github.com/TOP-SC/Fletes">github.com/TOP-SC/Fletes</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const FTE_HORAS_ANIO = 2112; // 22 × 8 × 12
+
+  const $ = (id) => document.getElementById(id);
+
+  function parseNum(str) {
+    if (typeof str === "number") return str;
+    const n = parseFloat(String(str).replace(/\./g, "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function fmtARS(n) {
+    return "ARS " + Math.round(n).toLocaleString("es-AR");
+  }
+
+  function fmtUSD(n) {
+    return "USD " + Math.round(n).toLocaleString("es-AR");
+  }
+
+  function fmtNum(n, dec) {
+    return n.toLocaleString("es-AR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  function calc() {
+    const sueldo = parseNum($("sueldo").value);
+    const factor = parseNum($("factor").value) || 2;
+    const horasLab = parseNum($("horasLab").value) || 176;
+    const horasAhorro = parseNum($("horasAhorro").value);
+    const tc = parseNum($("tc").value) || 1150;
+
+    const costoMes = sueldo * factor;
+    const valorHora = horasLab > 0 ? costoMes / horasLab : 0;
+    const ahorroMes = valorHora * horasAhorro;
+    const ahorroAnio = ahorroMes * 12;
+    const valorHoraUsd = tc > 0 ? valorHora / tc : 0;
+    const ahorroMesUsd = tc > 0 ? ahorroMes / tc : 0;
+    const ahorroAnioUsd = tc > 0 ? ahorroAnio / tc : 0;
+    const fte = FTE_HORAS_ANIO > 0 ? (horasAhorro * 12) / FTE_HORAS_ANIO : 0;
+
+    $("out-costo-mes").innerHTML = fmtARS(costoMes) + '<span class="usd">' + fmtUSD(costoMes / tc) + '/mes</span>';
+    $("out-valor-hora").innerHTML = fmtARS(valorHora) + '/h<span class="usd">' + fmtUSD(valorHoraUsd) + '/h</span>';
+    $("out-ahorro-mes").innerHTML = fmtARS(ahorroMes) + '<span class="usd">' + fmtUSD(ahorroMesUsd) + '/mes</span>';
+    $("out-ahorro-anio").innerHTML = fmtARS(ahorroAnio) + '<span class="usd">' + fmtUSD(ahorroAnioUsd) + '/año</span>';
+    $("out-fte").textContent = fte.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " FTE";
+
+    $("desglose").innerHTML =
+      '<span class="comment">// Paso 1 — costo cargado</span>\n' +
+      'costo_mes = ' + fmtNum(sueldo, 0) + ' × ' + factor + ' = <span class="highlight">' + fmtNum(costoMes, 0) + ' ARS</span>\n\n' +
+      '<span class="comment">// Paso 2 — valor hora</span>\n' +
+      'valor_hora = ' + fmtNum(costoMes, 0) + ' ÷ ' + horasLab + ' = <span class="highlight">' + fmtNum(valorHora, 2) + ' ARS/h</span> (' + fmtNum(valorHoraUsd, 2) + ' USD/h)\n\n' +
+      '<span class="comment">// Paso 3 — ahorro mensual</span>\n' +
+      'ahorro_mes = ' + fmtNum(valorHora, 2) + ' × ' + horasAhorro + ' h = <span class="highlight">' + fmtNum(ahorroMes, 0) + ' ARS</span> (' + fmtNum(ahorroMesUsd, 0) + ' USD)\n\n' +
+      '<span class="comment">// Paso 4 — ahorro anual</span>\n' +
+      'ahorro_anio = ' + fmtNum(ahorroMes, 0) + ' × 12 = <span class="highlight">' + fmtNum(ahorroAnio, 0) + ' ARS</span> (' + fmtNum(ahorroAnioUsd, 0) + ' USD)\n\n' +
+      '<span class="comment">// Paso 5 — FTE</span>\n' +
+      'FTE = (' + horasAhorro + ' × 12) ÷ ' + FTE_HORAS_ANIO + ' = <span class="highlight">' + fte.toFixed(2) + '</span>';
+
+    return { valorHora, ahorroMes, ahorroAnio, ahorroMesUsd, ahorroAnioUsd };
+  }
+
+  function formatInputThousands(input) {
+    const raw = parseNum(input.value);
+    if (raw >= 1000) {
+      input.value = Math.round(raw).toLocaleString("es-AR");
+    }
+  }
+
+  ["sueldo", "tc"].forEach((id) => {
+    const el = $(id);
+    el.addEventListener("blur", () => formatInputThousands(el));
+    el.addEventListener("input", calc);
+  });
+
+  ["factor", "horasLab", "horasAhorro"].forEach((id) => {
+    $(id).addEventListener("input", calc);
+  });
+
+  document.querySelectorAll(".preset-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const map = { ref: 78, min: 54, max: 95, etapa2: 158 };
+      $("horasAhorro").value = map[btn.dataset.preset] || 78;
+      calc();
+    });
+  });
+
+  // Tabs
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.remove("active");
+        b.setAttribute("aria-selected", "false");
+      });
+      document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      btn.setAttribute("aria-selected", "true");
+      $(("panel-" + btn.dataset.tab)).classList.add("active");
+    });
+  });
+
+  // Escenarios table
+  const escenarios = [
+    { nombre: "Etapa 1 — mínimo conservador", hMes: 54 },
+    { nombre: "Etapa 1 — referencia pack", hMes: 78, highlight: true },
+    { nombre: "Etapa 1 — máximo optimista", hMes: 95 },
+    { nombre: "Etapa 1 completa (78 h) anual explícito", hMes: 78 },
+    { nombre: "Potencial Etapa 2+ (78 + ~80 h extra)", hMes: 158 },
+    { nombre: "Potencial Etapa 2+ techo (78 + ~110 h)", hMes: 188 },
+  ];
+
+  const SUELDO_REF = 2000000, FACTOR_REF = 2, HORAS_LAB_REF = 176, TC_REF = 1150;
+  const vhRef = (SUELDO_REF * FACTOR_REF) / HORAS_LAB_REF;
+  const tbody = $("escenarios-body");
+
+  escenarios.forEach((esc, idx) => {
+    if (idx === 3) return; // skip duplicate 78h row
+    const hAnio = esc.hMes * 12;
+    const aMes = vhRef * esc.hMes;
+    const aAnio = aMes * 12;
+    const tr = document.createElement("tr");
+    if (esc.highlight) tr.className = "highlight clickable";
+    else tr.className = "clickable";
+    tr.innerHTML =
+      "<td>" + esc.nombre + "</td>" +
+      '<td class="num">' + esc.hMes + "</td>" +
+      '<td class="num">' + hAnio.toLocaleString("es-AR") + "</td>" +
+      '<td class="num">' + fmtARS(aMes).replace("ARS ", "") + "</td>" +
+      '<td class="num">' + fmtUSD(aMes / TC_REF).replace("USD ", "") + "</td>" +
+      '<td class="num">' + fmtARS(aAnio).replace("ARS ", "") + "</td>" +
+      '<td class="num">' + fmtUSD(aAnio / TC_REF).replace("USD ", "") + "</td>";
+    tr.addEventListener("click", () => {
+      $("horasAhorro").value = esc.hMes;
+      document.querySelector('[data-tab="calc"]').click();
+      calc();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    tbody.appendChild(tr);
+  });
+
+  calc();
+})();
+</script>
+</body>
+</html>
