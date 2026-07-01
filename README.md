@@ -31,7 +31,12 @@ chmod +x Iniciar_Fletes.sh Detener_Fletes.sh Estado_Fletes.sh deploy/instalar_se
 sudo ./deploy/instalar_servicio.sh
 ```
 
-Acceso en red: `http://<IP-del-servidor>:8501` (ej. `http://10.20.2.166:8501`).
+- El cliente **solo abre un link**: `http://<IP-del-servidor>:8501` (ej. `http://10.20.2.166:8501`).
+- La API corre **por detrás** en el mismo servidor; no hace falta otro link ni puerto para el usuario.
+- Tras un **apagado o reinicio** de la VM, la app **vuelve sola** si instalaste el servicio systemd.
+- `Iniciar_Fletes.sh` solo (sin systemd) **no** sobrevive a un reinicio — sirve para pruebas.
+
+Recomendado en red: reservar IP fija DHCP para la VM. El link queda en `LINK_CLIENTE.txt` en el servidor.
 
 Logs en `logs/api.log` y `logs/ui.log`.
 

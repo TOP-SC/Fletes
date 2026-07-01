@@ -9,8 +9,9 @@ User=@FLETES_USER@
 Group=@FLETES_USER@
 WorkingDirectory=@FLETES_ROOT@
 Environment=FLETES_API_URL=http://127.0.0.1:8000/api/v1
+ExecStartPre=@FLETES_ROOT@/.venv/bin/python @FLETES_ROOT@/scripts/wait_api.py
 ExecStart=@FLETES_ROOT@/.venv/bin/python -m streamlit run frontend/streamlit_app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
-Restart=on-failure
+Restart=always
 RestartSec=5
 StandardOutput=append:@FLETES_ROOT@/logs/ui.log
 StandardError=append:@FLETES_ROOT@/logs/ui.log

@@ -46,14 +46,26 @@ systemctl restart fletes-ui.service
 
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 [[ -z "$SERVER_IP" ]] && SERVER_IP="127.0.0.1"
+LINK_CLIENTE="http://${SERVER_IP}:8501"
+echo "$LINK_CLIENTE" >"$ROOT/LINK_CLIENTE.txt"
+chown "$FLETES_USER:$FLETES_USER" "$ROOT/LINK_CLIENTE.txt"
 
 echo
-echo "Servicios instalados y en marcha."
-echo "  Interfaz:  http://${SERVER_IP}:8501"
-echo "  API docs:  http://${SERVER_IP}:8000/docs"
+echo "=========================================="
+echo "  Servicios instalados — arranque automático"
+echo "=========================================="
 echo
-echo "Comandos útiles:"
+echo "  >>> LINK PARA EL CLIENTE (único acceso):"
+echo "  >>> ${LINK_CLIENTE}"
+echo
+echo "  Al reiniciar la VM, la app vuelve sola (systemd)."
+echo "  La API queda interna en el servidor (127.0.0.1:8000)."
+echo "  Link guardado en: ${ROOT}/LINK_CLIENTE.txt"
+echo
+echo "Comandos útiles (solo administración):"
 echo "  sudo systemctl status fletes-api fletes-ui"
 echo "  sudo systemctl restart fletes-api fletes-ui"
-echo "  sudo journalctl -u fletes-api -u fletes-ui -f"
 echo "  tail -f ${ROOT}/logs/api.log ${ROOT}/logs/ui.log"
+echo
+echo "Recomendado en el router: IP fija DHCP para esta VM (${SERVER_IP})."
+echo

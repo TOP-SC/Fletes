@@ -12,7 +12,7 @@ if [[ ! -x "$PY" ]]; then
   PY="$(command -v python3 || command -v python)"
 fi
 
-API_HOST="0.0.0.0"
+API_HOST="127.0.0.1"
 API_PORT=8000
 UI_PORT=8501
 export PYTHONPATH="$ROOT/backend"
@@ -83,15 +83,22 @@ echo $! >"$ROOT/run/ui.pid"
 
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 [[ -z "$SERVER_IP" ]] && SERVER_IP="127.0.0.1"
+LINK_CLIENTE="http://${SERVER_IP}:${UI_PORT}"
+echo "$LINK_CLIENTE" >"$ROOT/LINK_CLIENTE.txt"
 
 echo
 echo "Listo — aplicación en segundo plano."
-echo "  Interfaz:  http://${SERVER_IP}:${UI_PORT}"
-echo "  API docs:  http://${SERVER_IP}:${API_PORT}/docs"
+echo
+echo "  >>> LINK PARA EL CLIENTE (único acceso):"
+echo "  >>> ${LINK_CLIENTE}"
+echo
+echo "  (La API corre solo en el servidor, no hace falta otro link.)"
+echo
 echo "  Logs:      ${ROOT}/logs/"
 echo "  Detener:   ${ROOT}/Detener_Fletes.sh"
 echo "  Estado:    ${ROOT}/Estado_Fletes.sh"
 echo
+echo "IMPORTANTE: esto NO arranca solo al reiniciar la VM."
 echo "Para arranque automático al encender el servidor:"
 echo "  sudo ${ROOT}/deploy/instalar_servicio.sh"
 echo

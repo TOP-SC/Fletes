@@ -12,3 +12,4 @@ data/comparacion_*.xlsx
 *.log
 run/
 logs/
+LINK_CLIENTE.txt
