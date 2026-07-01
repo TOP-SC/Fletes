@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-dashboard-kpi-dark-2026-06-25"
+API_BUILD_ESPERADO = "fletes-auth-admin-2026-07-01"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -806,6 +806,13 @@ def _auth_put_json(path: str, payload: dict[str, Any]) -> Any:
         return r.json()
 
 
+def _auth_patch_json(path: str, payload: dict[str, Any]) -> Any:
+    with httpx.Client(base_url=API_URL, timeout=30.0) as client:
+        r = client.patch(path, json=payload, headers=_auth_headers())
+        r.raise_for_status()
+        return r.json()
+
+
 def _clear_auth_session() -> None:
     for key in (AUTH_TOKEN_KEY, AUTH_USER_KEY, AUTH_SUPER_KEY):
         st.session_state.pop(key, None)
@@ -924,12 +931,8 @@ def _pagina_login() -> None:
 def _config_usuarios() -> None:
     is_super = _is_super_admin()
     st.subheader("Usuarios de la aplicación")
-    if is_super:
-        st.caption(
-            "Solo el super administrador puede crear o eliminar usuarios. "
-            "Los demás usuarios ven la app completa excepto esta sección."
-        )
-    else:
+
+    if not is_super:
         st.markdown(
             """
             <div class="users-tab-locked-banner">
@@ -940,40 +943,70 @@ def _config_usuarios() -> None:
             """,
             unsafe_allow_html=True,
         )
-
-    wrap_start = '<div class="users-tab-disabled">' if not is_super else "<div>"
-    st.markdown(wrap_start, unsafe_allow_html=True)
-
-    try:
-        users = _auth_get_json("/auth/usuarios") if is_super else []
-    except Exception:
-        users = []
-
-    if is_super and users:
-        df_u = pd.DataFrame(users)
-        show_cols = [c for c in ("username", "is_super_admin", "activo") if c in df_u.columns]
-        if show_cols:
-            df_show = df_u[show_cols].copy()
-            df_show.columns = ["Usuario", "Super admin", "Activo"]
-            st.dataframe(df_show, width="stretch", hide_index=True, height=min(220, 40 + 35 * len(df_show)))
-    elif not is_super:
         st.text_input("Usuario nuevo", value="", disabled=True, key="usr_lock_name")
         st.text_input("Contraseña", value="", type="password", disabled=True, key="usr_lock_pass")
         st.button("Agregar usuario", disabled=True, key="usr_lock_add")
+        return
+
+    st.caption(
+        "Gestioná roles, estado activo y contraseñas. "
+        "Las claves se guardan cifradas: **no se pueden ver**, solo restablecer."
+    )
+
+    try:
+        users = _auth_get_json("/auth/usuarios")
+    except Exception as exc:
+        st.error(f"No se pudo cargar la lista de usuarios: {exc}")
+        return
+
+    n_super = sum(1 for u in users if u.get("is_super_admin"))
+    n_activos = sum(1 for u in users if u.get("activo"))
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Usuarios totales", len(users))
+    m2.metric("Super administradores", n_super)
+    m3.metric("Activos", n_activos)
+
+    if users:
+        filas = []
+        for u in users:
+            filas.append(
+                {
+                    "Usuario": u["username"],
+                    "Rol": "Super administrador" if u.get("is_super_admin") else "Operador",
+                    "Estado": "Activo" if u.get("activo") else "Inactivo",
+                    "Alta": (u.get("created_at") or "")[:10] or "—",
+                }
+            )
+        st.dataframe(
+            pd.DataFrame(filas),
+            width="stretch",
+            hide_index=True,
+            height=min(280, 48 + 35 * len(filas)),
+        )
 
     st.markdown("---")
     st.markdown("**Alta de usuario**")
-    nuevo_user = st.text_input("Usuario nuevo", key="cfg_user_new", disabled=not is_super)
-    nueva_pass = st.text_input(
-        "Contraseña",
-        type="password",
-        key="cfg_user_pass",
-        disabled=not is_super,
-        help="Mínimo 6 caracteres. Letras, números, punto, guión.",
-    )
-    if st.button("Agregar usuario", type="primary", disabled=not is_super, key="cfg_user_add"):
+    c_new, c_rol = st.columns([2, 1])
+    with c_new:
+        nuevo_user = st.text_input("Usuario nuevo", key="cfg_user_new")
+        nueva_pass = st.text_input(
+            "Contraseña inicial",
+            type="password",
+            key="cfg_user_pass",
+            help="Mínimo 6 caracteres.",
+        )
+    with c_rol:
+        nuevo_rol = st.selectbox("Rol", ["Operador", "Super administrador"], key="cfg_user_new_rol")
+    if st.button("Agregar usuario", type="primary", key="cfg_user_add"):
         try:
-            _auth_post_json("/auth/usuarios", {"username": nuevo_user, "password": nueva_pass})
+            _auth_post_json(
+                "/auth/usuarios",
+                {
+                    "username": nuevo_user,
+                    "password": nueva_pass,
+                    "is_super_admin": nuevo_rol == "Super administrador",
+                },
+            )
             st.success(f"Usuario «{nuevo_user.strip().lower()}» creado.")
             st.rerun()
         except httpx.HTTPStatusError as exc:
@@ -981,27 +1014,97 @@ def _config_usuarios() -> None:
         except Exception as exc:
             st.error(str(exc))
 
-    if is_super and users:
-        st.markdown("---")
-        st.markdown("**Eliminar usuario**")
-        opciones = [
-            u["username"]
-            for u in users
-            if not u.get("is_super_admin")
-        ]
-        if opciones:
-            borrar = st.selectbox("Usuario a eliminar", opciones, key="cfg_user_del_sel")
-            if st.button("Eliminar usuario", key="cfg_user_del_btn"):
-                try:
-                    _auth_delete(f"/auth/usuarios/{borrar}")
-                    st.success(f"Usuario «{borrar}» eliminado.")
-                    st.rerun()
-                except httpx.HTTPStatusError as exc:
-                    st.error(_detalle_error_api(exc))
-        else:
-            st.caption("No hay usuarios regulares para eliminar.")
+    if not users:
+        return
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("**Administrar usuario**")
+    opciones_admin = [u["username"] for u in users]
+    sel = st.selectbox("Seleccionar usuario", opciones_admin, key="cfg_user_edit_sel")
+    actual = next((u for u in users if u["username"] == sel), None)
+    if actual is None:
+        return
+
+    es_top = sel == "top"
+    if es_top:
+        st.info("Usuario principal del sistema — no se puede desactivar ni quitar super admin.")
+
+    with st.form("cfg_user_edit_form", clear_on_submit=False):
+        rol_edit = st.selectbox(
+            "Rol",
+            ["Operador", "Super administrador"],
+            index=1 if actual.get("is_super_admin") else 0,
+            disabled=es_top,
+            key="cfg_user_edit_rol",
+        )
+        activo_edit = st.checkbox(
+            "Usuario activo (puede iniciar sesión)",
+            value=bool(actual.get("activo", True)),
+            disabled=es_top,
+            key="cfg_user_edit_activo",
+        )
+        st.markdown("**Restablecer contraseña** (opcional)")
+        st.caption("Dejá en blanco para no cambiar la clave.")
+        pass1 = st.text_input("Nueva contraseña", type="password", key="cfg_user_edit_pass1")
+        pass2 = st.text_input("Repetir contraseña", type="password", key="cfg_user_edit_pass2")
+
+        if st.form_submit_button("Guardar cambios", type="primary"):
+            payload: dict[str, Any] = {
+                "is_super_admin": rol_edit == "Super administrador",
+                "activo": activo_edit,
+            }
+            if pass1 or pass2:
+                if pass1 != pass2:
+                    st.error("Las contraseñas no coinciden.")
+                    return
+                if len(pass1) < 6:
+                    st.error("La contraseña debe tener al menos 6 caracteres.")
+                    return
+                payload["password"] = pass1
+            try:
+                _auth_patch_json(f"/auth/usuarios/{sel}", payload)
+                st.success(f"Cambios guardados para «{sel}».")
+                if payload.get("password") and sel == st.session_state.get(AUTH_USER_KEY):
+                    st.warning("Cambiaste tu propia contraseña: cerrá sesión y volvé a entrar.")
+                st.rerun()
+            except httpx.HTTPStatusError as exc:
+                st.error(_detalle_error_api(exc))
+            except Exception as exc:
+                st.error(str(exc))
+
+    a1, a2 = st.columns([1, 2])
+    with a1:
+        if st.button("Cerrar sesiones del usuario", key="cfg_user_revoke_sess", use_container_width=True):
+            try:
+                r = _auth_post_json(f"/auth/usuarios/{sel}/cerrar-sesiones", {})
+                st.success(f"Sesiones cerradas: {r.get('cerradas', 0)}")
+            except httpx.HTTPStatusError as exc:
+                st.error(_detalle_error_api(exc))
+    with a2:
+        st.caption("Forzá cierre de sesión si perdió acceso o hay que renovar el login.")
+
+    if not actual.get("is_super_admin"):
+        if st.button("Eliminar usuario", key="cfg_user_del_btn", type="secondary"):
+            try:
+                _auth_delete(f"/auth/usuarios/{sel}")
+                st.success(f"Usuario «{sel}» eliminado.")
+                st.rerun()
+            except httpx.HTTPStatusError as exc:
+                st.error(_detalle_error_api(exc))
+
+    with st.expander("Roles y seguridad"):
+        st.markdown(
+            """
+            | Rol | Permisos |
+            |-----|----------|
+            | **Operador** | Toda la app salvo gestión de usuarios y cierre mensual destructivo. |
+            | **Super administrador** | Todo + usuarios + cierre mensual. |
+
+            - Las contraseñas **nunca** se muestran (almacenamiento cifrado).
+            - Al cambiar contraseña o desactivar, se cierran las sesiones abiertas.
+            - Debe quedar **al menos un** super administrador activo.
+            """
+        )
 
 
 def _detalle_error_api(exc: Exception) -> str:

@@ -13,6 +13,8 @@ Automatización del control logístico SommierCenter / Wamaro.
 
 Abre el navegador en http://localhost:8501 y levanta API + interfaz automáticamente.
 
+**Guía de usuario (HTML):** `docs/GUIA_USUARIO.html` — manual paso a paso con capturas simuladas (login, Tango, tarifarios, Maestro, etc.). Abrilo en el navegador o imprimí a PDF.
+
 ### Servidor Linux (VM / demo en red)
 
 Equivalente al `.bat`, para dejar la app corriendo en segundo plano:

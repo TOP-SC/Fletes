@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Guía de usuario completa — Control de Fletes SommierCenter / Wamaro / TOP">
+  <title>Control de Fletes · Guía de usuario</title>
+  <link rel="stylesheet" href="pack-theme.css">
+  <style>
+    /* ── Guía usuario: componentes visuales ── */
+    .guide-hero-badge {
+      display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
+      padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.8rem; margin-top: 0.75rem;
+    }
+    .guide-hero-badge strong { color: #fff; }
+    .toc-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.65rem; margin: 1rem 0 1.5rem;
+    }
+    .toc-card {
+      background: var(--paper); border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.85rem 1rem; text-decoration: none; color: var(--ink); transition: box-shadow .15s, border-color .15s;
+    }
+    .toc-card:hover { border-color: var(--accent2); box-shadow: var(--shadow); }
+    .toc-card .num { font-size: 0.7rem; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: .06em; }
+    .toc-card .title { font-weight: 600; font-size: 0.92rem; margin-top: 0.15rem; }
+    .steps { counter-reset: step; list-style: none; margin: 1rem 0; padding: 0; }
+    .steps > li {
+      counter-increment: step; position: relative; padding: 0.85rem 0 0.85rem 3.25rem;
+      border-left: 2px solid var(--border); margin-left: 1.1rem;
+    }
+    .steps > li:last-child { border-left-color: transparent; }
+    .steps > li::before {
+      content: counter(step); position: absolute; left: -1.1rem; top: 0.75rem;
+      width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--accent);
+      color: #fff; font-weight: 700; font-size: 0.9rem;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(44,82,130,.35);
+    }
+    .steps > li strong { display: block; margin-bottom: 0.25rem; color: var(--ink); }
+    .steps > li p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    .pipeline {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin: 1.25rem 0;
+      background: var(--paper); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    }
+    .pipe-step {
+      flex: 1; min-width: 120px; padding: 1rem 0.85rem; text-align: center;
+      border-right: 1px solid var(--border); position: relative;
+    }
+    .pipe-step:last-child { border-right: none; }
+    .pipe-step .n { font-size: 1.4rem; font-weight: 800; color: var(--accent2); line-height: 1; }
+    .pipe-step .t { font-size: 0.78rem; font-weight: 600; margin-top: 0.35rem; }
+    .pipe-step .d { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+    .pipe-arrow { display: none; }
+    @media (min-width: 700px) {
+      .pipe-step::after {
+        content: "→"; position: absolute; right: -0.55rem; top: 50%; transform: translateY(-50%);
+        background: var(--paper); color: var(--muted); font-size: 1rem; z-index: 1; padding: 0 2px;
+      }
+      .pipe-step:last-child::after { display: none; }
+    }
+    /* Mock UI */
+    .ui-frame {
+      display: grid; grid-template-columns: 200px 1fr; gap: 0;
+      border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+      margin: 1.25rem 0; box-shadow: var(--shadow); min-height: 280px;
+    }
+    .ui-sidebar {
+      background: linear-gradient(180deg, #f8fafc, #eef2f8);
+      border-right: 1px solid #d5dde8; padding: 0.75rem 0.65rem; font-size: 0.72rem;
+    }
+    .ui-brand {
+      background: linear-gradient(135deg, #1a365d, #3182ce); color: #fff;
+      margin: -0.75rem -0.65rem 0.65rem; padding: 0.75rem 0.65rem; border-radius: 0 0 12px 12px;
+    }
+    .ui-brand b { display: block; font-size: 0.82rem; }
+    .ui-brand span { opacity: .88; font-size: 0.65rem; }
+    .ui-nav-item {
+      padding: 0.35rem 0.5rem; margin: 0.1rem 0; border-radius: 6px;
+      border-left: 3px solid transparent; color: #2c3e50; font-weight: 600;
+    }
+    .ui-nav-item.on { background: rgba(43,108,176,.12); border-left-color: #2b6cb0; }
+    .ui-nav-sub { padding-left: 0.85rem; font-weight: 500; font-size: 0.68rem; color: var(--muted); }
+    .ui-main { background: #faf8f5; padding: 1rem; }
+    .ui-header {
+      background: #ebf4ff; border-left: 5px solid #2b6cb0; border-radius: 0 10px 10px 0;
+      padding: 0.65rem 0.85rem; margin-bottom: 0.75rem;
+    }
+    .ui-header h4 { margin: 0; font-size: 0.95rem; color: #2c3e50; }
+    .ui-header p { margin: 0.2rem 0 0; font-size: 0.72rem; color: var(--muted); }
+    .ui-panel {
+      background: #ebf4ff; border: 1px solid rgba(30,42,58,.1); border-left: 4px solid #2b6cb0;
+      border-radius: 10px; padding: 0.65rem; margin-bottom: 0.65rem;
+    }
+    .ui-panel .lbl { font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: #2b6cb0; margin-bottom: 0.35rem; }
+    .ui-btns { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .ui-btn {
+      display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.68rem;
+      font-weight: 600; border: 1px solid #cbd5e0; background: #fff; color: #2d3748;
+    }
+    .ui-btn.primary { background: linear-gradient(135deg, #2b6cb0, #4299e1); color: #fff; border: none; }
+    .ui-table { width: 100%; font-size: 0.65rem; border-collapse: collapse; background: #1e293b; color: #e2e8f0; border-radius: 8px; overflow: hidden; }
+    .ui-table th { background: #0f172a; padding: 0.35rem 0.4rem; text-align: left; font-weight: 600; }
+    .ui-table td { padding: 0.3rem 0.4rem; border-top: 1px solid #334155; }
+    .ui-table tr.alert td { background: #7f1d1d33; }
+    .ui-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 600; margin: 0.15rem; }
+    .chip-revisar { background: #ffe8e8; color: #7a3030; border: 1px solid #e8b4b4; }
+    .chip-ok { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+    .chip-info { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .chip-luz { background: #fff8e1; color: #6d4c00; border: 1px solid #ffe082; }
+    .dot-red { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e53e3e; }
+    .callout-tip { background: #ebf8ff; border-left: 4px solid #3182ce; padding: 0.85rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; font-size: 0.88rem; }
+    .callout-warn { background: #fffbeb; border-left: 4px solid #d69e2e; padding: 0.85rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; font-size: 0.88rem; }
+    .callout-danger { background: #fff5f5; border-left: 4px solid #c53030; padding: 0.85rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; font-size: 0.88rem; }
+    .tab-mock { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 2px solid var(--border); margin: 1rem 0 0.75rem; }
+    .tab-mock span {
+      padding: 0.45rem 0.75rem; font-size: 0.78rem; font-weight: 600; color: var(--muted);
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab-mock span.on { color: var(--accent2); border-bottom-color: var(--accent2); }
+    .checklist { list-style: none; padding: 0; margin: 0.75rem 0; }
+    .checklist li {
+      padding: 0.45rem 0 0.45rem 1.75rem; position: relative; font-size: 0.88rem;
+      border-bottom: 1px dashed var(--border);
+    }
+    .checklist li::before { content: "☐"; position: absolute; left: 0; color: var(--accent2); font-size: 1rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    @media (max-width: 768px) { .two-col, .ui-frame { grid-template-columns: 1fr; } .ui-sidebar { border-right: none; border-bottom: 1px solid var(--border); } }
+    .kbd { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 4px; padding: 0.1em 0.4em; font-size: 0.8em; font-family: inherit; }
+    section { scroll-margin-top: 1rem; }
+    .file-tree {
+      background: #1e293b; color: #e2e8f0; padding: 1rem 1.25rem; border-radius: 10px;
+      font-family: Consolas, "Courier New", monospace; font-size: 0.78rem; line-height: 1.6; margin: 1rem 0;
+    }
+    .file-tree .dir { color: #93c5fd; }
+    .file-tree .file { color: #86efac; }
+    .print-only { display: none; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .pack-nav, .doc-nav { display: none; }
+      .toc-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Control de Fletes — Guía de usuario</h1>
+    <p>
+      Manual paso a paso para operar la aplicación: desde el login hasta la carga de Tango, tarifarios,
+      prefactura Clicpaq, control en Maestro, LOG diario (Resumen), fletes AMBA/GBA y cierre mensual.
+    </p>
+    <div class="meta">
+      SommierCenter · Wamaro · TOP · Actualizado jul 2026 ·
+      Acceso en red: <strong>http://10.20.2.166</strong>
+    </div>
+    <div class="guide-hero-badge">
+      <strong>Un solo link para el usuario:</strong> http://10.20.2.166 — login con usuario de la app (no el de la VM)
+    </div>
+  </header>
+
+  <nav class="pack-nav" aria-label="Documentación">
+    <span>Docs</span>
+    <a href="GUIA_USUARIO.html" class="active">Guía usuario</a>
+    <a href="DOCUMENTACION_SISTEMA.html">Doc. técnica</a>
+    <a href="AVANCE_PROYECTO.html">Avance</a>
+  </nav>
+
+  <nav class="doc-nav" aria-label="Contenido">
+    <a href="#acceso">Acceso</a>
+    <a href="#login">Login</a>
+    <a href="#menu">Menú</a>
+    <a href="#flujo-mensual">Flujo mensual</a>
+    <a href="#tango">Tango</a>
+    <a href="#tarifarios">Tarifarios</a>
+    <a href="#prefactura">Prefactura</a>
+    <a href="#maestro">Maestro</a>
+    <a href="#resumen">Resumen</a>
+    <a href="#fletes">Fletes</a>
+    <a href="#proveedores">Proveedores</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#config">Configuración</a>
+    <a href="#grilla">Grilla y alertas</a>
+    <a href="#usuarios">Usuarios</a>
+    <a href="#cierre">Cierre mensual</a>
+    <a href="#faq">FAQ</a>
+  </nav>
+
+  <!-- Índice visual -->
+  <section id="indice">
+    <h2>Índice rápido</h2>
+    <div class="toc-grid">
+      <a class="toc-card" href="#acceso"><span class="num">01</span><div class="title">Acceso y requisitos</div></a>
+      <a class="toc-card" href="#login"><span class="num">02</span><div class="title">Iniciar sesión</div></a>
+      <a class="toc-card" href="#menu"><span class="num">03</span><div class="title">Recorrido del menú</div></a>
+      <a class="toc-card" href="#flujo-mensual"><span class="num">04</span><div class="title">Rutina del mes</div></a>
+      <a class="toc-card" href="#tango"><span class="num">05</span><div class="title">Bajar e importar Tango</div></a>
+      <a class="toc-card" href="#tarifarios"><span class="num">06</span><div class="title">Tarifarios</div></a>
+      <a class="toc-card" href="#prefactura"><span class="num">07</span><div class="title">Prefactura Clicpaq</div></a>
+      <a class="toc-card" href="#maestro"><span class="num">08</span><div class="title">Maestro</div></a>
+      <a class="toc-card" href="#resumen"><span class="num">09</span><div class="title">Resumen (LOG diario)</div></a>
+      <a class="toc-card" href="#fletes"><span class="num">10</span><div class="title">Fletes AMBA/GBA</div></a>
+      <a class="toc-card" href="#proveedores"><span class="num">11</span><div class="title">Vistas proveedor</div></a>
+      <a class="toc-card" href="#dashboard"><span class="num">12</span><div class="title">Dashboard</div></a>
+      <a class="toc-card" href="#grilla"><span class="num">13</span><div class="title">Grilla, luces y detalle</div></a>
+      <a class="toc-card" href="#config"><span class="num">13+</span><div class="title">Resto de Configuración</div></a>
+      <a class="toc-card" href="#cierre"><span class="num">14</span><div class="title">Cierre mensual</div></a>
+      <a class="toc-card" href="#faq"><span class="num">15</span><div class="title">Problemas frecuentes</div></a>
+    </div>
+  </section>
+
+  <!-- ACCESO -->
+  <section id="acceso">
+    <h2>1. Acceso a la aplicación</h2>
+    <div class="callout-tip">
+      <strong>Link para usuarios:</strong> abrí el navegador (Chrome o Edge) y entrá a
+      <code>http://10.20.2.166</code>. No hace falta instalar Python ni programas en la PC.
+    </div>
+    <ul class="checklist">
+      <li>Estás en la red de la empresa (o VPN que llegue a <code>10.20.2.x</code>)</li>
+      <li>El servidor está encendido (la app arranca sola al reiniciar la VM)</li>
+      <li>Tenés usuario y contraseña de la <em>aplicación</em> (lo da el administrador TOP)</li>
+    </ul>
+    <p class="section-intro">
+      En la esquina inferior del sidebar verás <strong>Servidor conectado</strong> (verde) si todo está bien.
+      Si dice <em>Servidor no disponible</em>, contactá a IT/TOP.
+    </p>
+  </section>
+
+  <!-- LOGIN -->
+  <section id="login">
+    <h2>2. Iniciar sesión</h2>
+    <div class="two-col">
+      <div>
+        <ol class="steps">
+          <li>
+            <strong>Abrí el link</strong>
+            <p><code>http://10.20.2.166</code> en el navegador.</p>
+          </li>
+          <li>
+            <strong>Completá el formulario</strong>
+            <p>Campo <em>Usuario</em> y <em>Contraseña</em> (los de la app, no los de Windows).</p>
+          </li>
+          <li>
+            <strong>Clic en «Entrar»</strong>
+            <p>Si es correcto, entrás al Dashboard con el menú lateral.</p>
+          </li>
+          <li>
+            <strong>Cerrar sesión</strong>
+            <p>Sidebar → botón <em>Cerrar sesión</em> cuando termines.</p>
+          </li>
+        </ol>
+      </div>
+      <div class="card" style="padding:1.25rem;">
+        <h3 style="margin-top:0;font-size:1rem;">Pantalla de login</h3>
+        <div style="background:linear-gradient(145deg,#071525,#134e4a);border-radius:12px;padding:1.25rem;color:#fff;text-align:center;">
+          <p style="margin:0 0 1rem;opacity:.9;font-size:0.85rem;">Control de Fletes</p>
+          <div style="background:rgba(255,255,255,.94);color:#1e2a3a;border-radius:10px;padding:1rem;text-align:left;">
+            <p style="margin:0 0 0.5rem;font-weight:700;">Iniciar sesión</p>
+            <p style="margin:0 0 0.35rem;font-size:0.75rem;color:#718096;">Usuario</p>
+            <div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:0.4rem 0.5rem;font-size:0.8rem;margin-bottom:0.5rem;">tu_usuario</div>
+            <p style="margin:0 0 0.35rem;font-size:0.75rem;color:#718096;">Contraseña</p>
+            <div style="background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:0.4rem 0.5rem;font-size:0.8rem;margin-bottom:0.65rem;">••••••••</div>
+            <div class="ui-btn primary" style="width:100%;text-align:center;padding:0.45rem;">Entrar</div>
+          </div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--muted);margin:0.75rem 0 0;">
+          Sin usuario: «Contactá al administrador TOP si no tenés usuario.»
+        </p>
+      </div>
+    </div>
+    <div class="callout-warn">
+      <strong>Super administrador:</strong> el usuario inicial <code>top</code> puede crear y eliminar usuarios en
+      Configuración → pestaña <em>Usuarios</em>. Los demás usuarios solo operan la app.
+    </div>
+  </section>
+
+  <!-- MENÚ -->
+  <section id="menu">
+    <h2>3. Menú lateral — mapa de la app</h2>
+    <div class="ui-frame">
+      <div class="ui-sidebar">
+        <div class="ui-brand"><b>Control de Fletes</b><span>SommierCenter · Wamaro · TOP</span></div>
+        <div style="font-size:0.65rem;color:#718096;margin-bottom:0.5rem;">Usuario: operador</div>
+        <div class="ui-nav-item on">Dashboard</div>
+        <div class="ui-nav-item">Maestro</div>
+        <div class="ui-nav-item">Resumen</div>
+        <div class="ui-nav-item">Fletes</div>
+        <div class="ui-nav-item">Configuración</div>
+        <div class="ui-nav-sub">▸ Proveedores</div>
+        <div class="ui-nav-sub" style="padding-left:1.2rem;">Clicpaq · Fransof · Alfaro · LBO</div>
+        <div style="margin-top:1rem;padding:0.35rem 0.5rem;background:#d4edda;border-radius:6px;font-size:0.65rem;color:#1f5c35;">Servidor conectado</div>
+      </div>
+      <div class="ui-main">
+        <div class="ui-header">
+          <h4>◆ Vista gerencial — Control de Fletes</h4>
+          <p>KPIs del mes, provincias, zonas tarifarias y alertas.</p>
+        </div>
+        <p style="font-size:0.75rem;color:var(--muted);margin:0;">El contenido principal cambia según el ítem del menú.</p>
+      </div>
+    </div>
+    <table class="data-table" style="width:100%;margin-top:1rem;">
+      <thead><tr><th>Menú</th><th>Para qué sirve</th><th>Usuario típico</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dashboard</strong></td><td>Vista gerencial: costo tarifado, cobertura, alertas, gráficos por provincia/zona</td><td>Gerencia / supervisión</td></tr>
+        <tr><td><strong>Maestro</strong></td><td>Control completo Tango: tarifas, prefactura, proveedor, quincenas</td><td>Logística / control</td></tr>
+        <tr><td><strong>Resumen</strong></td><td>LOG diario WAMARO Tortuguitas (canales 51/83) por día de entrega</td><td>Operación diaria</td></tr>
+        <tr><td><strong>Fletes</strong></td><td>AMBA/GBA: fleteros locales, km, zona km, planilla Drive</td><td>Fletes sucursales</td></tr>
+        <tr><td><strong>Configuración</strong></td><td>Importar archivos, tarifarios, usuarios, cierre mensual</td><td>Admin / IT</td></tr>
+        <tr><td><strong>Proveedores</strong></td><td>Vista filtrada por Clicpaq, Fransof, Alfaro, LBO o empates manuales</td><td>Facturación proveedor</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- FLUJO MENSUAL -->
+  <section id="flujo-mensual">
+    <h2>4. Rutina recomendada del mes</h2>
+    <p class="section-intro">Orden sugerido para no olvidar pasos. Podés adaptarlo según el calendario de tu área.</p>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="n">1</div><div class="t">Tango</div><div class="d">Exportar por fecha entrega</div></div>
+      <div class="pipe-step"><div class="n">2</div><div class="t">Importar</div><div class="d">Config → Tango</div></div>
+      <div class="pipe-step"><div class="n">3</div><div class="t">Reglas</div><div class="d">Reaplicar reglas</div></div>
+      <div class="pipe-step"><div class="n">4</div><div class="t">Tarifario</div><div class="d">Si cambió trimestre</div></div>
+      <div class="pipe-step"><div class="n">5</div><div class="t">Prefactura</div><div class="d">Clicpaq + cruce</div></div>
+      <div class="pipe-step"><div class="n">6</div><div class="t">Control</div><div class="d">Maestro / Resumen</div></div>
+      <div class="pipe-step"><div class="n">7</div><div class="t">Fletes</div><div class="d">Drive + km</div></div>
+    </div>
+    <ul class="checklist">
+      <li><strong>Inicio de mes:</strong> importar Tango del mes anterior (por <em>fecha de entrega</em>)</li>
+      <li><strong>Diario:</strong> prefactura Clicpaq del mail + cruce en Maestro o Resumen</li>
+      <li><strong>Trimestre nuevo:</strong> copiar Excel tarifario → escanear → activar → recalcular</li>
+      <li><strong>Quincena:</strong> revisar Maestro 1ª y 2ª quincena; exportar Excel WAMARO desde Resumen si aplica</li>
+      <li><strong>Postventa / liquidación:</strong> cuando corresponda, pestañas en Configuración</li>
+      <li><strong>Cierre:</strong> solo admin — vaciar base al terminar el período contable</li>
+    </ul>
+  </section>
+
+  <!-- TANGO -->
+  <section id="tango">
+    <h2>5. Tango — qué bajar y cómo importar</h2>
+    <div class="callout-danger">
+      <strong>Regla de oro:</strong> en Tango exportá siempre por <strong>fecha de entrega</strong>
+      (CD Tortuguitas y Limansky SA igual). La app arma el mes a controlar con la entrega, no con el pedido.
+    </div>
+    <h3>5.1 En Tango (sistema origen)</h3>
+    <ol class="steps">
+      <li>
+        <strong>Elegí el rango de fechas de entrega</strong>
+        <p>Ejemplo: del 01/06/2026 al 30/06/2026 para controlar junio.</p>
+      </li>
+      <li>
+        <strong>Exportá a Excel</strong>
+        <p>Archivo típico: <code>Exportacion.xlsx</code> (SommierCenter).</p>
+      </li>
+      <li>
+        <strong>Incluí CD y Limansky</strong>
+        <p>Podés importar varios archivos del mismo mes; se <strong>acumulan</strong> (no pisan filas ya cargadas).</p>
+      </li>
+      <li>
+        <strong>Remitos</strong>
+        <p>Oficial = columna <code>NRO REMITO LEGAL LIMANSKY</code> (R / RAR). La <strong>X</strong> es tránsito.</p>
+      </li>
+    </ol>
+    <h3>5.2 En la app — Configuración → Tango (principal)</h3>
+    <div class="tab-mock">
+      <span class="on">Tango (principal)</span>
+      <span>Prefactura Clicpaq</span>
+      <span>Tarifarios</span>
+      <span>…</span>
+    </div>
+    <ol class="steps">
+      <li>
+        <strong>Arrastrá el Excel</strong>
+        <p>Al control <em>Archivo Tango</em> (.xlsx).</p>
+      </li>
+      <li>
+        <strong>Importación rápida</strong>
+        <p>Dejala activada si el archivo es grande (varios MB). Solo carga filas; después hay que reaplicar reglas.</p>
+      </li>
+      <li>
+        <strong>Clic «Importar Tango»</strong>
+        <p>Al terminar verás: filas en archivo / nuevas / omitidas.</p>
+      </li>
+      <li>
+        <strong>«Reaplicar reglas en toda la base»</strong>
+        <p>Hacelo después de subir todos los Excel del mes (o desde Maestro → mismo botón).</p>
+      </li>
+    </ol>
+    <div class="callout-tip">
+      Si importaste mal un lote: anotá el <strong>ID del lote</strong> que muestra la app y usá <em>Revertir lote</em> en la misma pestaña.
+    </div>
+    <h3>Columnas que la app reconoce (nombres flexibles)</h3>
+    <table class="data-table">
+      <thead><tr><th>Dato</th><th>Nombres aceptados en Excel</th></tr></thead>
+      <tbody>
+        <tr><td>Remito oficial</td><td>NRO REMITO LEGAL LIMANSKY, REMITO RAR, NRO REMITO…</td></tr>
+        <tr><td>Fecha entrega</td><td>FECHA ENTREGA DI, FECHA ENTREGA, FECHA DE ENTREGA</td></tr>
+        <tr><td>Fecha pedido</td><td>FECHA PEDIDO DI, FECHA PEDIDO</td></tr>
+        <tr><td>Cliente</td><td>RAZON SOCIAL DI, CLIENTE, DESTINATARIO</td></tr>
+        <tr><td>Transporte</td><td>NOMBRE TRANSPORTE DI, COD TRANSPORTE</td></tr>
+        <tr><td>Artículo</td><td>COD ARTICULO, DESCRIPCION, CANT PEDIDA</td></tr>
+        <tr><td>Postventa</td><td>TIPOGESTION, SUBTIPO</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- TARIFARIOS -->
+  <section id="tarifarios">
+    <h2>6. Tarifarios — carga y activación</h2>
+    <div class="file-tree">
+<span class="dir">Fletes/data/tarifarios/</span>
+  <span class="file">TARIFARIOS INTERIOR y FLETES SUC 2026.xlsx</span>
+  <span class="file">clickpac_Q2_2026.xlsx</span>
+  <span class="dir">README.md</span>  ← instrucciones en carpeta
+    </div>
+    <ol class="steps">
+      <li>
+        <strong>Copiá los Excel del trimestre</strong>
+        <p>En la carpeta <code>data/tarifarios/</code> del servidor (o subí por la app).</p>
+      </li>
+      <li>
+        <strong>Configuración → Tarifarios</strong>
+        <p>Clic <em>Escanear carpeta data/tarifarios</em>.</p>
+      </li>
+      <li>
+        <strong>Revisá borradores por proveedor</strong>
+        <p>Cada hoja (clicpaq, fransof, alfaro, LBO CP, fletes sucursales) genera un borrador.</p>
+      </li>
+      <li>
+        <strong>Preview / diff</strong>
+        <p>Compará con la versión activa antes de activar.</p>
+      </li>
+      <li>
+        <strong>Activar</strong>
+        <p>Elegí <em>Vigente desde</em> y confirmá. Si los precios son idénticos, la app omite el cambio.</p>
+      </li>
+      <li>
+        <strong>Recalcular costos con tarifario</strong>
+        <p>Luego en Maestro: <em>Reaplicar reglas y proveedores</em>.</p>
+      </li>
+    </ol>
+    <table class="data-table">
+      <thead><tr><th>Hoja Excel Mantello</th><th>Proveedor</th><th>Zona</th></tr></thead>
+      <tbody>
+        <tr><td>clicpaq</td><td>CLICKPAC / Clicpaq</td><td>Interior — matriz CEDOL</td></tr>
+        <tr><td>fransof</td><td>FRANSOF</td><td>Santa Fe / Rosario</td></tr>
+        <tr><td>alfaro</td><td>ALFARO</td><td>NOA (Salta, Jujuy, Tucumán)</td></tr>
+        <tr><td>LBO CP</td><td>LBO</td><td>Córdoba</td></tr>
+        <tr><td>fletes sucursales</td><td>FLETES_SUC</td><td>CABA / GBA — módulo Fletes</td></tr>
+      </tbody>
+    </table>
+    <div class="callout-warn">
+      <strong>Histórico:</strong> al ver meses pasados en Maestro, se usa el tarifario vigente en la
+      <em>fecha de entrega</em> de cada remito, no el tarifario de hoy.
+    </div>
+  </section>
+
+  <!-- PREFACTURA -->
+  <section id="prefactura">
+    <h2>7. Prefactura Clicpaq y cruce</h2>
+    <ol class="steps">
+      <li>
+        <strong>Obtené el Excel del mail Clickpack</strong>
+        <p>Reporte diario del proveedor (plantilla: <em>Descargar plantilla prefactura</em> en Config).</p>
+      </li>
+      <li>
+        <strong>Configuración → Prefactura Clicpaq</strong>
+        <p>Subí el archivo → <em>Importar prefactura</em> (el cruce se ejecuta solo).</p>
+      </li>
+      <li>
+        <strong>O solo cruce</strong>
+        <p>Si la prefactura ya estaba importada: <em>Solo ejecutar cruce (sin importar)</em>.</p>
+      </li>
+      <li>
+        <strong>Desde Maestro o Resumen</strong>
+        <p>Botones <em>Cruce prefacturas</em> / <em>Cruce prefacturas CLICPAQ</em> hacen lo mismo.</p>
+      </li>
+    </ol>
+    <p class="section-intro">
+      El cruce une por <strong>remito normalizado</strong> (incluye conjuntos colchón + somier).
+      Compara importe prefactura vs suma tarifas (+ <strong>$30 seguro</strong> por envío).
+      En la grilla, filas con diferencia muestran alerta en precio neto / total.
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Columna prefactura</th><th>Obligatorio</th></tr></thead>
+      <tbody>
+        <tr><td>Remito</td><td>Sí</td></tr>
+        <tr><td>Importe / logística / precio neto</td><td>Sí</td></tr>
+        <tr><td>Fecha, provincia, cliente</td><td>Opcional</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- MAESTRO -->
+  <section id="maestro">
+    <h2>8. Maestro — control operativo</h2>
+    <p class="section-intro">
+      Vista <strong>macro</strong>: todos los casos Tango con tarifario, prefactura, proveedor y alertas.
+      Al entrar debés elegir <strong>quincena</strong> o buscar en toda la base.
+    </p>
+    <div class="ui-panel">
+      <div class="lbl">Filtros y acciones</div>
+      <div class="ui-btns">
+        <span class="ui-btn">1ª quincena</span>
+        <span class="ui-btn">2ª quincena</span>
+        <span class="ui-btn primary">Reaplicar reglas y proveedores</span>
+        <span class="ui-btn primary">Cruce prefacturas</span>
+      </div>
+    </div>
+    <h3>Pasos típicos en Maestro</h3>
+    <ol class="steps">
+      <li><strong>Mes a controlar</strong><p>Selector de mes (últimos 18 meses).</p></li>
+      <li><strong>Filtrar casos por</strong><p>Dejar <em>Solo fecha de entrega</em> (estándar).</p></li>
+      <li><strong>Elegir quincena</strong><p>1ª o 2ª — la grilla no carga hasta que elijas.</p></li>
+      <li><strong>Revisar alertas</strong><p>Filas rosas y columna <strong>!</strong> — ver sección Grilla.</p></li>
+      <li><strong>Detalle 🔍</strong><p>Clic en lupa: CEDOL, postventa, km, renglones Tango.</p></li>
+      <li><strong>Exportar</strong><p><em>Generar planilla Excel (Tortuguitas + SA)</em> → descargar maestro_wamaro.xlsx</p></li>
+    </ol>
+    <h3>Filtros útiles</h3>
+    <ul>
+      <li><strong>Solo con alerta</strong> — casos a revisar</li>
+      <li><strong>Solo prefactura conciliada</strong> — ya cruzados OK</li>
+      <li><strong>Buscar remito o destinatario</strong> — ignora mes; usar <em>Buscar en toda la base</em></li>
+      <li><strong>Incluir Amba / GBA</strong> — en Maestro suele estar activo</li>
+      <li><strong>Origen</strong> — Tortuguitas / SA / Todos</li>
+    </ul>
+  </section>
+
+  <!-- RESUMEN -->
+  <section id="resumen">
+    <h2>9. Resumen — LOG diario WAMARO</h2>
+    <div class="callout-tip">
+      <strong>Diferencia con Maestro:</strong> Resumen es la planilla <em>micro</em> del LOG diario
+      (CD Tortuguitas, canales 51 y 83). Maestro es la vista completa de todos los envíos interior.
+    </div>
+    <ol class="steps">
+      <li><strong>Mes a controlar</strong><p>Siempre por fecha de entrega.</p></li>
+      <li><strong>Métricas del mes</strong><p>Casos LOG, con/sin prefactura CLP, días con entregas.</p></li>
+      <li><strong>Día de entrega</strong><p><em>Mostrar todo</em> o un día específico (formato WAMARO).</p></li>
+      <li><strong>Cruce / reaplicar</strong><p>Mismos botones que Maestro para prefactura compartida.</p></li>
+      <li><strong>Export del día</strong><p><em>Generar Excel del día (formato WAMARO)</em> — solo con un día elegido (no «todo el mes»).</p></li>
+    </ol>
+  </section>
+
+  <!-- FLETES -->
+  <section id="fletes">
+    <h2>10. Fletes — AMBA / GBA (Mundo 2)</h2>
+    <p class="section-intro">
+      Entregas locales CABA y GBA: fleteros de confianza, kilómetros, zona km y planilla
+      <strong>Fletes solicitados sucursales</strong> desde Drive.
+    </p>
+    <ol class="steps">
+      <li><strong>Filtros</strong><p>Mes, quincena, origen CD, fletero local.</p></li>
+      <li><strong>Grilla</strong><p>Columnas: Fletero, Sucursal, Km, Zona km, Tarifa ref., total.</p></li>
+      <li><strong>Km pendientes</strong><p>Métrica <em>Pend. zona km</em> → <em>Ver pendientes</em>.</p></li>
+      <li><strong>Drive</strong><p>Config → Fleteros locales: import desde carpeta LOG en red.</p></li>
+      <li><strong>Calcular km</strong><p>En detalle del caso o batch <em>Km reales (500/1000)</em>.</p></li>
+    </ol>
+    <div class="callout-warn">
+      Los fleteros del Excel Drive <strong>no</strong> aparecen en Resumen (LOG diario interior).
+      Son dos miradas distintas sobre el mismo Tango.
+    </div>
+  </section>
+
+  <!-- PROVEEDORES -->
+  <section id="proveedores">
+    <h2>11. Vistas por proveedor</h2>
+    <p>Menú <strong>Proveedores</strong> (expander en sidebar):</p>
+    <table class="data-table">
+      <thead><tr><th>Vista</th><th>Qué muestra</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Clicpaq</strong></td><td>Interior Clicpaq (excluye zonas exclusivas NOA/Córdoba)</td></tr>
+        <tr><td><strong>Fransof</strong></td><td>Solo Rosario / Santa Fe</td></tr>
+        <tr><td><strong>Alfaro</strong></td><td>Salta, Jujuy, Tucumán</td></tr>
+        <tr><td><strong>LBO</strong></td><td>Córdoba</td></tr>
+        <tr><td><strong>Proveedor a elegir</strong></td><td>Empates de tarifa o crossdock — elegís proveedor en columna de la grilla (★ sugerido)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard">
+    <h2>12. Dashboard gerencial</h2>
+    <p class="section-intro">Primera pantalla tras el login. No requiere elegir quincena.</p>
+    <div class="card-grid">
+      <div class="card"><h3>Costo tarifado</h3><p>Suma logística interior con tarifa aplicada.</p></div>
+      <div class="card"><h3>Remitos interior</h3><p>Volumen sin AMBA ni retiro en sucursal.</p></div>
+      <div class="card"><h3>Cobertura tarifaria</h3><p>% de envíos con costo tarifario.</p></div>
+      <div class="card"><h3>Desvío acumulado</h3><p>Diferencias prefactura vs tarifario.</p></div>
+    </div>
+    <p>Alertas destacadas (sin tarifa, sin prefactura, crossdock, etc.) y gráficos por provincia, zona CEDOL y transporte.</p>
+    <p>Al final: <strong>Entregas por mes</strong> (réplica informe Excel Adrián) — quincenas Hurlingham/Tortuguitas con comparación año anterior.</p>
+  </section>
+
+  <!-- CONFIG RESTO -->
+  <section id="config">
+    <h2>13. Configuración — resto de pestañas</h2>
+    <div class="tab-mock">
+      <span>Postventa</span>
+      <span>Liquidación</span>
+      <span>Fleteros locales</span>
+      <span>Cross seguimiento</span>
+      <span class="on">Sistema</span>
+      <span>Usuarios</span>
+    </div>
+    <h3>Postventa</h3>
+    <p>Plantilla → importar → <em>Aplicar reglas postventa</em> (+25% gestión retiro, $0 rotura/expreso, etc.). Detalle en Maestro → panel postventa.</p>
+    <h3>Liquidación</h3>
+    <p>Período formato <code>2026-06-01_15</code> o <code>_fin</code> → importar → <em>Conciliar liquidación</em>.</p>
+    <h3>Fleteros locales</h3>
+    <p>Excel <em>Fletes solicitados sucursales</em> desde Drive/carpeta LOG. Ver <code>data/README_fleteros.md</code>.</p>
+    <h3>Cross seguimiento</h3>
+    <p>Import Excel o sincronizar desde Drive; <em>Machear con maestro</em> para seguimiento crossdock.</p>
+    <h3>Sistema</h3>
+    <ul>
+      <li>Resincronizar catálogo sucursales desde JSON</li>
+      <li>Tabla transporte Tango → proveedor (reglas Mantello)</li>
+      <li>Constantes: seguro $30, gestión +25%, depósitos 12/14</li>
+    </ul>
+  </section>
+
+  <!-- GRILLA -->
+  <section id="grilla">
+    <h2>14. Grilla, alertas y detalle del caso</h2>
+    <div style="margin:1rem 0;">
+      <span class="ui-chip chip-revisar">● Revisar</span>
+      <span class="ui-chip chip-ok">● OK</span>
+      <span class="ui-chip chip-info">🔍 Detalle</span>
+      <span class="ui-chip chip-luz"><span class="dot-red"></span> Luz en columna</span>
+    </div>
+    <table class="ui-table">
+      <thead><tr><th>!</th><th>🔍</th><th>Remitos</th><th>Destinatario</th><th>Logística</th><th>Precio neto</th></tr></thead>
+      <tbody>
+        <tr class="alert"><td>⚠</td><td>🔍</td><td>318022</td><td>Cliente ejemplo</td><td>125000 <span class="dot-red"></span></td><td>—</td></tr>
+        <tr><td></td><td>🔍</td><td>318045</td><td>Otro cliente</td><td>98000</td><td>98500</td></tr>
+      </tbody>
+    </table>
+    <table class="data-table" style="margin-top:1rem;">
+      <thead><tr><th>Señal</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td>Fila rosa + !</td><td>Caso con alerta — revisar</td></tr>
+        <tr><td>Punto rojo en celda</td><td>Problema en esa columna (tooltip con motivo)</td></tr>
+        <tr><td>Sin prefactura</td><td>Alerta en precio neto — falta Excel Clicpaq</td></tr>
+        <tr><td>Sin tarifa</td><td>Logística vacía — falta tarifario o zona</td></tr>
+        <tr><td>Dif. prefactura</td><td>Importe distinto al control tarifario</td></tr>
+        <tr><td>🔍 Detalle</td><td>Panel arriba: CEDOL, postventa, km, renglones</td></tr>
+      </tbody>
+    </table>
+    <h3>En el detalle del caso</h3>
+    <ul>
+      <li><strong>CEDOL:</strong> editar índice → <em>Aplicar y recalcular</em> o <em>Restaurar automático</em></li>
+      <li><strong>Postventa:</strong> <em>Aprobar viaje postventa</em> / <em>No se paga transporte</em></li>
+      <li><strong>Km (Fletes):</strong> <em>Calcular km real</em></li>
+    </ul>
+  </section>
+
+  <!-- USUARIOS -->
+  <section id="usuarios">
+    <h2>15. Usuarios (solo super administrador)</h2>
+    <ol class="steps">
+      <li><strong>Configuración → Usuarios</strong><p>Solo visible si entraste como super admin.</p></li>
+      <li><strong>Alta</strong><p>Usuario nuevo + contraseña (mín. 6 caracteres) → <em>Agregar usuario</em>.</p></li>
+      <li><strong>Baja</strong><p>Seleccionar usuario → <em>Eliminar usuario</em> (no elimina super admin).</p></li>
+    </ol>
+    <p>Usuario inicial de instalación: <code>top</code> (cambiar contraseña en primer uso recomendado).</p>
+  </section>
+
+  <!-- CIERRE -->
+  <section id="cierre">
+    <h2>16. Cierre mensual (solo administración)</h2>
+    <div class="callout-danger">
+      <strong>Destructivo:</strong> borra envíos Tango, prefacturas, postventa, liquidación, cache km y solicitudes fleteros.
+      Usar solo al cerrar el período contable.
+    </div>
+    <p>Configuración → <strong>Sistema</strong> → sección <em>Cierre mensual</em>:</p>
+    <ol class="steps">
+      <li><strong>Opcional:</strong> marcar <em>También vaciar tarifarios cargados</em></li>
+      <li><strong>Confirmar</strong> checkbox de confirmación</li>
+      <li><strong>Escribir</strong> la palabra <code>CIERRE</code></li>
+      <li><strong>Clic</strong> <em>Vaciar base — cierre mensual</em></li>
+    </ol>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <h2>17. Problemas frecuentes</h2>
+    <table class="data-table">
+      <thead><tr><th>Problema</th><th>Qué hacer</th></tr></thead>
+      <tbody>
+        <tr><td>No abre la página</td><td>Verificar red a 10.20.2.166; contactar IT si el servidor está apagado</td></tr>
+        <tr><td>Servidor no disponible</td><td>IT: <code>sudo systemctl status fletes-api fletes-ui</code> en la VM</td></tr>
+        <tr><td>Import Tango muy lento</td><td>Activar importación rápida; luego Reaplicar reglas una vez</td></tr>
+        <tr><td>Mes vacío en Maestro</td><td>¿Importaste por fecha de <em>entrega</em>? ¿Elegiste quincena?</td></tr>
+        <tr><td>Sin tarifa en todo el mes</td><td>Tarifarios → escanear → activar → recalcular → reaplicar reglas</td></tr>
+        <tr><td>Prefactura no cruza</td><td>Revisar remito en Excel; ejecutar Cruce prefacturas</td></tr>
+        <tr><td>API desactualizada</td><td>IT: actualizar código en servidor y reiniciar servicios</td></tr>
+        <tr><td>Olvidé contraseña</td><td>Super admin crea usuario nuevo o resetea (contactar TOP)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer style="margin:2.5rem 0 1rem;padding-top:1.5rem;border-top:1px solid var(--border);font-size:0.85rem;color:var(--muted);">
+    <p><strong>Control de Fletes</strong> — Guía de usuario · SommierCenter / Wamaro / TOP</p>
+    <p>Acceso: <a href="http://10.20.2.166">http://10.20.2.166</a> ·
+    Documentación técnica: <a href="DOCUMENTACION_SISTEMA.html">DOCUMENTACION_SISTEMA.html</a></p>
+    <p style="margin-top:0.5rem;">Imprimí esta guía desde el navegador (Ctrl+P) para tenerla en PDF.</p>
+  </footer>
+
+</div>
+</body>
+</html>

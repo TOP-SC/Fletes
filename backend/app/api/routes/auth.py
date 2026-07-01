@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
+from datetime import datetime
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,9 @@ from app.services.auth_service import (
     delete_user,
     list_users,
     revoke_session,
+    revoke_user_sessions,
     set_password,
+    update_user,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,6 +36,7 @@ class UserOut(BaseModel):
     username: str
     is_super_admin: bool
     activo: bool
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -40,6 +44,13 @@ class UserOut(BaseModel):
 class UserCreateIn(BaseModel):
     username: str = Field(min_length=2, max_length=40)
     password: str = Field(min_length=6, max_length=120)
+    is_super_admin: bool = False
+
+
+class UserUpdateIn(BaseModel):
+    is_super_admin: bool | None = None
+    activo: bool | None = None
+    password: str | None = Field(default=None, min_length=6, max_length=120)
 
 
 class PasswordIn(BaseModel):
@@ -82,9 +93,49 @@ def alta_usuario(
     db: Session = Depends(get_db),
 ) -> UserOut:
     try:
-        return create_user(db, body.username, body.password, is_super_admin=False)
+        return create_user(
+            db,
+            body.username,
+            body.password,
+            is_super_admin=body.is_super_admin,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/usuarios/{username}", response_model=UserOut)
+def editar_usuario(
+    username: str,
+    body: UserUpdateIn,
+    admin: AppUser = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+) -> UserOut:
+    if body.is_super_admin is None and body.activo is None and body.password is None:
+        raise HTTPException(status_code=400, detail="No hay cambios para aplicar")
+    try:
+        return update_user(
+            db,
+            username,
+            is_super_admin=body.is_super_admin,
+            activo=body.activo,
+            password=body.password,
+            acting_username=admin.username,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/usuarios/{username}/cerrar-sesiones")
+def cerrar_sesiones_usuario(
+    username: str,
+    _admin: AppUser = Depends(require_super_admin),
+    db: Session = Depends(get_db),
+) -> dict[str, str | int]:
+    uname = username.strip().lower()
+    if db.query(AppUser).filter(AppUser.username == uname).first() is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    n = revoke_user_sessions(db, uname)
+    return {"message": f"Sesiones cerradas para {uname}", "cerradas": n}
 
 
 @router.delete("/usuarios/{username}")

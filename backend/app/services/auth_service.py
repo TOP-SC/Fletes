@@ -142,6 +142,14 @@ def delete_user(db: Session, username: str) -> None:
     db.commit()
 
 
+def revoke_user_sessions(db: Session, username: str) -> int:
+    """Cierra todas las sesiones de un usuario (p. ej. tras cambio de clave)."""
+    uname = username.strip().lower()
+    n = db.query(AuthSession).filter(AuthSession.username == uname).delete()
+    db.commit()
+    return n
+
+
 def set_password(db: Session, username: str, password: str) -> None:
     if len(password or "") < 6:
         raise ValueError("La contraseña debe tener al menos 6 caracteres")
@@ -150,3 +158,57 @@ def set_password(db: Session, username: str, password: str) -> None:
         raise ValueError("Usuario no encontrado")
     user.password_hash = hash_password(password)
     db.commit()
+    revoke_user_sessions(db, user.username)
+
+
+def update_user(
+    db: Session,
+    username: str,
+    *,
+    is_super_admin: bool | None = None,
+    activo: bool | None = None,
+    password: str | None = None,
+    acting_username: str | None = None,
+) -> AppUser:
+    uname = username.strip().lower()
+    actor = (acting_username or "").strip().lower()
+    user = db.query(AppUser).filter(AppUser.username == uname).first()
+    if user is None:
+        raise ValueError("Usuario no encontrado")
+
+    if uname == SUPER_ADMIN_USERNAME:
+        if is_super_admin is False:
+            raise ValueError("No se puede quitar el rol super admin al usuario principal")
+        if activo is False:
+            raise ValueError("No se puede desactivar al super administrador principal")
+
+    if actor and actor == uname:
+        if is_super_admin is False:
+            raise ValueError("No podés quitarte el rol de super administrador a vos mismo")
+        if activo is False:
+            raise ValueError("No podés desactivarte a vos mismo")
+
+    if is_super_admin is False and user.is_super_admin:
+        otros = (
+            db.query(AppUser)
+            .filter(AppUser.is_super_admin.is_(True), AppUser.activo.is_(True), AppUser.username != uname)
+            .count()
+        )
+        if otros < 1:
+            raise ValueError("Debe quedar al menos un super administrador activo")
+
+    if is_super_admin is not None:
+        user.is_super_admin = is_super_admin
+    if activo is not None:
+        user.activo = activo
+        if not activo:
+            revoke_user_sessions(db, uname)
+    if password is not None:
+        if len(password) < 6:
+            raise ValueError("La contraseña debe tener al menos 6 caracteres")
+        user.password_hash = hash_password(password)
+        revoke_user_sessions(db, uname)
+
+    db.commit()
+    db.refresh(user)
+    return user
