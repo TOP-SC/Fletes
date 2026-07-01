@@ -24,17 +24,54 @@ BASE_CSS = """
 """
 
 LIGHT_CSS = """
-.stApp { background: var(--app-bg); }
+.stApp { background: var(--app-bg); color: var(--ink); }
+[data-testid="stHeader"] { background: transparent !important; }
 [data-testid="stSidebar"] {
     background: var(--sidebar-bg) !important;
     border-right: 1px solid #d5dde8;
 }
 [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stMarkdown { color: var(--sidebar-ink) !important; }
+[data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span { color: var(--sidebar-ink) !important; }
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: color-mix(in srgb, var(--mod-accent) 14%, #ffffff) !important;
+    border-left-color: var(--mod-accent) !important;
+}
 h1, h2, h3 { color: #2c3e50 !important; }
+.main, .block-container, [data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] label, [data-testid="stAppViewContainer"] span {
+    color: var(--ink);
+}
 div[data-testid="stMetric"] {
-    background: var(--metric-bg);
+    background: var(--metric-bg) !important;
     border: 1px solid var(--border);
+}
+div[data-testid="stMetric"] label,
+div[data-testid="stMetric"] [data-testid="stMetricLabel"] p {
+    color: var(--ink-muted) !important;
+}
+div[data-testid="stMetric"] [data-testid="stMetricValue"],
+div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+    color: var(--ink) !important;
+}
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label) {
+    background: var(--mod-bg) !important;
+    border-color: rgba(30, 42, 58, 0.1) !important;
+}
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+[data-testid="stMetric"] {
+    background: var(--surface) !important;
+}
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--ink) !important;
+}
+.stCaption, small { color: var(--ink-muted) !important; }
+div[data-baseweb="select"] > div, div[data-baseweb="input"] > div,
+textarea, input {
+    background-color: var(--surface) !important;
+    color: var(--ink) !important;
+    border-color: var(--border) !important;
 }
 .top-watermark { color: var(--watermark); }
 """
@@ -64,7 +101,13 @@ DARK_CSS = """
 [data-testid="stSidebar"] span { color: var(--sidebar-ink) !important; }
 [data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
     background: color-mix(in srgb, var(--mod-accent) 22%, #1e293b) !important;
+    border-left-color: var(--mod-accent) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) *,
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked)
+[data-testid="stMarkdownContainer"] p {
     color: #f1f5f9 !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
 }
 [data-testid="stSidebar"] [data-testid="stExpander"] summary { color: #94a3b8 !important; }
 .main, .block-container, [data-testid="stAppViewContainer"] p,
@@ -138,6 +181,36 @@ textarea, input {
 }
 [data-testid="stExpander"] summary { color: var(--ink) !important; }
 .stCaption, small { color: var(--ink-muted) !important; }
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    color: var(--ink) !important;
+}
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+[data-testid="stMetric"] label,
+section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label)
+[data-testid="stMetric"] [data-testid="stMetricLabel"] p {
+    color: var(--ink-muted) !important;
+}
+"""
+
+SIDEBAR_NAV_CSS = """
+/* Nav lateral: texto siempre legible aunque Streamlit use tema oscuro del SO */
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    color: var(--sidebar-ink) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked)) *,
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked))
+[data-testid="stMarkdownContainer"],
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked))
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] div[role="radiogroup"] label:not(:has(input:checked))
+[data-testid="stMarkdownContainer"] span {
+    color: var(--sidebar-ink) !important;
+    -webkit-text-fill-color: var(--sidebar-ink) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {
+    accent-color: var(--mod-accent);
+}
 """
 
 SHARED_COMPONENT_CSS = """
@@ -195,10 +268,6 @@ section[data-testid="stSidebar"]::-webkit-scrollbar,
     border-left: 4px solid transparent !important;
     transition: background 0.15s ease, border-color 0.15s ease;
 }
-[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: color-mix(in srgb, var(--mod-accent) 14%, #ffffff) !important;
-    border-left-color: var(--mod-accent) !important;
-}
 [data-testid="stSidebar"] [data-testid="stExpander"] {
     margin: 0.15rem 0 0.1rem 0 !important; border: none !important; background: transparent !important;
 }
@@ -250,4 +319,4 @@ section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones
 
 def theme_stylesheet(*, dark: bool) -> str:
     variant = DARK_CSS if dark else LIGHT_CSS
-    return f"<style>{BASE_CSS}{variant}{SHARED_COMPONENT_CSS}</style>"
+    return f"<style>{BASE_CSS}{variant}{SHARED_COMPONENT_CSS}{SIDEBAR_NAV_CSS}</style>"

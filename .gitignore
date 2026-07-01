@@ -6,6 +6,9 @@ venv/
 data/fletes.db
 data/kilometrizador_cache.db
 data/comparacion_*.xlsx
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 .idea/
 *.log
+run/
+logs/

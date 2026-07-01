@@ -339,6 +339,13 @@ def inject_theme(*, dark: bool = False) -> None:
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
             font-size: 1.35rem !important;
         }
+        div[data-testid="stMetric"] label p,
+        div[data-testid="stMetric"] [data-testid="stMetricLabel"] p {
+            color: var(--ink-muted) !important;
+        }
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            color: var(--ink) !important;
+        }
         .module-metrics.pend-filter-on [data-testid="column"]:nth-child(4) [data-testid="stMetric"] {
             border-left-color: #c53030 !important;
             background: #fff8f8 !important;

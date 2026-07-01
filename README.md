@@ -13,6 +13,28 @@ Automatización del control logístico SommierCenter / Wamaro.
 
 Abre el navegador en http://localhost:8501 y levanta API + interfaz automáticamente.
 
+### Servidor Linux (VM / demo en red)
+
+Equivalente al `.bat`, para dejar la app corriendo en segundo plano:
+
+```bash
+cd /opt/fletes          # carpeta del proyecto
+chmod +x Iniciar_Fletes.sh Detener_Fletes.sh Estado_Fletes.sh deploy/instalar_servicio.sh
+./Iniciar_Fletes.sh     # levanta API + Streamlit (sobrevive al cerrar SSH)
+./Estado_Fletes.sh      # ver si está activo
+./Detener_Fletes.sh     # detener
+```
+
+**Arranque automático** al encender el servidor (recomendado para producción/demo):
+
+```bash
+sudo ./deploy/instalar_servicio.sh
+```
+
+Acceso en red: `http://<IP-del-servidor>:8501` (ej. `http://10.20.2.166:8501`).
+
+Logs en `logs/api.log` y `logs/ui.log`.
+
 ### Arranque manual (opcional)
 
 ```powershell

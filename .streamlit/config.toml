@@ -1,0 +1,14 @@
+# Tema claro fijo — evita conflicto con CSS custom (texto blanco sobre fondo claro).
+[theme]
+base = "light"
+primaryColor = "#2b6cb0"
+backgroundColor = "#faf8f5"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#1e2a3a"
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
