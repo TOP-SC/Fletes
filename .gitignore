@@ -12,4 +12,5 @@ data/comparacion_*.xlsx
 *.log
 run/
 logs/
+FLETES_HOST.txt
 LINK_CLIENTE.txt

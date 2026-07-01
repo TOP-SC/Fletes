@@ -38,6 +38,16 @@ sudo ./deploy/instalar_servicio.sh
 
 Recomendado en red: reservar IP fija DHCP para la VM. El link queda en `LINK_CLIENTE.txt` en el servidor.
 
+**Nombre en lugar de IP** (sin `:8501`):
+
+```bash
+# 1) En tu DNS interno: registro A  fletes.top  →  IP de la VM
+# 2) En la VM:
+sudo FLETES_HOST=fletes.top ./deploy/instalar_nginx.sh
+```
+
+El cliente queda con `http://fletes.top` (elegí el nombre que uses en tu DNS).
+
 Logs en `logs/api.log` y `logs/ui.log`.
 
 ### Arranque manual (opcional)
