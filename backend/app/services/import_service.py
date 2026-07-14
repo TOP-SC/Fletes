@@ -206,6 +206,8 @@ def import_excel_file(
     existing = set(db.scalars(select(Envio.fingerprint)).all())
     rows_rejected = 0
     pending_flush = 0
+    # Reimport: completar Sucursal Tango → Suc. / CC en filas ya existentes.
+    enrich_skipped: list[tuple[str, str | None, str | None]] = []
 
     for row in rows:
         if not fila_es_valida(row):
@@ -215,6 +217,10 @@ def import_excel_file(
         fp = build_fingerprint(row)
         if fp in existing:
             batch.rows_skipped += 1
+            suc = (str(row.get("sucursal_compra")).strip() if row.get("sucursal_compra") else None)
+            cod = (str(row.get("cod_cliente")).strip() if row.get("cod_cliente") else None)
+            if suc or cod:
+                enrich_skipped.append((fp, suc, cod))
             continue
 
         if row.get("nro_pedido") and row.get("remito") == row.get("nro_pedido"):
@@ -265,6 +271,34 @@ def import_excel_file(
         if pending_flush >= _IMPORT_FLUSH_EVERY:
             db.flush()
             pending_flush = 0
+
+    if enrich_skipped:
+        import json as _json
+
+        from app.services.rules_service import es_sucursal_cc_deposito
+
+        chunk = 400
+        for i in range(0, len(enrich_skipped), chunk):
+            parte = enrich_skipped[i : i + chunk]
+            fps = [fp for fp, _, _ in parte]
+            by_fp = {
+                e.fingerprint: e
+                for e in db.scalars(select(Envio).where(Envio.fingerprint.in_(fps))).all()
+            }
+            for fp, suc, cod in parte:
+                env = by_fp.get(fp)
+                if not env:
+                    continue
+                if suc and es_sucursal_cc_deposito(env.sucursal_cc, env.origen_cd):
+                    env.sucursal_cc = suc
+                    try:
+                        raw = _json.loads(env.raw_json) if env.raw_json else {}
+                        raw["sucursal_compra"] = suc
+                        env.raw_json = _json.dumps(raw, ensure_ascii=False, default=str)
+                    except Exception:
+                        pass
+                if cod and not env.cod_cliente:
+                    env.cod_cliente = cod
 
     db.commit()
 

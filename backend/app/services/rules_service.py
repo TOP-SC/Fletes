@@ -158,13 +158,20 @@ def abona_wamaro_desde_leyenda(leyenda: str | None) -> bool:
     return "ABONA WAMARO" in _norm(leyenda)
 
 
+def es_sucursal_cc_deposito(sucursal_cc: str | None, origen_cd: str | None) -> bool:
+    """True si el CC actual es solo el CD/depósito (no la sucursal Tango)."""
+    if not sucursal_cc:
+        return True
+    s = sucursal_cc.strip()
+    if origen_cd and s == origen_cd.strip():
+        return True
+    u = s.upper()
+    return u.startswith("DEPÓSITO") or u.startswith("DEPOSITO") or u.startswith("DEP.")
+
+
 def asignar_origen_y_sucursal(envio: Envio) -> None:
     dep = (envio.deposito or "").strip()
     envio.origen_cd = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
-    # No pisar sucursal de compra / centro de costo si ya viene de Tango o edición manual.
-    if envio.sucursal_cc:
-        return
-    # Preferir sucursal_compra / COD CLIENTE (en raw) antes que CD de origen.
     suc_compra = None
     if envio.raw_json:
         try:
@@ -174,8 +181,14 @@ def asignar_origen_y_sucursal(envio: Envio) -> None:
             suc_compra = (raw.get("sucursal_compra") or "").strip() or None
         except Exception:
             suc_compra = None
+    # Prioridad: columna Sucursal de Tango (DI, ML…) sobre depósito/origen CD.
     if suc_compra:
         envio.sucursal_cc = suc_compra
+        return
+    # No pisar un CC de sucursal ya cargado / editado a mano.
+    if envio.sucursal_cc and not es_sucursal_cc_deposito(
+        envio.sucursal_cc, envio.origen_cd
+    ):
         return
     if envio.origen_cd:
         envio.sucursal_cc = envio.origen_cd

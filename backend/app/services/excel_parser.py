@@ -37,19 +37,22 @@ FIELD_CANDIDATES: list[tuple[str, tuple[str, ...]]] = [
             "CODIGO CLIENTE",
             "CÓDIGO CLIENTE",
             "COD CLIENTE",
+            "COD CL",
             "COD_CLIENTE",
             "NRO CLIENTE",
             "CLIENTE COD",
         ),
     ),
     (
+        # Columna Tango "Sucursal" (ej. DI, ML, SF) → Suc. / CC en el maestro.
         "sucursal_compra",
         (
             "SUCURSAL COMPRA",
             "SUCURSAL DE COMPRA",
+            "SUCURSAL CC",
             "CENTRO DE COSTO",
             "CENTRO COSTO",
-            "SUCURSAL CC",
+            "SUCURSAL",
         ),
     ),
     ("deposito", ("DEPÓSITO DI", "DEPOSITO DI", "DEPÓSITO", "DEPOSITO", "DEPSITO DI")),
