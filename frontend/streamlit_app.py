@@ -413,51 +413,104 @@ def inject_login_shell() -> None:
             z-index: 2;
             position: relative;
         }
-        /* Tarjeta login — ancho fijo centrado vía columnas Streamlit */
+        /* Anula tinta oscura del tema en la vista de login */
+        [data-testid="stAppViewContainer"] .login-hero,
+        [data-testid="stAppViewContainer"] .login-hero *,
+        [data-testid="stAppViewContainer"] .login-foot-wrap,
+        [data-testid="stAppViewContainer"] .login-foot-wrap *,
+        [data-testid="stAppViewContainer"] .login-kpis,
+        [data-testid="stAppViewContainer"] .login-kpis * {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+        }
+        [data-testid="stAppViewContainer"] .login-hero h1 {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        }
+        [data-testid="stAppViewContainer"] .login-hero .login-tagline {
+            color: rgba(255, 255, 255, 0.92) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.92) !important;
+        }
+        [data-testid="stAppViewContainer"] .login-hero .login-brand {
+            color: rgba(255, 255, 255, 0.78) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.78) !important;
+        }
+        [data-testid="stAppViewContainer"] .login-foot-wrap .login-foot {
+            color: rgba(255, 255, 255, 0.8) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.8) !important;
+        }
+        [data-testid="stAppViewContainer"] .login-kpi {
+            color: rgba(255, 255, 255, 0.78) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.78) !important;
+        }
+        [data-testid="stAppViewContainer"] .login-kpi strong {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }
+        /* Tarjeta login — fondo claro sólido para contraste de etiquetas */
         form[data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.94);
+            background: #ffffff !important;
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            border: 1px solid rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.95);
             border-radius: 18px;
             padding: 1.35rem 1.5rem 1.15rem;
-            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
+            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28);
             margin: 0;
         }
-        form[data-testid="stForm"] .login-form-title {
-            font-weight: 700;
-            color: #1a365d;
-            font-size: 1.08rem;
-            margin: 0 0 0.85rem 0;
-            padding: 0;
+        form[data-testid="stForm"] .login-form-title,
+        form[data-testid="stForm"] .login-form-title * {
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
+            font-size: 1.08rem !important;
+            margin: 0 0 0.85rem 0 !important;
+            padding: 0 !important;
         }
-        form[data-testid="stForm"] label[data-testid="stWidgetLabel"] p {
-            font-weight: 600 !important;
-            color: #475569 !important;
-            font-size: 0.82rem !important;
+        form[data-testid="stForm"] label,
+        form[data-testid="stForm"] label p,
+        form[data-testid="stForm"] label span,
+        form[data-testid="stForm"] [data-testid="stWidgetLabel"],
+        form[data-testid="stForm"] [data-testid="stWidgetLabel"] p,
+        form[data-testid="stForm"] [data-testid="stWidgetLabel"] span {
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
+            font-size: 0.88rem !important;
+            opacity: 1 !important;
         }
         form[data-testid="stForm"] input {
             min-height: 2.85rem !important;
             height: 2.85rem !important;
             padding: 0.55rem 0.85rem !important;
             border-radius: 10px !important;
-            border: 1px solid #cbd5e1 !important;
+            border: 1px solid #94a3b8 !important;
             background: #ffffff !important;
             font-size: 0.95rem !important;
-            color: #1e293b !important;
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
         }
         form[data-testid="stForm"] input::placeholder {
-            color: #94a3b8 !important;
+            color: #64748b !important;
+            -webkit-text-fill-color: #64748b !important;
+            opacity: 1 !important;
         }
         form[data-testid="stForm"] [data-testid="stTextInput"] {
             margin-bottom: 0.35rem;
         }
         form[data-testid="stForm"] button[kind="primaryFormSubmit"],
-        form[data-testid="stForm"] button[data-testid="stFormSubmitButton"] {
+        form[data-testid="stForm"] button[data-testid="stFormSubmitButton"],
+        form[data-testid="stForm"] button[kind="primaryFormSubmit"] p,
+        form[data-testid="stForm"] button[data-testid="stFormSubmitButton"] p {
             min-height: 2.85rem !important;
             border-radius: 10px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             margin-top: 0.5rem !important;
+            background: #1d4ed8 !important;
+            border-color: #1d4ed8 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
         }
         .login-hero {
             text-align: center;
@@ -569,7 +622,7 @@ def inject_login_shell() -> None:
         }
         .login-hero .login-tagline {
             font-size: 0.92rem;
-            color: rgba(255,255,255,0.82);
+            color: rgba(255,255,255,0.92);
             margin: 0;
             line-height: 1.45;
         }
@@ -577,7 +630,7 @@ def inject_login_shell() -> None:
             font-size: 0.76rem;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.55);
+            color: rgba(255,255,255,0.78);
             margin-top: 0.5rem;
         }
         .login-foot-wrap {
@@ -586,7 +639,7 @@ def inject_login_shell() -> None:
         }
         .login-foot-wrap .login-foot {
             font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.62);
+            color: rgba(255, 255, 255, 0.8);
             text-align: center;
             margin: 0;
         }
@@ -599,12 +652,12 @@ def inject_login_shell() -> None:
         }
         .login-kpi {
             font-size: 0.72rem;
-            color: rgba(255,255,255,0.65);
+            color: rgba(255,255,255,0.78);
             text-align: center;
         }
         .login-kpi strong {
             display: block;
-            color: rgba(255,255,255,0.92);
+            color: #ffffff;
             font-size: 0.82rem;
             margin-bottom: 0.1rem;
         }
