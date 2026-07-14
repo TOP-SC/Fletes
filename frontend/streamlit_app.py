@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-rango-fechas-2026-07-14"
+API_BUILD_ESPERADO = "fletes-editar-caso-completo-2026-07-14"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -2105,6 +2105,340 @@ def _render_bloque_detalle_fletes(caso_id: str) -> bool:
     return True
 
 
+def _render_editar_caso(caso_id: str, det: dict[str, Any]) -> None:
+    """Formulario completo: cabecera del caso + cada renglón + Guardar."""
+    m = det.get("maestro") or {}
+    renglones = det.get("renglones") or []
+    ren0: dict[str, Any] = renglones[0] if renglones else {}
+
+    def _s(*vals: Any) -> str:
+        for v in vals:
+            if v is None:
+                continue
+            t = str(v).strip()
+            if t and t.lower() != "none":
+                return t
+        return ""
+
+    def _n(val: Any, default: float = 0.0) -> float:
+        try:
+            if val is None or val == "":
+                return float(default)
+            return float(val)
+        except (TypeError, ValueError):
+            return float(default)
+
+    remito_def = _s(ren0.get("remito"), m.get("REMITOS"), caso_id)
+    proveedor_act = _s(ren0.get("proveedor_tarifa"), m.get("_proveedor_tarifa")).upper()
+    prov_opts = ["CLICPAQ", "FRANSOF", "ALFARO", "LBO", "(sin proveedor)"]
+    if proveedor_act and proveedor_act not in prov_opts:
+        prov_opts = [proveedor_act, *prov_opts]
+    prov_idx = prov_opts.index(proveedor_act) if proveedor_act in prov_opts else len(prov_opts) - 1
+
+    st.markdown("#### Editar y guardar")
+    st.caption(
+        "Modificá cualquier dato del caso y de cada renglón. "
+        "**Guardar** persiste los cambios. "
+        "Si editás costos a mano, desmarcá recalcular."
+    )
+
+    with st.form(key=f"form_edit_caso_{caso_id}"):
+        st.markdown("##### Cabecera del caso (todas las líneas)")
+        c1, c2 = st.columns(2)
+        with c1:
+            f_remito = st.text_input("Remito", value=remito_def)
+            f_dest = st.text_input(
+                "Destinatario", value=_s(m.get("DESTINATARIO"), ren0.get("razon_social"))
+            )
+            f_dom = st.text_input("Domicilio", value=_s(ren0.get("domicilio")))
+            f_loc = st.text_input(
+                "Localidad", value=_s(m.get("LOCALIDAD"), ren0.get("localidad"))
+            )
+            f_prov = st.text_input(
+                "Provincia", value=_s(m.get("PROVINCIA"), ren0.get("provincia"))
+            )
+            f_cp = st.text_input("CP", value=_s(ren0.get("cp")))
+            f_fp = st.text_input(
+                "Fecha pedido",
+                value=_s(m.get("FECHA PEDIDO"), ren0.get("fecha_pedido")),
+            )
+            f_fe = st.text_input(
+                "Fecha entrega",
+                value=_s(m.get("FECHA ENTREGA"), ren0.get("fecha_entrega")),
+            )
+            f_dep = st.text_input("Depósito", value=_s(ren0.get("deposito")))
+        with c2:
+            f_tn = st.text_input(
+                "Transporte", value=_s(m.get("TRANSPORTE"), ren0.get("transporte"))
+            )
+            f_tc = st.text_input(
+                "Nro. transporte",
+                value=_s(
+                    m.get("NRO TRANSP"),
+                    ren0.get("transporte_cod"),
+                    m.get("_transporte_cod"),
+                ),
+            )
+            f_ep = st.text_input(
+                "Estado pedido",
+                value=_s(m.get("ESTADO PEDIDO"), ren0.get("estado_pedido")),
+            )
+            f_cl = st.text_input("Clasificación", value=_s(ren0.get("clasificacion")))
+            f_vend = st.text_input("Vendedor", value=_s(ren0.get("vendedor")))
+            f_suc = st.text_input(
+                "Sucursal CC", value=_s(m.get("suc"), ren0.get("sucursal_cc"))
+            )
+            f_zo = st.text_input(
+                "Origen CD", value=_s(ren0.get("origen_cd"), m.get("ZONA ORIGEN"))
+            )
+            f_prov_tar = st.selectbox("Proveedor tarifa", prov_opts, index=prov_idx)
+            f_pref = st.number_input(
+                "Prefactura proveedor ($)",
+                min_value=0.0,
+                value=_n(ren0.get("prefactura_proveedor")),
+                step=100.0,
+            )
+        f_ley = st.text_area(
+            "Leyenda / valor declarado (leyenda_5)",
+            value=_s(ren0.get("leyenda_5")),
+            height=68,
+        )
+        f_obs = st.text_area(
+            "Observaciones",
+            value=_s(ren0.get("observaciones"), m.get("obs")),
+            height=68,
+        )
+
+        edits_ren: list[dict[str, Any]] = []
+        if renglones:
+            st.markdown("##### Renglones (artículos / postventa)")
+            for i, ren in enumerate(renglones, 1):
+                rid = ren.get("id")
+                titulo_ren = _s(ren.get("descripcion"), ren.get("cod_articulo"), f"Renglón {i}")
+                with st.expander(f"{i}. {titulo_ren} (id {rid})", expanded=(len(renglones) == 1)):
+                    r1, r2 = st.columns(2)
+                    with r1:
+                        nro_p = st.text_input(
+                            "Nro. pedido",
+                            value=_s(ren.get("nro_pedido")),
+                            key=f"ren_{caso_id}_{rid}_nro",
+                        )
+                        cod = st.text_input(
+                            "Cód. artículo",
+                            value=_s(ren.get("cod_articulo")),
+                            key=f"ren_{caso_id}_{rid}_cod",
+                        )
+                        desc = st.text_area(
+                            "Descripción",
+                            value=_s(ren.get("descripcion")),
+                            height=68,
+                            key=f"ren_{caso_id}_{rid}_desc",
+                        )
+                        cant = st.number_input(
+                            "Cantidad",
+                            value=_n(ren.get("cantidad"), 1.0),
+                            step=1.0,
+                            key=f"ren_{caso_id}_{rid}_cant",
+                        )
+                        m3 = st.number_input(
+                            "m³",
+                            value=_n(ren.get("m3")),
+                            step=0.01,
+                            format="%.3f",
+                            key=f"ren_{caso_id}_{rid}_m3",
+                        )
+                        costo_t = st.number_input(
+                            "Costo tarifario ($)",
+                            value=_n(ren.get("costo_tarifario")),
+                            step=100.0,
+                            key=f"ren_{caso_id}_{rid}_ct",
+                        )
+                        costo_tot = st.number_input(
+                            "Costo total ($)",
+                            value=_n(ren.get("costo_total")),
+                            step=100.0,
+                            key=f"ren_{caso_id}_{rid}_cto",
+                        )
+                        dif = st.number_input(
+                            "Diferencia ($)",
+                            value=_n(ren.get("diferencia")),
+                            step=10.0,
+                            key=f"ren_{caso_id}_{rid}_dif",
+                        )
+                    with r2:
+                        tg = st.text_input(
+                            "Tipo gestión",
+                            value=_s(ren.get("tipo_gestion")),
+                            key=f"ren_{caso_id}_{rid}_tg",
+                        )
+                        stg = st.text_input(
+                            "Sub tipo gestión",
+                            value=_s(ren.get("sub_tipo_gestion")),
+                            key=f"ren_{caso_id}_{rid}_stg",
+                        )
+                        mpv = st.text_input(
+                            "Motivo postventa",
+                            value=_s(ren.get("motivo_postventa")),
+                            key=f"ren_{caso_id}_{rid}_mpv",
+                        )
+                        rpv = st.text_input(
+                            "Regla postventa",
+                            value=_s(ren.get("regla_postventa")),
+                            key=f"ren_{caso_id}_{rid}_rpv",
+                        )
+                        mach = st.text_input(
+                            "Macheo estado",
+                            value=_s(ren.get("macheo_estado")),
+                            key=f"ren_{caso_id}_{rid}_mach",
+                        )
+                        rmot = st.text_input(
+                            "Regla motivo",
+                            value=_s(ren.get("regla_motivo")),
+                            key=f"ren_{caso_id}_{rid}_rmot",
+                        )
+                        rcol = st.text_input(
+                            "Regla color",
+                            value=_s(ren.get("regla_color")),
+                            key=f"ren_{caso_id}_{rid}_rcol",
+                        )
+                        obs_r = st.text_area(
+                            "Observaciones renglón",
+                            value=_s(ren.get("observaciones")),
+                            height=68,
+                            key=f"ren_{caso_id}_{rid}_obs",
+                        )
+                    b1, b2, b3, b4 = st.columns(4)
+                    excl = b1.checkbox(
+                        "Excluir planilla",
+                        value=bool(ren.get("excluir_planilla")),
+                        key=f"ren_{caso_id}_{rid}_ex",
+                    )
+                    alerta = b2.checkbox(
+                        "Alerta Clickpack",
+                        value=bool(ren.get("alerta_clickpack")),
+                        key=f"ren_{caso_id}_{rid}_al",
+                    )
+                    wamaro = b3.checkbox(
+                        "Abona Wamaro",
+                        value=bool(ren.get("abona_wamaro")),
+                        key=f"ren_{caso_id}_{rid}_wa",
+                    )
+                    sospe = b4.checkbox(
+                        "Entrega sospechosa",
+                        value=bool(ren.get("entrega_cliente_sospechosa")),
+                        key=f"ren_{caso_id}_{rid}_so",
+                    )
+
+                    tango = ren.get("tango_completo")
+                    tango_txt = ""
+                    if isinstance(tango, dict) and tango:
+                        tango_txt = json.dumps(tango, ensure_ascii=False, indent=2, default=str)
+                    f_tango = st.text_area(
+                        "Datos Tango completos (JSON) — editá cualquier campo",
+                        value=tango_txt,
+                        height=180 if tango_txt else 80,
+                        key=f"ren_{caso_id}_{rid}_tango",
+                        help="Si hay JSON, podés corregir cualquier clave. Dejá vacío para no tocar.",
+                    )
+
+                    item: dict[str, Any] = {
+                        "id": int(rid),
+                        "nro_pedido": nro_p.strip(),
+                        "cod_articulo": cod.strip(),
+                        "descripcion": desc.strip(),
+                        "cantidad": float(cant),
+                        "m3": float(m3),
+                        "costo_tarifario": float(costo_t),
+                        "costo_total": float(costo_tot),
+                        "diferencia": float(dif),
+                        "tipo_gestion": tg.strip(),
+                        "sub_tipo_gestion": stg.strip(),
+                        "motivo_postventa": mpv.strip(),
+                        "regla_postventa": rpv.strip(),
+                        "macheo_estado": mach.strip(),
+                        "regla_motivo": rmot.strip(),
+                        "regla_color": rcol.strip(),
+                        "observaciones": obs_r.strip(),
+                        "excluir_planilla": excl,
+                        "alerta_clickpack": alerta,
+                        "abona_wamaro": wamaro,
+                        "entrega_cliente_sospechosa": sospe,
+                    }
+                    if f_tango.strip():
+                        try:
+                            item["tango_completo"] = json.loads(f_tango)
+                        except json.JSONDecodeError:
+                            item["_tango_error"] = True
+                    edits_ren.append(item)
+
+        f_recalc = st.checkbox(
+            "Recalcular reglas y tarifas al guardar",
+            value=True,
+            help="Desmarcá si corregiste costos manualmente y no querés que se pisen.",
+        )
+        guardar = st.form_submit_button("Guardar cambios", type="primary")
+
+    if not guardar:
+        return
+
+    tango_err = next((x for x in edits_ren if x.pop("_tango_error", False)), None)
+    if tango_err:
+        st.error(
+            f"JSON Tango inválido en renglón id {tango_err.get('id')}. "
+            "Corregí el formato y volvé a guardar."
+        )
+        return
+
+    body: dict[str, Any] = {
+        "remito": f_remito.strip(),
+        "razon_social": f_dest.strip(),
+        "domicilio": f_dom.strip(),
+        "localidad": f_loc.strip(),
+        "provincia": f_prov.strip(),
+        "cp": f_cp.strip(),
+        "fecha_pedido": f_fp.strip(),
+        "fecha_entrega": f_fe.strip(),
+        "transporte_nombre": f_tn.strip(),
+        "transporte_cod": f_tc.strip(),
+        "estado_pedido": f_ep.strip(),
+        "clasificacion": f_cl.strip(),
+        "vendedor": f_vend.strip(),
+        "sucursal_cc": f_suc.strip(),
+        "origen_cd": f_zo.strip(),
+        "deposito": f_dep.strip(),
+        "leyenda_5": f_ley.strip(),
+        "observaciones": f_obs.strip(),
+        "prefactura_proveedor": float(f_pref),
+        "proveedor_tarifa": "" if f_prov_tar == "(sin proveedor)" else f_prov_tar,
+        "recalcular": f_recalc,
+        "renglones": edits_ren,
+    }
+    try:
+        with api_client() as c:
+            r = c.patch(f"/maestro/caso/{caso_id}", json=body)
+            r.raise_for_status()
+            out = r.json()
+        get_maestro_filas_cached.clear()
+        get_fletes_pagina_cached.clear()
+        get_adrian_resumen_cached.clear()
+        nuevo = str(out.get("caso_id") or caso_id)
+        popup = dict(st.session_state.get(DETALLE_POPUP) or {})
+        if popup:
+            popup["caso_id"] = nuevo
+            if remito_def and f_remito.strip() and f_remito.strip() != remito_def:
+                popup["titulo"] = f"Remito {f_remito.strip()}"
+            st.session_state[DETALLE_POPUP] = popup
+        n_ren = len(out.get("renglones_actualizados") or [])
+        st.success(
+            "Cambios guardados"
+            + (f" ({n_ren} renglón/es)" if n_ren else "")
+            + (" — tarifas/reglas recalculadas." if out.get("recalculado") else ".")
+        )
+        st.rerun()
+    except Exception as exc:
+        st.error(f"No se pudo guardar: {exc}")
+
+
 def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     """Cuerpo del detalle (panel inline, sin dialog)."""
     popup = st.session_state.get(DETALLE_POPUP) or {}
@@ -2136,6 +2470,8 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
             st.warning(f"**{cols_txt}:** {al.get('motivo', '')}")
     elif m.get("_alerta_motivo"):
         st.warning(str(m["_alerta_motivo"]))
+
+    _render_editar_caso(caso_id, det)
 
     st.markdown("#### Proveedor de tarifa")
     prov = m.get("PROVEEDOR") or m.get("_proveedor_tarifa")

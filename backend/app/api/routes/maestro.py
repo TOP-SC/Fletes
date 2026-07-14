@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing import Any
 
 from app.database import get_db
 from app.models import Envio, Tarifa
@@ -137,6 +138,105 @@ class PostventaCasoIn(BaseModel):
 class CedolCasoIn(BaseModel):
     cedol: str | None = None
     restaurar_auto: bool = False
+
+
+class CasoRenglonUpdateIn(BaseModel):
+    """Campos editables de un renglón del caso."""
+
+    id: int
+    nro_pedido: str | None = None
+    cod_articulo: str | None = None
+    descripcion: str | None = None
+    cantidad: float | None = None
+    m3: float | None = None
+    fecha_pedido: str | None = None
+    fecha_entrega: str | None = None
+    razon_social: str | None = None
+    domicilio: str | None = None
+    localidad: str | None = None
+    provincia: str | None = None
+    cp: str | None = None
+    deposito: str | None = None
+    origen_cd: str | None = None
+    transporte_cod: str | None = None
+    transporte_nombre: str | None = None
+    clasificacion: str | None = None
+    estado_pedido: str | None = None
+    leyenda_5: str | None = None
+    vendedor: str | None = None
+    observaciones: str | None = None
+    costo_total: float | None = None
+    costo_tarifario: float | None = None
+    diferencia: float | None = None
+    sucursal_cc: str | None = None
+    prefactura_proveedor: float | None = None
+    tipo_gestion: str | None = None
+    sub_tipo_gestion: str | None = None
+    motivo_postventa: str | None = None
+    regla_postventa: str | None = None
+    macheo_estado: str | None = None
+    proveedor_tarifa: str | None = None
+    cedol_codigo: str | None = None
+    regla_motivo: str | None = None
+    regla_color: str | None = None
+    excluir_planilla: bool | None = None
+    alerta_clickpack: bool | None = None
+    abona_wamaro: bool | None = None
+    entrega_cliente_sospechosa: bool | None = None
+    requiere_elegir_proveedor: bool | None = None
+    cedol_manual: bool | None = None
+    tango_completo: dict[str, Any] | None = None
+
+
+class CasoUpdateIn(BaseModel):
+    """Cabecera editables + renglones opcionales."""
+
+    razon_social: str | None = None
+    domicilio: str | None = None
+    localidad: str | None = None
+    provincia: str | None = None
+    cp: str | None = None
+    fecha_pedido: str | None = None
+    fecha_entrega: str | None = None
+    transporte_cod: str | None = None
+    transporte_nombre: str | None = None
+    estado_pedido: str | None = None
+    clasificacion: str | None = None
+    origen_cd: str | None = None
+    deposito: str | None = None
+    vendedor: str | None = None
+    observaciones: str | None = None
+    sucursal_cc: str | None = None
+    leyenda_5: str | None = None
+    proveedor_tarifa: str | None = None
+    prefactura_proveedor: float | None = None
+    remito: str | None = None
+    renglones: list[CasoRenglonUpdateIn] | None = None
+    recalcular: bool = True
+
+
+@router.patch("/caso/{caso_id}")
+def editar_caso(
+    caso_id: str,
+    body: CasoUpdateIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Edita cabecera y/o renglones del caso; opcionalmente recalcula tarifas/reglas."""
+    from app.services.caso_edit_service import actualizar_caso
+
+    data = body.model_dump(exclude_unset=True)
+    recalcular = bool(data.pop("recalcular", True))
+    renglones = data.pop("renglones", None)
+    try:
+        return actualizar_caso(
+            db,
+            caso_id,
+            data,
+            renglones=renglones,
+            recalcular=recalcular,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/caso/{caso_id}/cedol")
