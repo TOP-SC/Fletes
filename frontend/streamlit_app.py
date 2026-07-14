@@ -448,63 +448,46 @@ def inject_login_shell() -> None:
             color: #ffffff !important;
             -webkit-text-fill-color: #ffffff !important;
         }
-        /* Formulario login: etiquetas blancas (el tema a veces no pinta la tarjeta) */
+        /* Formulario login: tarjeta blanca + textos oscuros (contraste seguro) */
         .main [data-testid="stForm"],
         form[data-testid="stForm"],
-        div[data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.12) !important;
-            border: 1px solid rgba(255, 255, 255, 0.28) !important;
+        div[data-testid="stForm"],
+        [data-testid="stForm"] {
+            background: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.95) !important;
             border-radius: 18px !important;
-            padding: 1.35rem 1.5rem 1.15rem !important;
-            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.28) !important;
+            padding: 1.4rem 1.55rem 1.25rem !important;
+            box-shadow: 0 22px 48px rgba(0, 0, 0, 0.32) !important;
             margin: 0 !important;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
         }
-        .main .login-form-title,
-        .main .login-form-title *,
-        .main .login-field-label,
-        .main .login-field-label * {
+        .main [data-testid="stForm"] [data-testid="stMarkdownContainer"] p,
+        form[data-testid="stForm"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stForm"] [data-testid="stMarkdownContainer"] p {
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
             font-weight: 700 !important;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-            margin: 0 0 0.35rem 0 !important;
-            padding: 0 !important;
             opacity: 1 !important;
-        }
-        .main .login-form-title {
-            font-size: 1.12rem !important;
-            margin-bottom: 0.85rem !important;
-        }
-        .main .login-field-label {
-            font-size: 0.9rem !important;
-            margin-top: 0.55rem !important;
-            margin-bottom: 0.2rem !important;
         }
         .main [data-testid="stForm"] label,
-        .main [data-testid="stForm"] label p,
-        .main [data-testid="stForm"] label span,
-        .main [data-testid="stForm"] [data-testid="stWidgetLabel"],
-        .main [data-testid="stForm"] [data-testid="stWidgetLabel"] *,
+        .main [data-testid="stForm"] label *,
         form[data-testid="stForm"] label,
         form[data-testid="stForm"] label *,
-        form[data-testid="stForm"] [data-testid="stWidgetLabel"],
-        form[data-testid="stForm"] [data-testid="stWidgetLabel"] * {
+        [data-testid="stForm"] [data-testid="stWidgetLabel"],
+        [data-testid="stForm"] [data-testid="stWidgetLabel"] * {
+            color: #0f172a !important;
+            -webkit-text-fill-color: #0f172a !important;
             font-weight: 700 !important;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
             font-size: 0.9rem !important;
             opacity: 1 !important;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
         }
         .main [data-testid="stForm"] input,
-        form[data-testid="stForm"] input {
+        form[data-testid="stForm"] input,
+        [data-testid="stForm"] input {
             min-height: 2.85rem !important;
             height: 2.85rem !important;
             padding: 0.55rem 0.85rem !important;
             border-radius: 10px !important;
-            border: 1px solid #cbd5e1 !important;
+            border: 1px solid #94a3b8 !important;
             background: #ffffff !important;
             font-size: 0.95rem !important;
             color: #0f172a !important;
@@ -518,14 +501,14 @@ def inject_login_shell() -> None:
         }
         .main [data-testid="stForm"] [data-testid="stTextInput"],
         form[data-testid="stForm"] [data-testid="stTextInput"] {
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.25rem;
         }
         .main [data-testid="stForm"] button,
-        .main [data-testid="stForm"] button p,
-        .main [data-testid="stForm"] button span,
+        .main [data-testid="stForm"] button *,
         form[data-testid="stForm"] button,
-        form[data-testid="stForm"] button p,
-        form[data-testid="stForm"] button span {
+        form[data-testid="stForm"] button *,
+        [data-testid="stForm"] button,
+        [data-testid="stForm"] button * {
             min-height: 2.85rem !important;
             border-radius: 10px !important;
             font-weight: 700 !important;
@@ -946,10 +929,15 @@ def _pagina_login() -> None:
 
         with st.form("login_form", clear_on_submit=False):
             st.markdown(
-                '<p class="login-form-title">Iniciar sesión</p>',
+                '<p style="color:#0f172a;font-weight:700;font-size:1.1rem;'
+                'margin:0 0 0.75rem 0;line-height:1.3">Iniciar sesión</p>',
                 unsafe_allow_html=True,
             )
-            st.markdown('<p class="login-field-label">Usuario</p>', unsafe_allow_html=True)
+            st.markdown(
+                '<p style="color:#0f172a;font-weight:700;font-size:0.9rem;'
+                'margin:0.5rem 0 0.15rem 0">Usuario</p>',
+                unsafe_allow_html=True,
+            )
             usuario = st.text_input(
                 "Usuario",
                 placeholder="Ingresá tu usuario",
@@ -957,7 +945,11 @@ def _pagina_login() -> None:
                 autocomplete="off",
                 label_visibility="collapsed",
             )
-            st.markdown('<p class="login-field-label">Contraseña</p>', unsafe_allow_html=True)
+            st.markdown(
+                '<p style="color:#0f172a;font-weight:700;font-size:0.9rem;'
+                'margin:0.55rem 0 0.15rem 0">Contraseña</p>',
+                unsafe_allow_html=True,
+            )
             clave = st.text_input(
                 "Contraseña",
                 type="password",
@@ -5916,7 +5908,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 if not _restore_auth_session():
-    inject_theme(dark=False)
+    # Sin tema global: el textColor del theme choca con el fondo del login.
     _pagina_login()
     st.stop()
 

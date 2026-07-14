@@ -37,10 +37,23 @@ LIGHT_CSS = """
     background: color-mix(in srgb, var(--mod-accent) 14%, #ffffff) !important;
     border-left-color: var(--mod-accent) !important;
 }
-h1, h2, h3 { color: #2c3e50 !important; }
-.main, .block-container, [data-testid="stAppViewContainer"] p,
-[data-testid="stAppViewContainer"] label, [data-testid="stAppViewContainer"] span {
-    color: var(--ink);
+h1, h2, h3, h4 { color: #1e2a3a !important; }
+.main, .block-container,
+[data-testid="stAppViewContainer"] p,
+[data-testid="stAppViewContainer"] label,
+[data-testid="stAppViewContainer"] span,
+[data-testid="stAppViewContainer"] li,
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] span {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
+    opacity: 1 !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] summary span {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
 div[data-testid="stMetric"] {
     background: var(--metric-bg) !important;
@@ -48,11 +61,13 @@ div[data-testid="stMetric"] {
 }
 div[data-testid="stMetric"] label,
 div[data-testid="stMetric"] [data-testid="stMetricLabel"] p {
-    color: var(--ink-muted) !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
 }
 div[data-testid="stMetric"] [data-testid="stMetricValue"],
 div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
     color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
 section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones-label) {
     background: var(--mod-bg) !important;
@@ -66,12 +81,25 @@ section.main div[data-testid="stVerticalBlockBorderWrapper"]:has(.panel-acciones
 [data-testid="stMetric"] [data-testid="stMetricValue"] {
     color: var(--ink) !important;
 }
-.stCaption, small { color: var(--ink-muted) !important; }
+.stCaption, small, [data-testid="stCaptionContainer"] p {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
 div[data-baseweb="select"] > div, div[data-baseweb="input"] > div,
 textarea, input {
     background-color: var(--surface) !important;
     color: var(--ink) !important;
     border-color: var(--border) !important;
+}
+.stTabs [data-baseweb="tab"] {
+    color: #475569 !important;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    color: var(--mod-accent) !important;
+}
+button[kind="primary"] p, button[kind="primaryFormSubmit"] p {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
 }
 .top-watermark { color: var(--watermark); }
 """
@@ -111,8 +139,11 @@ DARK_CSS = """
 }
 [data-testid="stSidebar"] [data-testid="stExpander"] summary { color: #94a3b8 !important; }
 .main, .block-container, [data-testid="stAppViewContainer"] p,
-[data-testid="stAppViewContainer"] label, [data-testid="stAppViewContainer"] span {
-    color: var(--ink);
+[data-testid="stAppViewContainer"] label, [data-testid="stAppViewContainer"] span,
+[data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] span {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
+    opacity: 1 !important;
 }
 h1, h2, h3, h4 { color: var(--ink) !important; }
 .page-header {
