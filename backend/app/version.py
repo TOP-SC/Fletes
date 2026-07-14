@@ -1,3 +1,3 @@
 """Identificador de build — cambiar al desplegar lógica nueva."""
-API_BUILD = "fletes-renglones-editables-2026-07-14"
+API_BUILD = "fletes-detalle-adrian-2026-07-14"
 

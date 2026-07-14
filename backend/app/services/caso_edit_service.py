@@ -259,6 +259,7 @@ def actualizar_caso(
             )
 
     renglones_ok: list[int] = []
+    ids_costo_manual: set[int] = set()
     for item in renglones or []:
         rid = item.get("id")
         if rid is None:
@@ -271,6 +272,28 @@ def actualizar_caso(
         for k, v in item.items():
             if k in CAMPOS_RENGLON and k != "id":
                 ren_payload[k] = _coerce_campo(k, v)
+        # Override manual solo si el importe cambió respecto de lo guardado.
+        costo_manual = False
+        if "costo_tarifario" in ren_payload:
+            nuevo_ct = ren_payload.get("costo_tarifario")
+            actual_ct = linea.costo_tarifario
+            if nuevo_ct is None and actual_ct is None:
+                pass
+            elif nuevo_ct is None or actual_ct is None:
+                costo_manual = True
+            elif abs(float(nuevo_ct) - float(actual_ct)) > 0.009:
+                costo_manual = True
+        if "costo_total" in ren_payload:
+            nuevo_co = ren_payload.get("costo_total")
+            actual_co = linea.costo_total
+            if nuevo_co is None and actual_co is None:
+                pass
+            elif nuevo_co is None or actual_co is None:
+                costo_manual = True
+            elif abs(float(nuevo_co) - float(actual_co)) > 0.009:
+                costo_manual = True
+        if costo_manual:
+            ids_costo_manual.add(rid_i)
         fe_p, fe_e = _aplicar_fechas_payload(ren_payload)
         if "proveedor_tarifa" in ren_payload:
             p = str(ren_payload.get("proveedor_tarifa") or "").strip().upper()
@@ -308,12 +331,16 @@ def actualizar_caso(
         tarifas = ctx.tarifas_para_grupo(lineas)
         for linea in lineas:
             aplicar_reglas_envio(linea, preservar_postventa=True)
+            if int(linea.id) in ids_costo_manual:
+                continue
             prov = (linea.proveedor_tarifa or "").strip().upper() or None
             if prov:
                 precio = precio_tarifa_linea(linea, tarifas, prov)
                 recalcular_costos_linea(linea, precio)
         recalcular_grupo(lineas)
         recalc_info["recalculado"] = True
+        if ids_costo_manual:
+            recalc_info["costos_manuales"] = sorted(ids_costo_manual)
 
     db.commit()
     for linea in lineas:
