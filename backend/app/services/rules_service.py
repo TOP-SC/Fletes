@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any
+
+_RE_SUC_COD_CLIENTE = re.compile(r"^([A-Za-z]{1,6})\d")
 
 from app.config import DEPOSITO_ORIGEN, settings
 from app.models import Envio
@@ -169,6 +172,23 @@ def es_sucursal_cc_deposito(sucursal_cc: str | None, origen_cd: str | None) -> b
     return u.startswith("DEPÓSITO") or u.startswith("DEPOSITO") or u.startswith("DEP.")
 
 
+def sucursal_desde_cod_cliente(cod_cliente: str | None) -> str | None:
+    """
+    Prefijo de sucursal embebido en el código de cliente Tango.
+    Ej.: ML9166 → ML, WC3588 → WC, SF0123 → SF.
+    """
+    if not cod_cliente:
+        return None
+    m = _RE_SUC_COD_CLIENTE.match(str(cod_cliente).strip())
+    if not m:
+        return None
+    pref = m.group(1).upper()
+    # Evitar basura de 1 letra genérica si no parece código de sucursal (salvo casos cortos reales).
+    if len(pref) < 2:
+        return None
+    return pref
+
+
 def asignar_origen_y_sucursal(envio: Envio) -> None:
     dep = (envio.deposito or "").strip()
     envio.origen_cd = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
@@ -181,15 +201,24 @@ def asignar_origen_y_sucursal(envio: Envio) -> None:
             suc_compra = (raw.get("sucursal_compra") or "").strip() or None
         except Exception:
             suc_compra = None
-    # Prioridad: columna Sucursal de Tango (DI, ML…) sobre depósito/origen CD.
+    # 1) Columna Sucursal de Tango (DI, ML…)
     if suc_compra:
         envio.sucursal_cc = suc_compra
         return
-    # No pisar un CC de sucursal ya cargado / editado a mano.
+    # 2) Prefijo del código de cliente (ML9166 → ML) — coincide con el centro de costo
+    from_cli = sucursal_desde_cod_cliente(envio.cod_cliente)
+    if from_cli and (
+        not envio.sucursal_cc
+        or es_sucursal_cc_deposito(envio.sucursal_cc, envio.origen_cd)
+    ):
+        envio.sucursal_cc = from_cli
+        return
+    # 3) No pisar un CC de sucursal ya cargado / editado a mano
     if envio.sucursal_cc and not es_sucursal_cc_deposito(
         envio.sucursal_cc, envio.origen_cd
     ):
         return
+    # 4) Fallback: depósito / CD origen
     if envio.origen_cd:
         envio.sucursal_cc = envio.origen_cd
 

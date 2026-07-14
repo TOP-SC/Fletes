@@ -261,6 +261,11 @@ def import_excel_file(
             ),
             raw_json=row_to_json(row),
         )
+        # Si Tango no trajo Sucursal, el prefijo del cliente (ML9166→ML) alcanza.
+        if not envio.sucursal_cc:
+            from app.services.rules_service import sucursal_desde_cod_cliente
+
+            envio.sucursal_cc = sucursal_desde_cod_cliente(envio.cod_cliente)
         aplicar_reglas_envio(envio)
         aplicar_postventa_desde_tango(envio)
 
@@ -275,7 +280,10 @@ def import_excel_file(
     if enrich_skipped:
         import json as _json
 
-        from app.services.rules_service import es_sucursal_cc_deposito
+        from app.services.rules_service import (
+            es_sucursal_cc_deposito,
+            sucursal_desde_cod_cliente,
+        )
 
         chunk = 400
         for i in range(0, len(enrich_skipped), chunk):
@@ -289,16 +297,42 @@ def import_excel_file(
                 env = by_fp.get(fp)
                 if not env:
                     continue
-                if suc and es_sucursal_cc_deposito(env.sucursal_cc, env.origen_cd):
-                    env.sucursal_cc = suc
+                if cod and not env.cod_cliente:
+                    env.cod_cliente = cod
+                target = suc or sucursal_desde_cod_cliente(cod or env.cod_cliente)
+                if target and es_sucursal_cc_deposito(env.sucursal_cc, env.origen_cd):
+                    env.sucursal_cc = target
                     try:
                         raw = _json.loads(env.raw_json) if env.raw_json else {}
-                        raw["sucursal_compra"] = suc
+                        if suc:
+                            raw["sucursal_compra"] = suc
                         env.raw_json = _json.dumps(raw, ensure_ascii=False, default=str)
                     except Exception:
                         pass
-                if cod and not env.cod_cliente:
-                    env.cod_cliente = cod
+
+        # Mismo cliente = misma sucursal: aplica por cód. cliente a todo el historial.
+        suc_por_cod: dict[str, str] = {}
+        codigos_orig: list[str] = []
+        for _fp, suc, cod in enrich_skipped:
+            if not cod:
+                continue
+            cod_s = str(cod).strip()
+            key = cod_s.upper()
+            val = (suc or sucursal_desde_cod_cliente(cod) or "").strip()
+            if key and val:
+                suc_por_cod[key] = val
+                codigos_orig.append(cod_s)
+        if suc_por_cod and codigos_orig:
+            unicos = list(dict.fromkeys(codigos_orig))
+            for i in range(0, len(unicos), chunk):
+                parte_cod = unicos[i : i + chunk]
+                for env in db.scalars(
+                    select(Envio).where(Envio.cod_cliente.in_(parte_cod))
+                ).all():
+                    key = (env.cod_cliente or "").strip().upper()
+                    target = suc_por_cod.get(key)
+                    if target and es_sucursal_cc_deposito(env.sucursal_cc, env.origen_cd):
+                        env.sucursal_cc = target
 
     db.commit()
 
