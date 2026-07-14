@@ -2178,59 +2178,54 @@ def _parse_valor_editado(clave: str, texto: str, original: Any) -> Any:
     return txt or None
 
 
-_CAMPOS_MODELO_RENGLON = {
-    "nro_pedido",
-    "cod_articulo",
-    "descripcion",
-    "cantidad",
-    "m3",
-    "fecha_pedido",
-    "fecha_entrega",
-    "razon_social",
-    "domicilio",
-    "localidad",
-    "provincia",
-    "cp",
-    "deposito",
-    "origen_cd",
-    "transporte_cod",
-    "transporte_nombre",
-    "transporte",
-    "clasificacion",
-    "estado_pedido",
-    "leyenda_5",
-    "vendedor",
-    "observaciones",
-    "costo_total",
-    "costo_tarifario",
-    "diferencia",
-    "sucursal_cc",
-    "prefactura_proveedor",
-    "tipo_gestion",
-    "sub_tipo_gestion",
-    "motivo_postventa",
-    "regla_postventa",
-    "macheo_estado",
-    "proveedor_tarifa",
-    "cedol_codigo",
-    "regla_motivo",
-    "regla_color",
-    "excluir_planilla",
-    "alerta_clickpack",
-    "abona_wamaro",
-    "entrega_cliente_sospechosa",
-    "requiere_elegir_proveedor",
-    "cedol_manual",
-    "remito",
-}
+_CAMPOS_EDITABLES_DETALLE: frozenset[str] = frozenset(
+    {
+        "abona_wamaro",
+        "alerta_clickpack",
+        "cedol_manual",
+        "entrega_cliente_sospechosa",
+        "excluir_planilla",
+        "proveedor_tarifa",
+        "regla_motivo",
+        "requiere_elegir_proveedor",
+        "sub_tipo_gestion",
+        "tipo_gestion",
+    }
+)
+_CAMPOS_BOOL_DETALLE: frozenset[str] = frozenset(
+    {
+        "abona_wamaro",
+        "alerta_clickpack",
+        "cedol_manual",
+        "entrega_cliente_sospechosa",
+        "excluir_planilla",
+        "requiere_elegir_proveedor",
+    }
+)
+# costo_tarifario NO se edita: se recalcula al cambiar proveedor_tarifa.
 
 
 def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, Any]]) -> None:
-    """Único bloque editable del detalle: mismos campos de Renglones Tango."""
+    """Detalle de renglones: solo unos campos editables (celdas verdes)."""
     st.markdown("#### Renglones Tango (artículos / postventa)")
     st.caption(
-        "Editá el **valor** en la tabla y tocá **Guardar cambios**. "
-        "Si corregís costos a mano, desmarcá recalcular."
+        "Solo las filas en **verde** se pueden modificar. "
+        "**Costo tarifario** se recalcula al cambiar el proveedor de tarifa."
+    )
+    st.markdown(
+        """
+        <style>
+        div[class*="st-key-det_ren_ok_"] [data-testid="stDataFrame"] td,
+        div[class*="st-key-det_ren_ok_"] [role="gridcell"] {
+            background-color: #dcfce7 !important;
+        }
+        div[class*="st-key-det_ren_ok_"] [data-testid="stDataFrame"] th,
+        div[class*="st-key-det_ren_ok_"] [role="columnheader"] {
+            background-color: #bbf7d0 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
     if not renglones:
         st.warning("Sin renglones para este caso.")
@@ -2261,20 +2256,34 @@ def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, An
                 except Exception:
                     st.caption(f"Bultos: {bultos}")
 
-            filas = [
-                {
-                    "clave": k,
-                    "campo": etiqueta_columna(k),
-                    "valor": _valor_celda_editable(v),
-                }
-                for k, v in sorted(planos.items(), key=lambda x: str(x[0]).lower())
-            ]
-            if not filas:
-                st.caption("Sin datos para este renglón.")
-                continue
-            df0 = pd.DataFrame(filas)
+            costo_tar = ren.get("costo_tarifario")
+            if costo_tar is not None:
+                st.caption(
+                    f"Costo tarifario (auto): ${_valor_celda_editable(costo_tar)} — "
+                    "se actualiza al guardar si cambiás el proveedor."
+                )
+
+            # Campos editables (siempre visibles, aunque vengan vacíos/False)
+            filas_ok: list[dict[str, str]] = []
+            for k in sorted(_CAMPOS_EDITABLES_DETALLE):
+                if k in planos:
+                    v = planos[k]
+                elif k in ren:
+                    v = ren.get(k)
+                elif k in _CAMPOS_BOOL_DETALLE:
+                    v = False
+                else:
+                    v = ""
+                filas_ok.append(
+                    {
+                        "clave": k,
+                        "campo": etiqueta_columna(k),
+                        "valor": _valor_celda_editable(v),
+                    }
+                )
+            df_ok = pd.DataFrame(filas_ok)
             editado = st.data_editor(
-                df0,
+                df_ok,
                 width="stretch",
                 hide_index=True,
                 num_rows="fixed",
@@ -2285,74 +2294,57 @@ def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, An
                     "campo": st.column_config.TextColumn("campo", width="medium"),
                     "valor": st.column_config.TextColumn("valor", width="large"),
                 },
-                key=f"det_ren_edit_{caso_id}_{rid}",
-                height=min(420, 38 + 35 * len(filas)),
+                key=f"det_ren_ok_{caso_id}_{rid}",
+                height=min(380, 38 + 35 * len(filas_ok)),
             )
+
+            # Resto solo lectura
+            filas_ro = [
+                {
+                    "campo": etiqueta_columna(k),
+                    "valor": _valor_celda_editable(v),
+                }
+                for k, v in sorted(planos.items(), key=lambda x: str(x[0]).lower())
+                if k not in _CAMPOS_EDITABLES_DETALLE
+            ]
+            if filas_ro:
+                st.caption("Resto de datos (solo lectura)")
+                st.dataframe(
+                    pd.DataFrame(filas_ro),
+                    width="stretch",
+                    hide_index=True,
+                    height=min(320, 38 + 35 * len(filas_ro)),
+                )
+
             nuevos: dict[str, Any] = {"id": int(rid)}
-            tango_src = ren.get("tango_completo")
-            tango_base = dict(tango_src) if isinstance(tango_src, dict) else {}
             for _, row in editado.iterrows():
                 clave = str(row.get("clave") or "").strip()
-                if not clave:
+                if clave not in _CAMPOS_EDITABLES_DETALLE:
                     continue
                 raw_val = row.get("valor")
-                parsed = _parse_valor_editado(
-                    clave, str(raw_val if raw_val is not None else ""), planos.get(clave)
+                orig = planos.get(clave, ren.get(clave))
+                if clave in _CAMPOS_BOOL_DETALLE and orig is None:
+                    orig = False
+                nuevos[clave] = _parse_valor_editado(
+                    clave, str(raw_val if raw_val is not None else ""), orig
                 )
-                api_key = "transporte_nombre" if clave == "transporte" else clave
-                if api_key in _CAMPOS_MODELO_RENGLON:
-                    nuevos[api_key] = parsed
-                tango_base[clave] = parsed
-            if tango_base:
-                nuevos["tango_completo"] = tango_base
             edits.append(nuevos)
 
-    c_save, c_recalc = st.columns([1, 2])
-    with c_recalc:
-        recalc = st.checkbox(
-            "Recalcular reglas y tarifas al guardar",
-            value=True,
-            key=f"det_ren_recalc_{caso_id}",
-        )
-    with c_save:
-        guardar = st.button("Guardar cambios", type="primary", key=f"det_ren_save_{caso_id}")
-
+    guardar = st.button("Guardar cambios", type="primary", key=f"det_ren_save_{caso_id}")
     if not guardar:
         return
     if not edits:
         st.warning("No hay renglones para guardar.")
         return
 
-    ren0 = edits[0]
-    cabecera_keys = (
-        "razon_social",
-        "domicilio",
-        "localidad",
-        "provincia",
-        "cp",
-        "fecha_pedido",
-        "fecha_entrega",
-        "transporte_cod",
-        "transporte_nombre",
-        "estado_pedido",
-        "clasificacion",
-        "origen_cd",
-        "deposito",
-        "vendedor",
-        "observaciones",
-        "sucursal_cc",
-        "leyenda_5",
-        "proveedor_tarifa",
-        "prefactura_proveedor",
-        "remito",
-    )
+    # Proveedor en cabecera para que aplique a todas las líneas + recalcula tarifas.
     body: dict[str, Any] = {
-        "recalcular": recalc,
+        "recalcular": True,
         "renglones": edits,
     }
-    for k in cabecera_keys:
-        if k in ren0 and ren0[k] is not None:
-            body[k] = ren0[k]
+    prov0 = edits[0].get("proveedor_tarifa")
+    if prov0 is not None:
+        body["proveedor_tarifa"] = prov0
 
     try:
         with api_client() as c:
@@ -2366,13 +2358,10 @@ def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, An
         popup = dict(st.session_state.get(DETALLE_POPUP) or {})
         if popup:
             popup["caso_id"] = nuevo
-            remito_nuevo = body.get("remito")
-            if remito_nuevo:
-                popup["titulo"] = f"Remito {remito_nuevo}"
             st.session_state[DETALLE_POPUP] = popup
         st.success(
             "Cambios guardados"
-            + (" — tarifas/reglas recalculadas." if out.get("recalculado") else ".")
+            + (" — tarifas recalculadas." if out.get("recalculado") else ".")
         )
         st.rerun()
     except Exception as exc:
