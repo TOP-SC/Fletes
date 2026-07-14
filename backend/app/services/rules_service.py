@@ -161,7 +161,23 @@ def abona_wamaro_desde_leyenda(leyenda: str | None) -> bool:
 def asignar_origen_y_sucursal(envio: Envio) -> None:
     dep = (envio.deposito or "").strip()
     envio.origen_cd = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
-    if not envio.sucursal_cc and envio.origen_cd:
+    # No pisar sucursal de compra / centro de costo si ya viene de Tango o edición manual.
+    if envio.sucursal_cc:
+        return
+    # Preferir sucursal_compra / COD CLIENTE (en raw) antes que CD de origen.
+    suc_compra = None
+    if envio.raw_json:
+        try:
+            import json as _json
+
+            raw = _json.loads(envio.raw_json)
+            suc_compra = (raw.get("sucursal_compra") or "").strip() or None
+        except Exception:
+            suc_compra = None
+    if suc_compra:
+        envio.sucursal_cc = suc_compra
+        return
+    if envio.origen_cd:
         envio.sucursal_cc = envio.origen_cd
 
 

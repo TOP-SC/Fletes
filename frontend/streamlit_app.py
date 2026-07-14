@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-anular-remito-prov-2026-07-14"
+API_BUILD_ESPERADO = "fletes-adrian-lote-2026-07-14"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -170,6 +170,8 @@ MAESTRO_VISTA_GRILLA = [
     "TRANSPORTE",
     "PROVEEDOR",
     "CEDOL",
+    "suc",
+    "COD CLIENTE",
     "BULTOS",
     "LOGISTICA",
     "SEGURO",
@@ -192,6 +194,8 @@ MAESTRO_COL_RATIOS: dict[str, float] = {
     "TRANSPORTE": 0.62,
     "PROVEEDOR": 1.05,
     "CEDOL": 0.42,
+    "suc": 0.55,
+    "COD CLIENTE": 0.7,
     "BULTOS": 0.42,
     "LOGISTICA": 0.85,
     "SEGURO": 0.62,
@@ -2721,18 +2725,18 @@ def _hex_to_rgba(hex_color: str, alpha: float = 0.14) -> str:
 
 
 def _css_grilla_detalle() -> None:
-    """Grilla tipo tabla: filas uniformes."""
+    """Grilla tipo tabla: filas densas (menos scroll)."""
     st.markdown(
         """
         <style>
         .grilla-celda-dato {
             display: flex;
             align-items: center;
-            gap: 4px;
-            padding: 0 7px;
-            height: 1.85rem;
-            line-height: 1.85rem;
-            font-size: 0.78rem;
+            gap: 3px;
+            padding: 0 5px;
+            height: 1.42rem;
+            line-height: 1.42rem;
+            font-size: 0.72rem;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
@@ -2744,9 +2748,9 @@ def _css_grilla_detalle() -> None:
         }
         .alerta-luz {
             display: inline-block;
-            width: 7px;
-            height: 7px;
-            min-width: 7px;
+            width: 6px;
+            height: 6px;
+            min-width: 6px;
             border-radius: 50%;
             background: #e53935;
             box-shadow: 0 0 0 1px rgba(229, 57, 53, 0.28);
@@ -2756,20 +2760,20 @@ def _css_grilla_detalle() -> None:
         .celda-luz-wrap {
             display: flex;
             align-items: center;
-            min-height: 1.85rem;
+            min-height: 1.42rem;
             border-bottom: 1px solid #c8d4e0;
-            padding: 0 4px;
+            padding: 0 3px;
             height: 100%;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            font-size: 0.78rem;
+            font-size: 0.72rem;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
             align-items: stretch !important;
             margin: 0 !important;
             padding: 0 !important;
-            min-height: 1.85rem !important;
-            max-height: 1.85rem !important;
+            min-height: 1.42rem !important;
+            max-height: 1.42rem !important;
             overflow: hidden !important;
             gap: 0 !important;
         }
@@ -2780,8 +2784,8 @@ def _css_grilla_detalle() -> None:
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
             padding-top: 0 !important;
             padding-bottom: 0 !important;
-            min-height: 1.85rem !important;
-            max-height: 1.85rem !important;
+            min-height: 1.42rem !important;
+            max-height: 1.42rem !important;
             overflow: hidden !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:first-child {
@@ -2799,14 +2803,14 @@ def _css_grilla_detalle() -> None:
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:first-child button,
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:first-child [data-testid="stBaseButton-tertiary"] {
-            font-size: 0.68rem !important;
+            font-size: 0.62rem !important;
             padding: 0 !important;
-            min-height: 1.15rem !important;
-            height: 1.15rem !important;
-            max-height: 1.15rem !important;
-            width: 1.15rem !important;
-            min-width: 1.15rem !important;
-            max-width: 1.15rem !important;
+            min-height: 1.05rem !important;
+            height: 1.05rem !important;
+            max-height: 1.05rem !important;
+            width: 1.05rem !important;
+            min-width: 1.05rem !important;
+            max-width: 1.05rem !important;
             margin: 0 !important;
             line-height: 1 !important;
             border-radius: 999px !important;
@@ -2814,7 +2818,7 @@ def _css_grilla_detalle() -> None:
             border: 1px solid rgba(0,0,0,0.06) !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:first-child button p {
-            font-size: 0.68rem !important;
+            font-size: 0.62rem !important;
             line-height: 1 !important;
             margin: 0 !important;
         }
@@ -2822,12 +2826,12 @@ def _css_grilla_detalle() -> None:
             margin: 0 !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stSelectbox"] > div {
-            min-height: 1.85rem !important;
+            min-height: 1.42rem !important;
         }
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-            min-height: 1.65rem !important;
-            height: 1.65rem !important;
-            font-size: 0.74rem !important;
+            min-height: 1.28rem !important;
+            height: 1.28rem !important;
+            font-size: 0.70rem !important;
         }
         </style>
         """,
@@ -3681,6 +3685,31 @@ def pagina_dashboard() -> None:
         _render_dashboard_embed(payload, dark=bool(st.session_state.get("dark_mode")))
         _render_kpi_entregas_section()
 
+    st.divider()
+    st.subheader("Export contable / ARCA")
+    st.caption(
+        "Costos de flete por provincia (Interior + CABA/AMBA) — base para enviar a contabilidad."
+    )
+    arca_key = "dashboard_export_provincias_xlsx"
+    if st.button("Generar Excel costos por provincia", key="dash_arca_export_btn"):
+        try:
+            with st.spinner("Generando Excel…"):
+                with httpx.Client(base_url=API_URL, timeout=120.0) as c:
+                    r = c.get("/dashboard/export-provincias")
+                    r.raise_for_status()
+                st.session_state[arca_key] = r.content
+            st.success("Excel listo — usá el botón de descarga.")
+        except Exception as exc:
+            st.error(f"No se pudo exportar: {exc}")
+    if st.session_state.get(arca_key):
+        st.download_button(
+            "Descargar costos_flete_por_provincia.xlsx",
+            st.session_state[arca_key],
+            file_name="costos_flete_por_provincia.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dash_arca_export_dl",
+        )
+
 
 def _ratios_columnas(nombres: list[str]) -> list[float]:
     return [MAESTRO_COL_RATIOS.get(c, 0.6) for c in nombres]
@@ -3975,15 +4004,25 @@ def pagina_casos(
 
         if not solo_pendiente_proveedor and not modo_elegir_proveedor:
             export_key = f"{key_prefix}_export_xlsx"
+            st.caption(
+                "Export completo (todos los remitos del filtro actual, no solo la página)."
+            )
             if st.button(
                 "Generar planilla Excel (Tortuguitas + SA)",
                 key=f"{key_prefix}_export_btn",
                 type="secondary",
             ):
                 try:
+                    export_params: dict[str, Any] = {
+                        "incluir_excluidos": incluir_excl,
+                    }
+                    for k in ("fecha_desde", "fecha_hasta", "campo_fecha", "proveedor"):
+                        v = params_api.get(k)
+                        if v not in (None, ""):
+                            export_params[k] = v
                     with st.spinner("Generando Excel… puede tardar 1–2 minutos con muchos registros."):
                         with httpx.Client(base_url=API_URL, timeout=300.0) as c:
-                            r = c.get("/maestro/export", params={"incluir_excluidos": incluir_excl})
+                            r = c.get("/maestro/export", params=export_params)
                             r.raise_for_status()
                         st.session_state[export_key] = r.content
                     st.success("Planilla lista — usá el botón de descarga.")

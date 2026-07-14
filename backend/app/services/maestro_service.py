@@ -72,6 +72,7 @@ MAESTRO_COLUMNAS = [
     "total",
     "dif",
     "suc",
+    "COD CLIENTE",
 ]
 
 COLUMNAS_CONTROL_MAESTRO = {"obs", "costo", "total", "dif", "suc", "LOGISTICA", "SEGURO", "GESTION", "PRECIO NETO"}
@@ -306,6 +307,7 @@ def _fila_maestro_desde_grupo(
         "total": round_pesos(total_lineas),
         "dif": round_pesos(dif),
         "suc": base.sucursal_cc,
+        "COD CLIENTE": base.cod_cliente or "",
     }
     return normalize_maestro_montos(fila)
 
@@ -674,6 +676,7 @@ def detalle_caso(
                 "estado_pedido": l.estado_pedido,
                 "leyenda_5": l.leyenda_5,
                 "vendedor": l.vendedor,
+                "cod_cliente": l.cod_cliente,
                 "m3": l.m3,
                 "tipo_gestion": l.tipo_gestion,
                 "sub_tipo_gestion": l.sub_tipo_gestion,

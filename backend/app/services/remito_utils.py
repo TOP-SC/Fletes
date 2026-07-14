@@ -36,11 +36,17 @@ def normalizar_remito(remito: str | None) -> str:
     """
     Clave de cruce Clickpack ↔ Tango.
     Tango: R0017800318022 — Clickpack: 17800318022 (sin R ni ceros leading).
+    También acepta cuerpos solo-dígitos (Franzof sin guiones / sin prefijo R).
     """
-    if not remito or es_remito_transito(remito) or not es_remito_oficial(remito):
+    if not remito or es_remito_transito(remito):
         return ""
     text = str(remito).strip().upper()
     text = re.sub(r"[\s\-\./]", "", text)
+    # Franzof / planillas: remito como solo dígitos (8–14) = cuerpo del R…
+    if re.match(r"^\d{8,14}$", text):
+        return text.lstrip("0") or text
+    if not es_remito_oficial(remito):
+        return ""
     if text.startswith("RAR"):
         text = text[3:]
     elif text.startswith("R"):

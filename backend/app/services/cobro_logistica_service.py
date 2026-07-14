@@ -517,6 +517,15 @@ def calcular_cobro_pedido(
         p = _lookup_precio(envio, tarifas, prov, interp)
 
         if p is not None and p > 0:
+            # Varios colchones en el mismo pedido (sin conjunto) → 1 tarifa × unidades
+            if interp and not interp.es_conjunto:
+                unidades = sum(
+                    float(r.cantidad or 0)
+                    for r in (interp.renglones or [])
+                    if r.tipo_linea == "COLCHON"
+                )
+                if unidades > 1.01:
+                    p = round(p * unidades, 2)
 
             return CobroPedidoResult(
 

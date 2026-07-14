@@ -244,9 +244,15 @@ def import_excel_file(
             estado_pedido=row.get("estado_pedido"),
             leyenda_5=row.get("leyenda_5"),
             vendedor=row.get("vendedor"),
+            cod_cliente=(str(row.get("cod_cliente")).strip() if row.get("cod_cliente") else None),
             m3=row.get("m3"),
             tipo_gestion=row.get("tipo_gestion"),
             sub_tipo_gestion=row.get("sub_tipo"),
+            sucursal_cc=(
+                str(row.get("sucursal_compra")).strip()
+                if row.get("sucursal_compra")
+                else None
+            ),
             raw_json=row_to_json(row),
         )
         aplicar_reglas_envio(envio)

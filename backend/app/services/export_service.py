@@ -38,6 +38,7 @@ def export_maestro_wamaro(
     *,
     incluir_excluidos: bool = True,
     db: Session | None = None,
+    proveedor: str | None = None,
 ) -> bytes:
     tarifario_ctx = None
     if db is not None:
@@ -49,6 +50,7 @@ def export_maestro_wamaro(
     filas = construir_maestro(
         envios,
         incluir_excluidos=incluir_excluidos,
+        proveedor=proveedor,
         db=db,
         tarifario_ctx=tarifario_ctx,
     )

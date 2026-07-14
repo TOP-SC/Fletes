@@ -289,11 +289,30 @@ def resolver_postventa_caso_api(
 def exportar_maestro(
     db: Session = Depends(get_db),
     incluir_excluidos: bool = Query(True),
+    fecha_desde: str | None = Query(None),
+    fecha_hasta: str | None = Query(None),
+    campo_fecha: str = Query("entrega"),
+    proveedor: str | None = Query(None),
 ) -> Response:
-    """Export Excel maestro. Solo lectura — usa cache km existente (sin enrich masivo)."""
-    envios = list(db.scalars(select(Envio)).all())
+    """Export Excel maestro completo (sin paginar). Respeta rango/proveedor si vienen."""
+    filtros = build_filtros_casos(
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        campo_fecha=campo_fecha or "entrega",
+    )
+    envios = cargar_envios_filtrados(
+        db,
+        fecha_desde=filtros.get("fecha_desde"),
+        fecha_hasta=filtros.get("fecha_hasta"),
+        campo_fecha=str(filtros.get("campo_fecha") or "cualquiera"),
+    )
     try:
-        data = export_maestro_wamaro(envios, incluir_excluidos=incluir_excluidos, db=db)
+        data = export_maestro_wamaro(
+            envios,
+            incluir_excluidos=incluir_excluidos,
+            db=db,
+            proveedor=(proveedor or "").strip().upper() or None,
+        )
     except Exception as exc:
         from fastapi import HTTPException
         import logging

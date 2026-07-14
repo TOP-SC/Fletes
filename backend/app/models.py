@@ -51,6 +51,7 @@ class Envio(Base):
     estado_pedido: Mapped[str | None] = mapped_column(String(40))
     leyenda_5: Mapped[str | None] = mapped_column(Text)
     vendedor: Mapped[str | None] = mapped_column(String(120))
+    cod_cliente: Mapped[str | None] = mapped_column(String(40), index=True)
     m3: Mapped[float | None] = mapped_column(Float)
 
     observaciones: Mapped[str | None] = mapped_column(Text)

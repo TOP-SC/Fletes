@@ -31,6 +31,27 @@ FIELD_CANDIDATES: list[tuple[str, tuple[str, ...]]] = [
     ),
     ("nro_orden", ("NRO ORDEN", "NUMERO ORDEN", "NRO DE ORDEN")),
     ("nro_factura", ("NRO FACTURA", "NUMERO FACTURA", "FACTURA")),
+    (
+        "cod_cliente",
+        (
+            "CODIGO CLIENTE",
+            "CÓDIGO CLIENTE",
+            "COD CLIENTE",
+            "COD_CLIENTE",
+            "NRO CLIENTE",
+            "CLIENTE COD",
+        ),
+    ),
+    (
+        "sucursal_compra",
+        (
+            "SUCURSAL COMPRA",
+            "SUCURSAL DE COMPRA",
+            "CENTRO DE COSTO",
+            "CENTRO COSTO",
+            "SUCURSAL CC",
+        ),
+    ),
     ("deposito", ("DEPÓSITO DI", "DEPOSITO DI", "DEPÓSITO", "DEPOSITO", "DEPSITO DI")),
     ("fecha_pedido", ("FECHA PEDIDO DI", "FECHA PEDIDO", "FECHA DEL PEDIDO")),
     (

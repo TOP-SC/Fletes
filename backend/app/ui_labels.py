@@ -81,6 +81,8 @@ COLUMNA_DISPLAY: dict[str, str] = {
     "requiere_elegir_proveedor": "Requiere elegir proveedor",
     "tipo_gestion": "Tipo gestión",
     "sub_tipo_gestion": "Sub tipo gestión",
+    "COD CLIENTE": "Cód. cliente",
+    "suc": "Suc. / CC",
 }
 
 _PARTICULAS = frozenset({"de", "del", "la", "las", "los", "y", "e", "en", "a", "al"})
