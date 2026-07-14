@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-auth-admin-2026-07-01"
+API_BUILD_ESPERADO = "fletes-rango-fechas-2026-07-14"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -887,7 +887,7 @@ def _pagina_login() -> None:
         st.markdown(
             """
             <div class="login-foot-wrap">
-              <p class="login-foot">Contactá al administrador TOP si no tenés usuario.</p>
+              <p class="login-foot">Acceso restringido — contactá al administrador TOP si no tenés usuario.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -928,29 +928,67 @@ def _pagina_login() -> None:
                 st.error(str(exc))
 
 
-def _config_usuarios() -> None:
+def _config_seguridad() -> None:
+    """Login, contraseña propia y (super admin) altas/bajas de usuarios con acceso."""
     is_super = _is_super_admin()
-    st.subheader("Usuarios de la aplicación")
+    logged = st.session_state.get(AUTH_USER_KEY) or ""
+    rol_txt = "Super administrador" if is_super else "Operador"
+
+    st.subheader("Seguridad y acceso")
+    st.caption(
+        "La aplicación exige **usuario y contraseña** al entrar. "
+        "Solo quienes figuren acá abajo pueden usar el sistema."
+    )
+
+    st.markdown("#### Tu sesión")
+    c1, c2 = st.columns(2)
+    c1.metric("Usuario conectado", logged or "—")
+    c2.metric("Rol", rol_txt)
+
+    with st.form("cfg_mi_password", clear_on_submit=True):
+        st.markdown("**Cambiar mi contraseña**")
+        actual_pass = st.text_input("Contraseña actual", type="password", key="cfg_mi_pass_actual")
+        nueva_pass = st.text_input("Nueva contraseña", type="password", key="cfg_mi_pass_nueva")
+        nueva_pass2 = st.text_input("Repetir nueva contraseña", type="password", key="cfg_mi_pass_nueva2")
+        if st.form_submit_button("Actualizar mi contraseña", type="primary"):
+            if not actual_pass:
+                st.error("Ingresá tu contraseña actual.")
+            elif nueva_pass != nueva_pass2:
+                st.error("Las contraseñas nuevas no coinciden.")
+            elif len(nueva_pass or "") < 6:
+                st.error("La nueva contraseña debe tener al menos 6 caracteres.")
+            else:
+                try:
+                    _auth_post_json(
+                        "/auth/me/password",
+                        {"current_password": actual_pass, "new_password": nueva_pass},
+                    )
+                    st.success("Contraseña actualizada. Cerrá sesión y volvé a entrar.")
+                    _auth_logout()
+                    st.rerun()
+                except httpx.HTTPStatusError as exc:
+                    st.error(_detalle_error_api(exc))
+                except Exception as exc:
+                    st.error(str(exc))
+
+    st.markdown("---")
+    st.markdown("#### Usuarios con acceso a la app")
 
     if not is_super:
         st.markdown(
             """
             <div class="users-tab-locked-banner">
-              🔒 <strong>Acceso restringido.</strong>
-              Solo el super administrador puede gestionar usuarios.
-              El resto de Configuración y la app siguen disponibles con tu usuario.
+              🔒 Solo el <strong>super administrador</strong> puede dar de alta, editar o quitar usuarios.
+              Si necesitás acceso para alguien más, pedíselo al administrador TOP.
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.text_input("Usuario nuevo", value="", disabled=True, key="usr_lock_name")
-        st.text_input("Contraseña", value="", type="password", disabled=True, key="usr_lock_pass")
-        st.button("Agregar usuario", disabled=True, key="usr_lock_add")
         return
 
     st.caption(
-        "Gestioná roles, estado activo y contraseñas. "
-        "Las claves se guardan cifradas: **no se pueden ver**, solo restablecer."
+        "Como super administrador podés agregar o quitar usuarios, cambiar roles y restablecer claves. "
+        "Las contraseñas están cifradas: **no se pueden ver**, solo restablecer."
     )
 
     try:
@@ -984,8 +1022,7 @@ def _config_usuarios() -> None:
             height=min(280, 48 + 35 * len(filas)),
         )
 
-    st.markdown("---")
-    st.markdown("**Alta de usuario**")
+    st.markdown("**Agregar usuario**")
     c_new, c_rol = st.columns([2, 1])
     with c_new:
         nuevo_user = st.text_input("Usuario nuevo", key="cfg_user_new")
@@ -1084,7 +1121,7 @@ def _config_usuarios() -> None:
         st.caption("Forzá cierre de sesión si perdió acceso o hay que renovar el login.")
 
     if not actual.get("is_super_admin"):
-        if st.button("Eliminar usuario", key="cfg_user_del_btn", type="secondary"):
+        if st.button("Quitar acceso (eliminar usuario)", key="cfg_user_del_btn", type="secondary"):
             try:
                 _auth_delete(f"/auth/usuarios/{sel}")
                 st.success(f"Usuario «{sel}» eliminado.")
@@ -1100,11 +1137,17 @@ def _config_usuarios() -> None:
             | **Operador** | Toda la app salvo gestión de usuarios y cierre mensual destructivo. |
             | **Super administrador** | Todo + usuarios + cierre mensual. |
 
+            - Sin usuario activo en esta lista **no hay acceso** a la app (pantalla de login).
             - Las contraseñas **nunca** se muestran (almacenamiento cifrado).
             - Al cambiar contraseña o desactivar, se cierran las sesiones abiertas.
             - Debe quedar **al menos un** super administrador activo.
             """
         )
+
+
+def _config_usuarios() -> None:
+    """Compatibilidad — usar _config_seguridad."""
+    _config_seguridad()
 
 
 def _detalle_error_api(exc: Exception) -> str:
@@ -1248,20 +1291,29 @@ def _ui_mes_control_adrian() -> dict[str, Any]:
 
 
 def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
-    """Filtros API: mes a controlar, campo fecha, estado remito."""
-    opciones = _opciones_mes_control()
-    labels = [o[2] for o in opciones]
-    if SESSION_MES_CONTROL_IDX not in st.session_state:
-        st.session_state[SESSION_MES_CONTROL_IDX] = 0
-    c1, c2, c3 = st.columns([2, 1.4, 1.6])
-    idx = c1.selectbox(
-        "Mes a controlar",
-        range(len(labels)),
-        format_func=lambda i: labels[i],
-        key=SESSION_MES_CONTROL_IDX,
+    """Filtros UI: rango Desde–Hasta, campo fecha y estado remito (sin cargar datos)."""
+    from datetime import date, timedelta
+
+    hoy = date.today()
+    d_defecto = hoy.replace(day=1)
+    h_defecto = hoy
+
+    c1, c2, c3, c4 = st.columns([1.2, 1.2, 1.6, 1.5])
+    desde = c1.date_input(
+        "Desde",
+        value=d_defecto,
+        max_value=hoy + timedelta(days=60),
+        key=f"{key_prefix}_fecha_desde",
+        help="Inicio del período a controlar (inclusive).",
     )
-    anio, mes, label_mes = opciones[idx]
-    campo_ui = c2.selectbox(
+    hasta = c2.date_input(
+        "Hasta",
+        value=h_defecto,
+        max_value=hoy + timedelta(days=60),
+        key=f"{key_prefix}_fecha_hasta",
+        help="Fin del período a controlar (inclusive).",
+    )
+    campo_ui = c3.selectbox(
         "Filtrar casos por",
         (
             "Solo fecha de entrega",
@@ -1270,7 +1322,7 @@ def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
         ),
         index=0,
         key=f"{key_prefix}_campo_fecha",
-        help="Estándar: mes a controlar = fecha de entrega (mismo criterio DIST y Limansky).",
+        help="Estándar: período = fecha de entrega (mismo criterio DIST y Limansky).",
     )
     campo_map = {
         "Solo fecha de entrega": "entrega",
@@ -1278,17 +1330,7 @@ def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
         "Solo fecha de pedido": "pedido",
     }
     campo_api = campo_map[campo_ui]
-    if campo_api == "entrega":
-        c1.caption(
-            f"Casos con **entrega** en **{label_mes}** (estándar unificado CD + Limansky)."
-        )
-    elif campo_api == "pedido":
-        c1.caption(f"Casos con **pedido** en **{label_mes}** (solo consulta excepcional).")
-    else:
-        c1.caption(
-            f"Casos con **pedido o entrega** en **{label_mes}** (más amplio que el estándar)."
-        )
-    remito_ui = c3.selectbox(
+    remito_ui = c4.selectbox(
         "Remito",
         (
             "Todos",
@@ -1304,39 +1346,52 @@ def _ui_filtros_fecha_remito(key_prefix: str) -> dict[str, Any]:
         "Sin remito": "sin_remito",
         "Sin fecha de entrega": "sin_fecha_entrega",
     }
-    params: dict[str, Any] = {
+
+    if isinstance(desde, tuple):
+        desde = desde[0] if desde else d_defecto
+    if isinstance(hasta, tuple):
+        hasta = hasta[0] if hasta else h_defecto
+
+    dias = (hasta - desde).days + 1 if hasta and desde else 0
+    if campo_api == "entrega":
+        c1.caption("Corte operativo por **fecha de entrega**.")
+    elif campo_api == "pedido":
+        c1.caption("Consulta excepcional por **fecha de pedido**.")
+    else:
+        c1.caption("Pedido **o** entrega en el rango (más amplio).")
+
+    if dias > 62:
+        st.warning(
+            f"El rango tiene **{dias} días**. Para que la app se mantenga liviana, "
+            "preferí períodos de hasta ~2 meses (ej. 15/06 → 15/07)."
+        )
+    elif dias > 0:
+        st.caption(
+            f"Período en pantalla: **{desde.strftime('%d/%m/%Y')}** → "
+            f"**{hasta.strftime('%d/%m/%Y')}** ({dias} día{'s' if dias != 1 else ''}). "
+            "Tocá **Cargar período** para traer datos."
+        )
+
+    return {
         "campo_fecha": campo_api,
         "remito_estado": remito_map[remito_ui],
-        "mes_control_anio": anio,
-        "mes_control_mes": mes,
+        "fecha_desde_ui": desde.isoformat() if desde else None,
+        "fecha_hasta_ui": hasta.isoformat() if hasta else None,
     }
-    return params
 
 
 def _params_sin_mes_si_busca(params: dict[str, Any], buscar: str) -> dict[str, Any]:
-    """Con texto de búsqueda, recorrer toda la base importada (sin mes a controlar)."""
+    """Con texto de búsqueda, recorrer toda la base importada (sin rango de fechas)."""
     p = dict(params)
     if buscar.strip():
         p.pop("mes_control_anio", None)
         p.pop("mes_control_mes", None)
+        p.pop("fecha_desde", None)
+        p.pop("fecha_hasta", None)
         p.pop("campo_fecha", None)
+        p.pop("fecha_desde_ui", None)
+        p.pop("fecha_hasta_ui", None)
     return p
-
-
-def _rango_quincena_iso(anio: int, mes: int, quincena: int) -> tuple[str, str]:
-    from app.services.fecha_utils import rango_quincena
-
-    d1, d2 = rango_quincena(anio, mes, quincena)
-    return d1.isoformat(), d2.isoformat()
-
-
-def _etiqueta_quincena(anio: int, mes: int, quincena: int) -> str:
-    d1, d2 = _rango_quincena_iso(anio, mes, quincena)
-    from datetime import date
-
-    f1 = date.fromisoformat(d1).strftime("%d/%m")
-    f2 = date.fromisoformat(d2).strftime("%d/%m/%Y")
-    return f"{f1} – {f2}"
 
 
 def _firma_filtros_maestro_ui(
@@ -1362,23 +1417,7 @@ def _firma_filtros_maestro_ui(
     )
 
 
-def _gestionar_cambio_mes_quincena(
-    key_prefix: str,
-    anio: int,
-    mes: int,
-    *,
-    clear_cache_fn: Any,
-) -> str:
-    mes_sig = f"{anio}-{mes}"
-    modo_carga_key = f"{key_prefix}_modo_carga"
-    if st.session_state.get(f"{key_prefix}_mes_sig") != mes_sig:
-        st.session_state[f"{key_prefix}_mes_sig"] = mes_sig
-        st.session_state.pop(modo_carga_key, None)
-        clear_cache_fn()
-    return modo_carga_key
-
-
-def _invalidar_modo_quincena_si_cambian_filtros(
+def _invalidar_carga_si_cambian_filtros(
     key_prefix: str,
     firma_ui: str,
     modo_carga_key: str,
@@ -1392,54 +1431,53 @@ def _invalidar_modo_quincena_si_cambian_filtros(
         and st.session_state.get(modo_carga_key)
     ):
         st.session_state.pop(modo_carga_key, None)
+        st.session_state.pop(f"{key_prefix}_rango_activo", None)
         clear_cache_fn()
         st.warning(
-            "Cambiaste filtros — volvé a elegir **1ª quincena**, **2ª quincena** o **Buscar**."
+            "Cambiaste filtros — volvé a tocar **Cargar período** o **Buscar en toda la base**."
         )
     st.session_state[ui_sig_key] = firma_ui
 
 
-def _render_botones_carga_quincena(
+def _render_carga_rango(
     key_prefix: str,
-    anio: int,
-    mes: int,
+    filtros_extra: dict[str, Any],
     buscar: str,
     *,
     clear_cache_fn: Any,
     modulo: str,
     page_state_key: str | None = None,
 ) -> str | None:
-    """Botones 1ª/2ª quincena y buscar. Devuelve modo_carga o None."""
+    """Botones Cargar período / Buscar. Devuelve modo_carga o None (sin datos)."""
     modo_carga_key = f"{key_prefix}_modo_carga"
+    fd = filtros_extra.get("fecha_desde_ui")
+    fh = filtros_extra.get("fecha_hasta_ui")
+
     st.markdown("##### Cargar período")
-    q1, q2, q3 = st.columns([1.3, 1.3, 2.4])
-    etiq_q1 = f"1ª quincena ({_etiqueta_quincena(anio, mes, 1)})"
-    etiq_q2 = f"2ª quincena ({_etiqueta_quincena(anio, mes, 2)})"
-    with q1:
+    b1, b2 = st.columns([1.4, 2.6])
+    with b1:
         if st.button(
-            etiq_q1,
-            key=f"{key_prefix}_btn_q1",
+            "Cargar período",
+            key=f"{key_prefix}_btn_rango",
             type="primary",
             use_container_width=True,
+            disabled=not (fd and fh),
         ):
-            st.session_state[modo_carga_key] = "q1"
-            if page_state_key:
-                st.session_state[page_state_key] = 1
-            clear_cache_fn()
-            st.rerun()
-    with q2:
-        if st.button(
-            etiq_q2,
-            key=f"{key_prefix}_btn_q2",
-            type="primary",
-            use_container_width=True,
-        ):
-            st.session_state[modo_carga_key] = "q2"
-            if page_state_key:
-                st.session_state[page_state_key] = 1
-            clear_cache_fn()
-            st.rerun()
-    with q3:
+            if fd and fh and fh < fd:
+                st.error("La fecha **Hasta** no puede ser anterior a **Desde**.")
+            else:
+                st.session_state[modo_carga_key] = "rango"
+                st.session_state[f"{key_prefix}_rango_activo"] = {
+                    "fecha_desde": fd,
+                    "fecha_hasta": fh,
+                    "campo_fecha": filtros_extra.get("campo_fecha"),
+                    "remito_estado": filtros_extra.get("remito_estado"),
+                }
+                if page_state_key:
+                    st.session_state[page_state_key] = 1
+                clear_cache_fn()
+                st.rerun()
+    with b2:
         if st.button(
             "Buscar en toda la base",
             key=f"{key_prefix}_btn_buscar",
@@ -1448,6 +1486,7 @@ def _render_botones_carga_quincena(
         ):
             st.session_state[modo_carga_key] = "buscar"
             st.session_state[f"{key_prefix}_q_buscar"] = buscar.strip()
+            st.session_state.pop(f"{key_prefix}_rango_activo", None)
             if page_state_key:
                 st.session_state[page_state_key] = 1
             clear_cache_fn()
@@ -1456,18 +1495,25 @@ def _render_botones_carga_quincena(
     modo_carga = st.session_state.get(modo_carga_key)
     if not modo_carga:
         st.info(
-            f"**{modulo}** no carga solo al entrar. Elegí **1ª quincena**, **2ª quincena** "
-            "o buscá un remito puntual — así se pide solo la mitad del mes (o un caso)."
+            f"**{modulo}** no carga solo al entrar. Elegí **Desde / Hasta** y tocá "
+            "**Cargar período**, o buscá un remito puntual — así la consulta se mantiene liviana."
         )
         return None
-    if modo_carga == "q1":
-        st.caption(
-            f"Cargando **1ª quincena** · entregas del **{_etiqueta_quincena(anio, mes, 1)}**"
-        )
-    elif modo_carga == "q2":
-        st.caption(
-            f"Cargando **2ª quincena** · entregas del **{_etiqueta_quincena(anio, mes, 2)}**"
-        )
+
+    if modo_carga == "rango":
+        activo = st.session_state.get(f"{key_prefix}_rango_activo") or {}
+        d1 = activo.get("fecha_desde") or fd
+        d2 = activo.get("fecha_hasta") or fh
+        if d1 and d2:
+            from datetime import date
+
+            etiq = (
+                f"{date.fromisoformat(d1).strftime('%d/%m/%Y')} → "
+                f"{date.fromisoformat(d2).strftime('%d/%m/%Y')}"
+            )
+            st.caption(f"Cargando período **{etiq}**")
+        else:
+            st.caption("Cargando período seleccionado…")
     else:
         st.caption(
             f"Búsqueda puntual: **{st.session_state.get(f'{key_prefix}_q_buscar', buscar.strip())}**"
@@ -1475,22 +1521,34 @@ def _render_botones_carga_quincena(
     return str(modo_carga)
 
 
-def _params_api_quincena(
+def _params_api_rango(
     params: dict[str, Any],
     *,
     key_prefix: str,
-    anio: int,
-    mes: int,
     buscar: str,
     modo_carga: str,
 ) -> dict[str, Any]:
+    """Arma params de API: rango activo o búsqueda sin fechas."""
     p = dict(params)
-    if modo_carga in ("q1", "q2"):
-        fd, fh = _rango_quincena_iso(anio, mes, 1 if modo_carga == "q1" else 2)
+    p.pop("fecha_desde_ui", None)
+    p.pop("fecha_hasta_ui", None)
+    p.pop("mes_control_anio", None)
+    p.pop("mes_control_mes", None)
+
+    if modo_carga == "rango":
+        activo = st.session_state.get(f"{key_prefix}_rango_activo") or {}
+        fd = activo.get("fecha_desde")
+        fh = activo.get("fecha_hasta")
+        if not fd or not fh:
+            raise ValueError("Definí Desde y Hasta y tocá Cargar período.")
+        if fh < fd:
+            raise ValueError("La fecha Hasta no puede ser anterior a Desde.")
         p["fecha_desde"] = fd
         p["fecha_hasta"] = fh
-        p.pop("mes_control_anio", None)
-        p.pop("mes_control_mes", None)
+        if activo.get("campo_fecha"):
+            p["campo_fecha"] = activo["campo_fecha"]
+        if activo.get("remito_estado"):
+            p["remito_estado"] = activo["remito_estado"]
     elif modo_carga == "buscar":
         qtxt = st.session_state.get(f"{key_prefix}_q_buscar", buscar.strip())
         p["q"] = qtxt
@@ -3397,7 +3455,7 @@ def pagina_casos(
     solo_pendiente_proveedor: bool = False,
     modo_elegir_proveedor: bool = False,
     key_prefix: str = "casos",
-    carga_por_quincena: bool = False,
+    carga_por_quincena: bool = True,
 ) -> None:
     _render_page_header(etiqueta_pagina(titulo), subtitulo, titulo)
     sel_key = f"{key_prefix}_sel"
@@ -3492,14 +3550,7 @@ def pagina_casos(
         )
 
         filtros_extra = _ui_filtros_fecha_remito(key_prefix)
-        anio_mes = int(filtros_extra["mes_control_anio"])
-        mes_num = int(filtros_extra["mes_control_mes"])
-        modo_carga_key = _gestionar_cambio_mes_quincena(
-            key_prefix,
-            anio_mes,
-            mes_num,
-            clear_cache_fn=get_maestro_filas_cached.clear,
-        )
+        modo_carga_key = f"{key_prefix}_modo_carga"
 
         firma_ui = _firma_filtros_maestro_ui(
             origen_f=origen_f,
@@ -3510,7 +3561,7 @@ def pagina_casos(
             filtros_extra=filtros_extra,
         )
         if carga_por_quincena:
-            _invalidar_modo_quincena_si_cambian_filtros(
+            _invalidar_carga_si_cambian_filtros(
                 key_prefix,
                 firma_ui,
                 modo_carga_key,
@@ -3521,10 +3572,9 @@ def pagina_casos(
 
         modo_carga: str | None = None
         if carga_por_quincena:
-            modo_carga = _render_botones_carga_quincena(
+            modo_carga = _render_carga_rango(
                 key_prefix,
-                anio_mes,
-                mes_num,
+                filtros_extra,
                 buscar,
                 clear_cache_fn=get_maestro_filas_cached.clear,
                 modulo="El maestro",
@@ -3551,18 +3601,22 @@ def pagina_casos(
         params["solo_con_dif"] = True
 
     if carga_por_quincena and modo_carga:
-        params_api = _params_api_quincena(
-            params,
-            key_prefix=key_prefix,
-            anio=anio_mes,
-            mes=mes_num,
-            buscar=buscar,
-            modo_carga=modo_carga,
-        )
+        try:
+            params_api = _params_api_rango(
+                params,
+                key_prefix=key_prefix,
+                buscar=buscar,
+                modo_carga=modo_carga,
+            )
+        except ValueError as exc:
+            st.error(str(exc))
+            return
     else:
         if buscar.strip():
             params["q"] = buscar.strip()
         params_api = _params_sin_mes_si_busca(params, buscar)
+        params_api.pop("fecha_desde_ui", None)
+        params_api.pop("fecha_hasta_ui", None)
 
     firma_filtros = json.dumps(params_api, sort_keys=True, default=str)
     page = _reset_maestro_page_si_cambian_filtros(key_prefix, firma_filtros)
@@ -3572,8 +3626,8 @@ def pagina_casos(
     try:
         spinner = (
             "Buscando en toda la base importada…"
-            if buscar.strip()
-            else "Cargando maestro…"
+            if (carga_por_quincena and modo_carga == "buscar") or (not carga_por_quincena and buscar.strip())
+            else "Cargando casos del período…"
         )
         with st.spinner(spinner):
             payload, api_filtro_ok = get_maestro_filas_cached(
@@ -3590,7 +3644,9 @@ def pagina_casos(
             if modo_elegir_proveedor:
                 st.success("No hay registros pendientes de elegir proveedor.")
             else:
-                st.info("Sin datos. Importá Tango desde **Configuración**.")
+                st.info(
+                    "Sin datos en ese rango. Probá otras fechas o importá Tango desde **Configuración**."
+                )
             return
 
         df = preparar_maestro_df(pd.DataFrame(filas))
@@ -4168,14 +4224,7 @@ def pagina_fletes() -> None:
 
     with _panel_acciones("Fletes", "Filtros y acciones"):
         filtros_extra = _ui_filtros_fecha_remito("fletes")
-        anio_mes = int(filtros_extra["mes_control_anio"])
-        mes_num = int(filtros_extra["mes_control_mes"])
-        modo_carga_key = _gestionar_cambio_mes_quincena(
-            key_prefix,
-            anio_mes,
-            mes_num,
-            clear_cache_fn=_clear_fletes_cache,
-        )
+        modo_carga_key = f"{key_prefix}_modo_carga"
 
         f1, f2, f3, f4 = st.columns([2, 2, 2, 2])
         origen_f = f1.selectbox(
@@ -4212,17 +4261,16 @@ def pagina_fletes() -> None:
             sort_keys=True,
             default=str,
         )
-        _invalidar_modo_quincena_si_cambian_filtros(
+        _invalidar_carga_si_cambian_filtros(
             key_prefix,
             firma_ui,
             modo_carga_key,
             clear_cache_fn=_clear_fletes_cache,
         )
 
-        modo_carga = _render_botones_carga_quincena(
+        modo_carga = _render_carga_rango(
             key_prefix,
-            anio_mes,
-            mes_num,
+            filtros_extra,
             buscar,
             clear_cache_fn=_clear_fletes_cache,
             modulo="Fletes",
@@ -4243,14 +4291,16 @@ def pagina_fletes() -> None:
     if st.session_state.get("fletes_solo_pendiente_zona"):
         params_base["solo_pendiente_zona_km"] = True
 
-    params_api = _params_api_quincena(
-        params_base,
-        key_prefix=key_prefix,
-        anio=anio_mes,
-        mes=mes_num,
-        buscar=buscar,
-        modo_carga=modo_carga,
-    )
+    try:
+        params_api = _params_api_rango(
+            params_base,
+            key_prefix=key_prefix,
+            buscar=buscar,
+            modo_carga=modo_carga,
+        )
+    except ValueError as exc:
+        st.error(str(exc))
+        return
 
     firma_filtros = json.dumps(params_api, sort_keys=True, default=str)
     page = _reset_maestro_page_si_cambian_filtros(key_prefix, firma_filtros)
@@ -4370,7 +4420,19 @@ def pagina_fletes() -> None:
             f"Período cargado: **{stats.get('envios_cargados', 0):,}** renglones Tango en memoria."
         )
 
-    _render_panel_fleteros_macro(stats, mes=mes_num, anio=anio_mes)
+    # Mes de referencia para el panel fleteros (usa el "Hasta" del rango activo)
+    from datetime import date as _date_ref
+
+    mes_ref, anio_ref = _date_ref.today().month, _date_ref.today().year
+    activo_panel = st.session_state.get(f"{key_prefix}_rango_activo") or {}
+    fh_panel = activo_panel.get("fecha_hasta") or params_api.get("fecha_hasta")
+    if fh_panel:
+        try:
+            d_panel = _date_ref.fromisoformat(str(fh_panel)[:10])
+            mes_ref, anio_ref = d_panel.month, d_panel.year
+        except ValueError:
+            pass
+    _render_panel_fleteros_macro(stats, mes=mes_ref, anio=anio_ref)
 
     with st.expander("Qué falta bajar de Tango (cuando puedas)"):
         st.markdown(
@@ -4386,26 +4448,35 @@ def pagina_fletes() -> None:
     if (
         fletero_f
         and fletero_f != "Todos"
-        and modo_carga in ("q1", "q2")
+        and modo_carga == "rango"
         and not buscar.strip()
     ):
+        activo = st.session_state.get(f"{key_prefix}_rango_activo") or {}
+        fd = activo.get("fecha_desde") or ""
+        fh = activo.get("fecha_hasta") or ""
+        # Resumen mensual del fletero: usa mes del "Hasta" como referencia
         try:
-            res_f = get_json(
-                "/fletes/internos/resumen",
-                mes=mes_num,
-                anio=anio_mes,
-                fletero=fletero_f,
-            )
-            for row in res_f.get("fleteros") or []:
-                if row.get("nombre_corto") == fletero_f:
-                    st.info(
-                        f"**{fletero_f}** en el mes: "
-                        f"{row.get('entregas', 0)} entregas Drive · "
-                        f"{row.get('matcheadas', 0)} en maestro Fletes · "
-                        f"total a pagar **{fmt_pesos_ar(row.get('total_pagar', 0))}** "
-                        f"(resumen mensual; la grilla respeta la quincena elegida)."
-                    )
-                    break
+            from datetime import date as _date
+
+            d_ref = _date.fromisoformat(fh) if fh else None
+            if d_ref is not None:
+                res_f = get_json(
+                    "/fletes/internos/resumen",
+                    mes=d_ref.month,
+                    anio=d_ref.year,
+                    fletero=fletero_f,
+                )
+                for row in res_f.get("fleteros") or []:
+                    if row.get("nombre_corto") == fletero_f:
+                        st.info(
+                            f"**{fletero_f}** en {d_ref.strftime('%m/%Y')}: "
+                            f"{row.get('entregas', 0)} entregas Drive · "
+                            f"{row.get('matcheadas', 0)} en maestro Fletes · "
+                            f"total a pagar **{fmt_pesos_ar(row.get('total_pagar', 0))}** "
+                            f"(resumen del mes; la grilla respeta el rango "
+                            f"**{fd} → {fh}**)."
+                        )
+                        break
         except Exception:
             pass
 
@@ -4453,7 +4524,7 @@ def pagina_fletes() -> None:
         )
 
     st.caption(
-        "Tras elegir quincena: hasta **30 km reales** automáticos por carga. "
+        "Tras cargar el período: hasta **30 km reales** automáticos por rango. "
         "**Actualizar preview** asigna sucursal/km estimado; **Km reales (500/1000)** geocodifica el resto."
     )
 
@@ -5012,7 +5083,7 @@ def pagina_configuracion() -> None:
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
         st.stop()
 
-    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_users = st.tabs(
+    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_seg = st.tabs(
         [
             "Tango (principal)",
             "Prefactura Clicpaq",
@@ -5022,7 +5093,7 @@ def pagina_configuracion() -> None:
             "Fleteros locales",
             "Cross seguimiento",
             "Sistema",
-            "Usuarios",
+            "Seguridad y acceso",
         ]
     )
 
@@ -5491,8 +5562,8 @@ def pagina_configuracion() -> None:
             except Exception as exc:
                 st.error(str(exc))
 
-    with tab_users:
-        _config_usuarios()
+    with tab_seg:
+        _config_seguridad()
 
 
 # --- Main ---

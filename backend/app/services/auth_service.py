@@ -161,6 +161,17 @@ def set_password(db: Session, username: str, password: str) -> None:
     revoke_user_sessions(db, user.username)
 
 
+def change_own_password(db: Session, username: str, current_password: str, new_password: str) -> None:
+    user = authenticate(db, username, current_password)
+    if user is None:
+        raise ValueError("La contraseña actual no es correcta")
+    if len(new_password or "") < 6:
+        raise ValueError("La nueva contraseña debe tener al menos 6 caracteres")
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    revoke_user_sessions(db, user.username)
+
+
 def update_user(
     db: Session,
     username: str,

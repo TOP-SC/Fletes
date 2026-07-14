@@ -273,8 +273,9 @@
       </div>
     </div>
     <div class="callout-warn">
-      <strong>Super administrador:</strong> el usuario inicial <code>top</code> puede crear y eliminar usuarios en
-      Configuración → pestaña <em>Usuarios</em>. Los demás usuarios solo operan la app.
+      <strong>Super administrador:</strong> el usuario inicial <code>top</code> gestiona usuarios en
+      Configuración → pestaña <em>Usuarios</em> (roles, activar/desactivar, restablecer clave).
+      Los demás usuarios solo operan la app.
     </div>
   </section>
 
@@ -660,12 +661,100 @@
   <!-- USUARIOS -->
   <section id="usuarios">
     <h2>15. Usuarios (solo super administrador)</h2>
+    <p class="section-intro">
+      Configuración → pestaña <strong>Usuarios</strong>. Solo visible si entraste como super administrador
+      (ej. usuario <code>top</code>).
+    </p>
+
+    <div class="callout-tip">
+      <strong>Contraseñas:</strong> se guardan <em>cifradas</em> en el servidor. <strong>No se pueden ver</strong>
+      ni recuperar el texto original. El super admin puede <strong>restablecer</strong> una clave nueva.
+    </div>
+
+    <h3>Resumen en pantalla</h3>
+    <p>Arriba verás tres métricas: usuarios totales, super administradores y activos. Debajo, una tabla con:</p>
+    <table class="data-table">
+      <thead><tr><th>Columna</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td>Usuario</td><td>Nombre de login (minúsculas)</td></tr>
+        <tr><td>Rol</td><td><strong>Operador</strong> o <strong>Super administrador</strong></td></tr>
+        <tr><td>Estado</td><td><strong>Activo</strong> (puede entrar) o <strong>Inactivo</strong> (bloqueado)</td></tr>
+        <tr><td>Alta</td><td>Fecha en que se creó el usuario</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Roles</h3>
+    <table class="data-table">
+      <thead><tr><th>Rol</th><th>Permisos</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Operador</strong></td>
+          <td>Toda la app: Dashboard, Maestro, Resumen, Fletes, imports en Configuración (Tango, tarifarios, etc.).
+          <strong>No</strong> puede gestionar usuarios ni ejecutar cierre mensual destructivo.</td>
+        </tr>
+        <tr>
+          <td><strong>Super administrador</strong></td>
+          <td>Todo lo anterior + pestaña <em>Usuarios</em> + cierre mensual en <em>Sistema</em>.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Alta de usuario</h3>
     <ol class="steps">
-      <li><strong>Configuración → Usuarios</strong><p>Solo visible si entraste como super admin.</p></li>
-      <li><strong>Alta</strong><p>Usuario nuevo + contraseña (mín. 6 caracteres) → <em>Agregar usuario</em>.</p></li>
-      <li><strong>Baja</strong><p>Seleccionar usuario → <em>Eliminar usuario</em> (no elimina super admin).</p></li>
+      <li>
+        <strong>Completar datos</strong>
+        <p><em>Usuario nuevo</em> y <em>Contraseña inicial</em> (mínimo 6 caracteres).</p>
+      </li>
+      <li>
+        <strong>Elegir rol</strong>
+        <p>Selector <em>Operador</em> o <em>Super administrador</em>.</p>
+      </li>
+      <li>
+        <strong>Clic «Agregar usuario»</strong>
+        <p>El usuario aparece en la tabla y ya puede iniciar sesión (si está activo).</p>
+      </li>
     </ol>
-    <p>Usuario inicial de instalación: <code>top</code> (cambiar contraseña en primer uso recomendado).</p>
+
+    <h3>Administrar usuario existente</h3>
+    <ol class="steps">
+      <li>
+        <strong>Seleccionar usuario</strong>
+        <p>En <em>Administrar usuario</em> → desplegable <em>Seleccionar usuario</em>.</p>
+      </li>
+      <li>
+        <strong>Cambiar rol o estado</strong>
+        <p>Rol: Operador / Super administrador. Checkbox <em>Usuario activo</em> para permitir o bloquear el login.</p>
+      </li>
+      <li>
+        <strong>Restablecer contraseña (opcional)</strong>
+        <p>Completar <em>Nueva contraseña</em> y <em>Repetir contraseña</em>. Dejá en blanco si no querés cambiar la clave.</p>
+      </li>
+      <li>
+        <strong>«Guardar cambios»</strong>
+        <p>Al cambiar contraseña o desactivar, se cierran las sesiones abiertas de ese usuario.</p>
+      </li>
+    </ol>
+
+    <h3>Otras acciones</h3>
+    <table class="data-table">
+      <thead><tr><th>Botón</th><th>Cuándo usarlo</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cerrar sesiones del usuario</strong></td><td>Forzar logout (ej. perdió acceso, sesión colgada)</td></tr>
+        <tr><td><strong>Eliminar usuario</strong></td><td>Borrar cuenta (no aplica a super administradores)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout-warn">
+      <strong>Reglas de seguridad:</strong>
+      <ul style="margin:0.5rem 0 0 1.1rem;font-size:0.88rem;">
+        <li>El usuario <code>top</code> (principal) no se puede desactivar ni quitarle super admin.</li>
+        <li>No podés quitarte el rol ni desactivarte a vos mismo.</li>
+        <li>Debe quedar <strong>al menos un</strong> super administrador activo.</li>
+        <li>Usuario inicial recomendado: <code>top</code> — cambiá la contraseña después del primer acceso.</li>
+      </ul>
+    </div>
+
+    <p>Detalle técnico en el expander <em>Roles y seguridad</em> dentro de la misma pestaña en la app.</p>
   </section>
 
   <!-- CIERRE -->
@@ -697,7 +786,8 @@
         <tr><td>Sin tarifa en todo el mes</td><td>Tarifarios → escanear → activar → recalcular → reaplicar reglas</td></tr>
         <tr><td>Prefactura no cruza</td><td>Revisar remito en Excel; ejecutar Cruce prefacturas</td></tr>
         <tr><td>API desactualizada</td><td>IT: actualizar código en servidor y reiniciar servicios</td></tr>
-        <tr><td>Olvidé contraseña</td><td>Super admin crea usuario nuevo o resetea (contactar TOP)</td></tr>
+        <tr><td>Olvidé contraseña</td><td>Super admin → Configuración → Usuarios → <em>Administrar usuario</em> → restablecer contraseña</td></tr>
+        <tr><td>Usuario bloqueado</td><td>Super admin verifica que esté <em>Activo</em> en la tabla de usuarios</td></tr>
       </tbody>
     </table>
   </section>

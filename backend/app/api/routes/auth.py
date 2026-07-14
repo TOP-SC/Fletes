@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import AppUser
 from app.services.auth_service import (
     authenticate,
+    change_own_password,
     create_session,
     create_user,
     delete_user,
@@ -57,6 +58,11 @@ class PasswordIn(BaseModel):
     password: str = Field(min_length=6, max_length=120)
 
 
+class ChangeOwnPasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=120)
+    new_password: str = Field(min_length=6, max_length=120)
+
+
 @router.post("/login", response_model=LoginOut)
 def login(body: LoginIn, db: Session = Depends(get_db)) -> LoginOut:
     user = authenticate(db, body.username, body.password)
@@ -79,6 +85,19 @@ def logout(
 @router.get("/me", response_model=UserOut)
 def me(user: AppUser = Depends(get_current_user)) -> UserOut:
     return user
+
+
+@router.post("/me/password")
+def cambiar_mi_password(
+    body: ChangeOwnPasswordIn,
+    user: AppUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    try:
+        change_own_password(db, user.username, body.current_password, body.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"message": "Contraseña actualizada. Volvé a iniciar sesión."}
 
 
 @router.get("/usuarios", response_model=list[UserOut])
