@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-suc-cc-force-2026-07-14"
+API_BUILD_ESPERADO = "fletes-fix-suc-moneda-2026-07-14"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -136,7 +136,19 @@ MAESTRO_CONTROL = {
     "LOGISTICA", "SEGURO", "GESTION", "ADICIONAL", "PRECIO NETO", "VALOR DECLARADO",
 }
 
-MAESTRO_MONEDA = MAESTRO_CONTROL | {"PESO FACTURADO"}
+# Solo montos (NO incluir "suc" ni "obs": son texto; coerce a número los borraba)
+MAESTRO_MONEDA = {
+    "costo",
+    "total",
+    "dif",
+    "LOGISTICA",
+    "SEGURO",
+    "GESTION",
+    "ADICIONAL",
+    "PRECIO NETO",
+    "VALOR DECLARADO",
+    "PESO FACTURADO",
+}
 
 # Columnas visibles en la grilla principal (el resto va al popup)
 FLETES_VISTA_GRILLA = [
