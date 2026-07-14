@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from app.services.flex_excel import find_column, read_first_sheet
+from app.services.flex_excel import _norm_col, find_column, read_first_sheet
 from app.services.money_utils import parse_quantity
 from app.services.remito_maestro import COLUMNAS_REMITO_OFICIAL, COLUMNAS_REMITO_TRANSITO
 from app.services.remito_resolver import resolver_remitos_fila
@@ -102,11 +102,39 @@ FIELD_CANDIDATES: list[tuple[str, tuple[str, ...]]] = [
 CAMPOS_CRITICOS = ("remito", "cod_articulo", "descripcion", "provincia", "localidad")
 
 
+def _find_columna_sucursal(columns: list[Any], used: set[str]) -> str | None:
+    """Detecta columna Sucursal de Tango aunque venga abreviada (Sucursa, Suc., …)."""
+    disponibles = [c for c in columns if str(c) not in used]
+    col = find_column(
+        disponibles,
+        "SUCURSAL COMPRA",
+        "SUCURSAL DE COMPRA",
+        "SUCURSAL CC",
+        "CENTRO DE COSTO",
+        "CENTRO COSTO",
+        "SUCURSAL",
+        "SUCURSA",
+        "SUC.",
+    )
+    if col:
+        return col
+    for c in disponibles:
+        n = _norm_col(c)
+        if n.startswith("sucur") or n in {"suc", "suc."}:
+            if "deposito" in n or "depósito" in n:
+                continue
+            return str(c)
+    return None
+
+
 def _map_columns(columns: list[Any]) -> dict[str, str]:
     used: set[str] = set()
     mapping: dict[str, str] = {}
     for field, candidates in FIELD_CANDIDATES:
-        col = find_column([c for c in columns if str(c) not in used], *candidates)
+        if field == "sucursal_compra":
+            col = _find_columna_sucursal(columns, used)
+        else:
+            col = find_column([c for c in columns if str(c) not in used], *candidates)
         if col:
             mapping[field] = col
             used.add(col)
@@ -146,6 +174,11 @@ def parse_exportacion_excel(content: bytes) -> list[dict[str, Any]]:
     df = df.dropna(how="all")
     df = df.dropna(axis=1, how="all")
     col_map = _map_columns(list(df.columns))
+    # Si el mapeo falló, rescate: primera columna cuyo nombre empiece con "sucur"
+    if "sucursal_compra" not in col_map:
+        rescue = _find_columna_sucursal(list(df.columns), set())
+        if rescue:
+            col_map["sucursal_compra"] = rescue
     rows: list[dict[str, Any]] = []
     fields = [f for f, _ in FIELD_CANDIDATES if f != "remito"]
 
@@ -159,6 +192,15 @@ def parse_exportacion_excel(content: bytes) -> list[dict[str, Any]]:
             )
             for field in fields
         }
+        # Rescate por valor: celda en columna sucursal aunque el nombre sea raro
+        if not normalized.get("sucursal_compra"):
+            for col_name, val in record.items():
+                n = _norm_col(col_name)
+                if n.startswith("sucur") or n in {"suc", "suc."}:
+                    txt = _cell_str(val)
+                    if txt:
+                        normalized["sucursal_compra"] = txt
+                        break
         principal, entrega, transito = resolver_remitos_fila(series)
         if principal:
             normalized["remito"] = principal

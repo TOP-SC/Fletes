@@ -64,7 +64,12 @@ def listar_maestro(
         campo_fecha=str(filtros.get("campo_fecha") or "cualquiera"),
     )
     from app.services.fletes_km_service import preparar_contexto_km
+    from app.services.rules_service import completar_sucursales_cc
     from app.services.tarifario_version_service import TarifarioContext
+
+    # Completa Suc. / CC (Tango Sucursal o prefijo ML/WC…) y persiste.
+    if completar_sucursales_cc(envios):
+        db.commit()
 
     preparar_contexto_km(db, envios, enrich_limit=0, auto_calc_limit=0)
     tarifario_ctx = TarifarioContext(db)

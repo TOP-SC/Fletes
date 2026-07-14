@@ -189,9 +189,16 @@ def sucursal_desde_cod_cliente(cod_cliente: str | None) -> str | None:
     return pref
 
 
-def asignar_origen_y_sucursal(envio: Envio) -> None:
+def resolver_sucursal_cc(envio: Envio) -> str | None:
+    """
+    Valor que debe verse en Suc. / CC:
+    1) Columna Sucursal de Tango (DI, ML, …) en raw
+    2) sucursal_cc ya guardado (si no es depósito)
+    3) Prefijo del cód. cliente (ML9166 → ML)
+    4) Depósito / origen CD
+    """
     dep = (envio.deposito or "").strip()
-    envio.origen_cd = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
+    origen = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
     suc_compra = None
     if envio.raw_json:
         try:
@@ -201,26 +208,36 @@ def asignar_origen_y_sucursal(envio: Envio) -> None:
             suc_compra = (raw.get("sucursal_compra") or "").strip() or None
         except Exception:
             suc_compra = None
-    # 1) Columna Sucursal de Tango (DI, ML…)
     if suc_compra:
-        envio.sucursal_cc = suc_compra
-        return
-    # 2) Prefijo del código de cliente (ML9166 → ML) — coincide con el centro de costo
+        return suc_compra
+    if envio.sucursal_cc and not es_sucursal_cc_deposito(envio.sucursal_cc, origen):
+        return envio.sucursal_cc.strip()
     from_cli = sucursal_desde_cod_cliente(envio.cod_cliente)
-    if from_cli and (
-        not envio.sucursal_cc
-        or es_sucursal_cc_deposito(envio.sucursal_cc, envio.origen_cd)
-    ):
-        envio.sucursal_cc = from_cli
-        return
-    # 3) No pisar un CC de sucursal ya cargado / editado a mano
-    if envio.sucursal_cc and not es_sucursal_cc_deposito(
-        envio.sucursal_cc, envio.origen_cd
-    ):
-        return
-    # 4) Fallback: depósito / CD origen
-    if envio.origen_cd:
-        envio.sucursal_cc = envio.origen_cd
+    if from_cli:
+        return from_cli
+    if origen:
+        return origen
+    return None
+
+
+def asignar_origen_y_sucursal(envio: Envio) -> None:
+    dep = (envio.deposito or "").strip()
+    envio.origen_cd = DEPOSITO_ORIGEN.get(dep, f"Depósito {dep}" if dep else None)
+    resuelto = resolver_sucursal_cc(envio)
+    if resuelto:
+        envio.sucursal_cc = resuelto
+
+
+def completar_sucursales_cc(envios: list[Envio]) -> int:
+    """Rellena sucursal_cc vacío/depósito en memoria. Devuelve cuántos cambió."""
+    n = 0
+    for envio in envios:
+        antes = (envio.sucursal_cc or "").strip()
+        asignar_origen_y_sucursal(envio)
+        despues = (envio.sucursal_cc or "").strip()
+        if despues and despues != antes:
+            n += 1
+    return n
 
 
 def costo_referencia_linea(envio: Envio) -> float | None:

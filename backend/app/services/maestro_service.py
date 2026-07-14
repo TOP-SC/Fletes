@@ -39,7 +39,11 @@ from app.services.cobro_logistica_service import (
     cobro_red_y_provincia,
 )
 from app.services.alerta_ui import color_fila_maestro
-from app.services.rules_service import costo_referencia_linea, es_amba_gba
+from app.services.rules_service import (
+    costo_referencia_linea,
+    es_amba_gba,
+    resolver_sucursal_cc,
+)
 from app.services.zona_maestro import zona_destino_maestro, zona_origen_maestro
 
 MAESTRO_COLUMNAS = [
@@ -306,7 +310,7 @@ def _fila_maestro_desde_grupo(
         "_total_proveedor": round_pesos(total_proveedor) if total_proveedor else 0.0,
         "total": round_pesos(total_lineas),
         "dif": round_pesos(dif),
-        "suc": base.sucursal_cc,
+        "suc": resolver_sucursal_cc(base) or base.sucursal_cc or "",
         "COD CLIENTE": base.cod_cliente or "",
     }
     return normalize_maestro_montos(fila)
