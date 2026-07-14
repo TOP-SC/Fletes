@@ -66,6 +66,21 @@ COLUMNA_DISPLAY: dict[str, str] = {
     "suc": "Suc.",
     "campo": "Campo",
     "valor": "Valor",
+    "excluir_planilla": "Anular remito",
+    "costo_tarifario": "Costo tarifario",
+    "costo_total": "Costo total",
+    "proveedor_tarifa": "Proveedor tarifa",
+    "prefactura_proveedor": "Prefactura proveedor",
+    "sucursal_cc": "Sucursal CC",
+    "observaciones": "Observaciones",
+    "regla_motivo": "Regla motivo",
+    "alerta_clickpack": "Alerta Clickpack",
+    "abona_wamaro": "Abona Wamaro",
+    "cedol_manual": "CEDOL manual",
+    "entrega_cliente_sospechosa": "Entrega cliente sospechosa",
+    "requiere_elegir_proveedor": "Requiere elegir proveedor",
+    "tipo_gestion": "Tipo gestión",
+    "sub_tipo_gestion": "Sub tipo gestión",
 }
 
 _PARTICULAS = frozenset({"de", "del", "la", "las", "los", "y", "e", "en", "a", "al"})

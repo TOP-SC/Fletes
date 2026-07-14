@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-detalle-adrian-2026-07-14"
+API_BUILD_ESPERADO = "fletes-anular-remito-prov-2026-07-14"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -2233,10 +2233,11 @@ def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, An
     """Detalle: campos editables alineados al feedback de control/liquidación."""
     st.markdown("#### Renglones Tango (artículos / postventa)")
     st.caption(
-        "Filas en **verde** = editables (casos puntuales: excluir remito, corregir costos, "
-        "proveedor, sucursal CC, observaciones). "
-        "Si cambiás solo el proveedor y no tocás costos, al guardar se recalcula la tarifa. "
-        "Si corregís costo a mano, se respeta ese importe."
+        "Filas en **verde** = editables. "
+        "**Anular remito** marca el caso como fuera de liquidación (antes: excluir planilla). "
+        "**Costo tarifario / total:** se calculan solos con el tarifario cargado al cambiar "
+        "proveedor; solo editálos a mano si el cálculo automático está mal (ej. multi‑artículo). "
+        "Sucursal CC y observaciones: para centro de costo y notas de control."
     )
     st.markdown(
         """
@@ -3647,7 +3648,12 @@ def pagina_dashboard() -> None:
         "charts": {
             "provincias": {
                 "labels": [str(r.get("provincia") or "?") for r in prov_rows],
-                "values": [int(r.get("remitos") or 0) for r in prov_rows],
+                "values": [
+                    float(r.get("costo") or 0) if r.get("costo") is not None else int(r.get("remitos") or 0)
+                    for r in prov_rows
+                ],
+                "remitos": [int(r.get("remitos") or 0) for r in prov_rows],
+                "unidad": "pesos",
             },
             "zonas": {
                 "labels": [

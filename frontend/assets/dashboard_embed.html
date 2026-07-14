@@ -251,7 +251,7 @@
       <div class="dash-hero-inner">
         <div class="dash-tag">Vista gerencial · control de fletes</div>
         <h1>¿Cómo está el mes?</h1>
-        <p>Volumen por provincia y zona tarifaria, mix de transportes y proveedores — la foto que sigue el negocio día a día.</p>
+        <p>Costo tarifario por provincia y volumen por zona — base para control y reportes (ej. ARCA).</p>
         <div class="dash-meta" id="dash-meta"></div>
       </div>
     </section>
@@ -261,7 +261,7 @@
 
     <div class="charts-main">
       <div class="chart-card">
-        <h3>Envíos por provincia</h3>
+        <h3>Costo por provincia</h3>
         <p class="sub">Remitos únicos en control interior — top destinos</p>
         <div class="chart-wrap bar-h" id="wrap-prov"><canvas id="chart-prov"></canvas></div>
       </div>
@@ -384,9 +384,19 @@
 
     const provLabels = DATA.charts.provincias.labels || [];
     const provVals = DATA.charts.provincias.values || [];
+    const provPesos = (DATA.charts.provincias.unidad || "") === "pesos";
     const zon = DATA.charts.zonas || { labels: [], values: [], colors: [] };
     if (provLabels.length) {
       syncPairHeights("wrap-prov", "wrap-zon", provLabels.length, zon.labels.length);
+      const provOpts = horizBarOpts(6);
+      if (provPesos) {
+        provOpts.scales.x.ticks.callback = (v) => {
+          const n = Number(v) || 0;
+          if (n >= 1e6) return "$" + (n / 1e6).toFixed(1) + "M";
+          if (n >= 1e3) return "$" + (n / 1e3).toFixed(0) + "k";
+          return "$" + n.toFixed(0);
+        };
+      }
       new Chart(document.getElementById("chart-prov"), {
         type: "bar",
         data: {
@@ -398,7 +408,7 @@
             barThickness: 16,
           }],
         },
-        options: horizBarOpts(6),
+        options: provOpts,
       });
     }
 

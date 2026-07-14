@@ -17,24 +17,42 @@ from app.services.zona_maestro import zona_destino_maestro, zona_origen_maestro
 
 
 def _top_provincias(db: Session, *, limit: int = 8) -> list[dict[str, Any]]:
-    rows = db.execute(
+    """Remitos y costo tarifario por provincia (valorizado para control / ARCA)."""
+    # 1 costo por remito (evita multiplicar renglones del mismo caso)
+    por_remito = (
         select(
-            Envio.provincia,
-            func.count(func.distinct(Envio.remito_norm)).label("remitos"),
+            Envio.provincia.label("provincia"),
+            Envio.remito_norm.label("remito_norm"),
+            func.max(func.coalesce(Envio.costo_tarifario, 0.0)).label("costo"),
         )
         .where(
             Envio.excluir_planilla.is_(False),
             Envio.remito_norm.isnot(None),
             Envio.remito_norm != "",
         )
-        .group_by(Envio.provincia)
-        .order_by(func.count(func.distinct(Envio.remito_norm)).desc())
+        .group_by(Envio.provincia, Envio.remito_norm)
+        .subquery()
+    )
+    rows = db.execute(
+        select(
+            por_remito.c.provincia,
+            func.count().label("remitos"),
+            func.sum(por_remito.c.costo).label("costo"),
+        )
+        .group_by(por_remito.c.provincia)
+        .order_by(func.sum(por_remito.c.costo).desc())
         .limit(limit)
     ).all()
     out: list[dict[str, Any]] = []
-    for prov, n in rows:
+    for prov, n, costo in rows:
         nombre = (prov or "Sin provincia").strip()
-        out.append({"provincia": nombre, "remitos": int(n or 0)})
+        out.append(
+            {
+                "provincia": nombre,
+                "remitos": int(n or 0),
+                "costo": round(float(costo or 0), 2),
+            }
+        )
     return out
 
 
