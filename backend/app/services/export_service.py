@@ -10,6 +10,7 @@ from app.services.maestro_service import (
     MAESTRO_COLUMNAS,
     construir_maestro,
 )
+from app.services.money_utils import aplicar_formato_moneda_hoja
 
 FILL_CONTROL = PatternFill(start_color="E2E9F4", end_color="E2E9F4", fill_type="solid")
 FILL_CONTROL_CELL = PatternFill(start_color="F0F4FA", end_color="F0F4FA", fill_type="solid")
@@ -31,6 +32,7 @@ def _write_sheet(writer: pd.ExcelWriter, df: pd.DataFrame, sheet_name: str) -> N
             cell.fill = FILL_CONTROL
             for row_idx in range(2, len(df) + 2):
                 ws.cell(row=row_idx, column=col_idx).fill = FILL_CONTROL_CELL
+    aplicar_formato_moneda_hoja(ws, list(df.columns))
 
 
 def export_maestro_wamaro(

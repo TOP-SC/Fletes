@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Envio
+from app.services.money_utils import EXCEL_NUM_FMT_PESOS, aplicar_formato_moneda_hoja
 from app.services.rules_service import es_amba_gba
 
 FILL_HEADER = PatternFill(start_color="E2E9F4", end_color="E2E9F4", fill_type="solid")
@@ -90,8 +91,12 @@ def export_costos_por_provincia(db: Session) -> bytes:
                 total_row = len(df) + 2
                 ws.cell(row=total_row, column=1, value="TOTAL")
                 ws.cell(row=total_row, column=2, value=int(df["remitos"].sum()))
-                ws.cell(row=total_row, column=3, value=round(float(df["costo"].sum()), 2))
+                total_cell = ws.cell(
+                    row=total_row, column=3, value=round(float(df["costo"].sum()), 2)
+                )
+                total_cell.number_format = EXCEL_NUM_FMT_PESOS
                 for col in range(1, 4):
                     ws.cell(row=total_row, column=col).font = Font(bold=True)
+            aplicar_formato_moneda_hoja(ws, list(df.columns))
     buf.seek(0)
     return buf.getvalue()

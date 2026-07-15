@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-fix-suc-moneda-2026-07-14"
+API_BUILD_ESPERADO = "fletes-pesos-signo-2026-07-15"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -238,18 +238,27 @@ def fmt_fecha_sin_hora(value: Any) -> str:
 
 
 def fmt_pesos_ar(value: Any) -> str:
-    """Formato visual AR: enteros sin decimales basura; miles con punto."""
+    """Formato visual AR con signo $: $ 1.234 ó $ 1.234,50."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
     try:
         n = float(value)
     except (TypeError, ValueError):
-        return str(value)
+        text = str(value).strip()
+        if not text:
+            return ""
+        if text.startswith("$"):
+            return text
+        return text
+    neg = n < 0
+    n = abs(n)
     if abs(n - round(n)) < 0.01:
-        return f"{int(round(n)):,}".replace(",", ".")
-    ent = f"{int(abs(n)):,}".replace(",", ".")
-    dec = f"{n:.2f}".split(".")[1]
-    return f"-{ent},{dec}" if n < 0 else f"{ent},{dec}"
+        body = f"{int(round(n)):,}".replace(",", ".")
+    else:
+        ent = f"{int(n):,}".replace(",", ".")
+        dec = f"{n:.2f}".split(".")[1]
+        body = f"{ent},{dec}"
+    return f"-$ {body}" if neg else f"$ {body}"
 
 
 def preparar_maestro_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -2452,21 +2461,21 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     if cobro_red or cobro_prov:
         if cobro_prov > 0 and cobro_red > 0:
             st.write(
-                f"**Cobro red (Clicpaq):** ${cobro_red:,.2f} · "
-                f"**Última milla:** ${cobro_prov:,.2f} · "
-                f"**Total cross:** ${cobro_red + cobro_prov + float(m.get('SEGURO') or 0):,.2f} · "
-                f"**Seguro:** ${float(m.get('SEGURO') or 0):,.2f}"
+                f"**Cobro red (Clicpaq):** {fmt_pesos_ar(cobro_red)} · "
+                f"**Última milla:** {fmt_pesos_ar(cobro_prov)} · "
+                f"**Total cross:** {fmt_pesos_ar(cobro_red + cobro_prov + float(m.get('SEGURO') or 0))} · "
+                f"**Seguro:** {fmt_pesos_ar(m.get('SEGURO'))}"
             )
         elif cobro_prov > 0:
             st.write(
-                f"**Cobro red:** ${cobro_red:,.2f} · "
-                f"**Última milla:** ${cobro_prov:,.2f} · "
-                f"**Seguro (caso):** ${float(m.get('SEGURO') or 0):,.2f}"
+                f"**Cobro red:** {fmt_pesos_ar(cobro_red)} · "
+                f"**Última milla:** {fmt_pesos_ar(cobro_prov)} · "
+                f"**Seguro (caso):** {fmt_pesos_ar(m.get('SEGURO'))}"
             )
         else:
             st.write(
-                f"**Logística:** ${cobro_red:,.2f} · "
-                f"**Seguro (caso):** ${float(m.get('SEGURO') or 0):,.2f}"
+                f"**Logística:** {fmt_pesos_ar(cobro_red)} · "
+                f"**Seguro (caso):** {fmt_pesos_ar(m.get('SEGURO'))}"
             )
     if m.get("_requiere_elegir_proveedor"):
         st.warning("Requiere elegir proveedor — andá a **Proveedor a elegir** en el menú.")
@@ -2490,23 +2499,26 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
                     nota = c.get("nota") or ""
                     precio = float(c.get("precio") or 0)
                     subtotal += precio
-                    st.write(f"- **{nom}** — {nota}: ${precio:,.2f}")
+                    st.write(f"- **{nom}** — {nota}: {fmt_pesos_ar(precio)}")
                 if subtotal > 0:
-                    st.write(f"**Suma tarifas crossdock:** ${subtotal:,.2f} (+ seguro en total)")
+                    st.write(f"**Suma tarifas crossdock:** {fmt_pesos_ar(subtotal)} (+ seguro en total)")
             elif det.get("cobro_unidad"):
                 cu = det["cobro_unidad"]
                 st.markdown("#### Cobro del pedido (un envío)")
-                st.write(f"**{cu.get('resumen', '')}** — logística ${float(cu.get('logistica') or 0):,.2f}")
+                st.write(
+                    f"**{cu.get('resumen', '')}** — logística "
+                    f"{fmt_pesos_ar(cu.get('logistica'))}"
+                )
                 for t in cu.get("tramos") or []:
                     st.write(
                         f"- {etiqueta_proveedor(t.get('proveedor'))}: "
-                        f"${float(t.get('monto') or 0):,.2f} {t.get('nota') or ''}"
+                        f"{fmt_pesos_ar(t.get('monto'))} {t.get('nota') or ''}"
                     )
             elif isinstance(parsed, list) and parsed:
                 st.markdown("#### Candidatos tarifario")
                 for c in parsed:
                     nom = etiqueta_proveedor(c.get("proveedor"))
-                    st.write(f"- {nom}: ${c.get('precio', 0):,.2f}")
+                    st.write(f"- {nom}: {fmt_pesos_ar(c.get('precio'))}")
             if det.get("cobro_renglones"):
                 st.markdown("#### Renglones del pedido")
                 from app.services.bultos_service import etiqueta_bultos_detalle
@@ -3654,7 +3666,7 @@ def pagina_dashboard() -> None:
                 "accent": "#059669",
             },
             {
-                "valor": _fmt_pesos_compact(diff_abs) if diff_abs else "0",
+                "valor": _fmt_pesos_compact(diff_abs) if diff_abs else "$ 0",
                 "titulo": "Desvío acumulado",
                 "detalle": "Diferencia tarifa vs prefactura (absoluto)",
                 "accent": "#d97706" if diff_abs else "#059669",

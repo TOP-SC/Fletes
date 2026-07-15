@@ -9,8 +9,36 @@ import pandas as pd
 CAMPOS_MONEDA = frozenset({
     "LOGISTICA", "SEGURO", "GESTION", "ADICIONAL", "VALOR DECLARADO", "PRECIO NETO",
     "costo", "total", "dif", "precio", "importe", "costo_tarifario", "costo_total",
-    "prefactura_proveedor", "diferencia", "PESO FACTURADO",
+    "prefactura_proveedor", "diferencia", "PESO FACTURADO", "COBRO RED", "COBRO PROVINCIA",
 })
+
+# Formato Excel (openpyxl): mantiene número editable y muestra $
+EXCEL_NUM_FMT_PESOS = '"$"#,##0.00'
+
+
+def es_columna_moneda(nombre: str | None) -> bool:
+    if not nombre:
+        return False
+    key = str(nombre).strip()
+    return key in CAMPOS_MONEDA or key.lower() in CAMPOS_MONEDA
+
+
+def aplicar_formato_moneda_hoja(ws, columnas: list[Any], *, fila_inicio: int = 2) -> None:
+    """Aplica formato $ a columnas monetarias de una hoja openpyxl ya escrita."""
+    for col_idx, col_name in enumerate(columnas, start=1):
+        if not es_columna_moneda(str(col_name)):
+            continue
+        for row_idx in range(fila_inicio, ws.max_row + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if cell.value is None or cell.value == "":
+                continue
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = EXCEL_NUM_FMT_PESOS
+                continue
+            n = parse_money(cell.value)
+            if n is not None:
+                cell.value = n
+                cell.number_format = EXCEL_NUM_FMT_PESOS
 
 
 def parse_money(value: Any) -> float | None:
