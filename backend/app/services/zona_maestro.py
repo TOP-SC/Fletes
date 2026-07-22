@@ -1,4 +1,4 @@
-"""Códigos de zona del maestro manual WAMARO (C0, B3, S0, …)."""
+"""Códigos de zona del maestro manual WAMARO (C0, B3, S0, K0, …)."""
 
 from __future__ import annotations
 
@@ -15,12 +15,61 @@ _CABA_PROVINCIAS = frozenset(
     }
 )
 
-# Capitales provinciales → código legacy (resto de la provincia = interior).
-_CAPITALES: dict[str, tuple[str, str]] = {
-    "SANTA FE": ("S0", "SANTA FE CAPITAL"),
-    "CHACO": ("H0", "CHACO CAPITAL"),
-    "MISIONES": ("N0", "MISIONES CAPITAL"),
-    "SAN LUIS": ("D0", "SAN LUIS CAPITAL"),
+# Capitales provinciales → código CEDOL / legacy CLP (resto de la provincia = interior).
+# Valor: (código, etiqueta, aliases de localidad capital)
+_CAPITALES: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "SANTA FE": ("S0", "SANTA FE CAPITAL", ("SANTA FE",)),
+    "CHACO": ("H0", "CHACO CAPITAL", ("RESISTENCIA",)),
+    "MISIONES": ("N0", "MISIONES CAPITAL", ("POSADAS",)),
+    "SAN LUIS": ("D0", "SAN LUIS CAPITAL", ("SAN LUIS",)),
+    "CATAMARCA": (
+        "K0",
+        "CATAMARCA CAPITAL",
+        ("SAN FERNANDO DEL VALLE DE CATAMARCA", "CATAMARCA"),
+    ),
+    "CORDOBA": ("X0", "CORDOBA CAPITAL", ("CORDOBA",)),
+    "MENDOZA": ("M0", "MENDOZA CAPITAL", ("MENDOZA",)),
+    "SAN JUAN": ("J0", "SAN JUAN CAPITAL", ("SAN JUAN",)),
+    "LA RIOJA": ("F0", "LA RIOJA CAPITAL", ("LA RIOJA",)),
+    "SALTA": ("A0", "SALTA CAPITAL", ("SALTA",)),
+    "JUJUY": ("Y0", "JUJUY CAPITAL", ("SAN SALVADOR DE JUJUY", "JUJUY")),
+    "TUCUMAN": ("T1", "TUCUMAN CAPITAL", ("SAN MIGUEL DE TUCUMAN", "TUCUMAN")),
+    "ENTRE RIOS": ("E0", "ENTRE RIOS CAPITAL", ("PARANA",)),
+    "NEUQUEN": ("Q0", "NEUQUEN CAPITAL", ("NEUQUEN",)),
+    "RIO NEGRO": ("R0", "RIO NEGRO CAPITAL", ("VIEDMA",)),
+    "CHUBUT": ("U0", "CHUBUT CAPITAL", ("RAWSON",)),
+    "SANTA CRUZ": ("Z0", "SANTA CRUZ CAPITAL", ("RIO GALLEGOS",)),
+    "FORMOSA": ("P0", "FORMOSA CAPITAL", ("FORMOSA",)),
+    "LA PAMPA": ("L0", "LA PAMPA CAPITAL", ("SANTA ROSA",)),
+    "SANTIAGO DEL ESTERO": (
+        "G0",
+        "SANTIAGO DEL ESTERO CAPITAL",
+        ("SANTIAGO DEL ESTERO",),
+    ),
+}
+
+# Interior explícito (evita abreviar provincia a 2 letras tipo CATAMARCA→CA).
+_INTERIORES: dict[str, tuple[str, str]] = {
+    "SANTA FE": ("S1", "SANTA FE INTERIOR"),
+    "MENDOZA": ("M1", "MENDOZA INTERIOR"),
+    "RIO NEGRO": ("R1", "RIO NEGRO INTERIOR"),
+    "SANTA CRUZ": ("Z1", "SANTA CRUZ INTERIOR"),
+    "SAN JUAN": ("J1", "SAN JUAN INTERIOR"),
+    "CHACO": ("H1", "CHACO INTERIOR"),
+    "MISIONES": ("N1", "MISIONES INTERIOR"),
+    "SAN LUIS": ("D1", "SAN LUIS INTERIOR"),
+    "CATAMARCA": ("K1", "CATAMARCA INTERIOR"),
+    "CORDOBA": ("X1", "CORDOBA INTERIOR"),
+    "LA RIOJA": ("F1", "LA RIOJA INTERIOR"),
+    "SALTA": ("A1", "SALTA INTERIOR"),
+    "JUJUY": ("Y1", "JUJUY INTERIOR"),
+    "TUCUMAN": ("T2", "TUCUMAN INTERIOR"),
+    "ENTRE RIOS": ("E1", "ENTRE RIOS INTERIOR"),
+    "NEUQUEN": ("Q1", "NEUQUEN INTERIOR"),
+    "CHUBUT": ("U1", "CHUBUT INTERIOR"),
+    "FORMOSA": ("P1", "FORMOSA INTERIOR"),
+    "LA PAMPA": ("L1", "LA PAMPA INTERIOR"),
+    "SANTIAGO DEL ESTERO": ("G1", "SANTIAGO DEL ESTERO INTERIOR"),
 }
 
 _LOCALIDADES_ESPECIALES: dict[str, tuple[str, str]] = {
@@ -69,28 +118,19 @@ def zona_destino_maestro(
         return ("B3", "INTERIOR BUENOS AIRES")
 
     if prov in _CAPITALES:
-        cap_label = _CAPITALES[prov][1]
-        if loc and (cap_label in loc or "CAPITAL" in loc):
-            return _CAPITALES[prov]
+        cap_code, cap_label, aliases = _CAPITALES[prov]
+        if loc and (
+            "CAPITAL" in loc
+            or loc == prov
+            or any(a == loc or a in loc or loc in a for a in aliases)
+        ):
+            return (cap_code, cap_label)
 
-    if prov == "SANTA FE":
-        return ("S1", "SANTA FE INTERIOR")
-    if prov == "MENDOZA":
-        return ("M1", "MENDOZA INTERIOR")
-    if prov == "RIO NEGRO":
-        return ("R1", "RIO NEGRO INTERIOR")
-    if prov == "SANTA CRUZ":
-        return ("Z1", "SANTA CRUZ INTERIOR")
-    if prov == "SAN JUAN":
-        return ("J1", "SAN JUAN INTERIOR")
-    if prov == "CHACO":
-        return ("H1", "CHACO INTERIOR")
-    if prov == "MISIONES":
-        return ("N1", "MISIONES INTERIOR")
-    if prov == "SAN LUIS":
-        return ("D1", "SAN LUIS INTERIOR")
+    if prov in _INTERIORES:
+        return _INTERIORES[prov]
 
     if prov:
-        cod = prov[:2].ljust(2, "0")
-        return (cod, f"{prov} INTERIOR")
+        # Fallback: letra + 1 (interior), no las 2 primeras letras (CA ≠ Catamarca CLP).
+        letra = prov[0]
+        return (f"{letra}1", f"{prov} INTERIOR")
     return ("", "")

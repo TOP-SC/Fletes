@@ -77,6 +77,7 @@ MAESTRO_COLUMNAS = [
     "dif",
     "suc",
     "COD CLIENTE",
+    "FECHA PRESENTACION",
 ]
 
 COLUMNAS_CONTROL_MAESTRO = {"obs", "costo", "total", "dif", "suc", "LOGISTICA", "SEGURO", "GESTION", "PRECIO NETO"}
@@ -275,8 +276,18 @@ def _fila_maestro_desde_grupo(
         "FECHA": base.fecha_entrega or base.fecha_pedido,
         "FECHA PEDIDO": formato_fecha_grilla(base.fecha_pedido),
         "FECHA ENTREGA": formato_fecha_grilla(base.fecha_entrega),
+        "FECHA PRESENTACION": formato_fecha_grilla(
+            next(
+                (l.fecha_presentacion_pf for l in lineas if l.fecha_presentacion_pf),
+                None,
+            )
+        ),
         "ESTADO PEDIDO": (base.estado_pedido or "").strip(),
-        "ENVIO": base.nro_pedido,
+        "ENVIO": next(
+            (l.nro_envio_clp for l in lineas if l.nro_envio_clp),
+            None,
+        )
+        or base.nro_pedido,
         "REMITOS": texto_remito_grupo(lineas),
         "ESTADO REMITO": etiqueta_estado_remito(estado_remito_envio(base)),
         "_estado_remito": estado_remito_envio(base),

@@ -70,6 +70,8 @@ class Envio(Base):
 
     macheo_estado: Mapped[str | None] = mapped_column(String(30))
     prefactura_clickpac_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nro_envio_clp: Mapped[str | None] = mapped_column(String(50))
+    fecha_presentacion_pf: Mapped[str | None] = mapped_column(String(30))
     postventa_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tipo_gestion: Mapped[str | None] = mapped_column(String(80))
     sub_tipo_gestion: Mapped[str | None] = mapped_column(String(80))
@@ -100,6 +102,7 @@ class PrefacturaClickpac(Base):
     import_batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     remito: Mapped[str | None] = mapped_column(String(50))
     remito_norm: Mapped[str | None] = mapped_column(String(40), index=True)
+    nro_envio: Mapped[str | None] = mapped_column(String(50))
     fecha_reporte: Mapped[str | None] = mapped_column(String(30))
     importe: Mapped[float] = mapped_column(Float)
     provincia: Mapped[str | None] = mapped_column(String(80))

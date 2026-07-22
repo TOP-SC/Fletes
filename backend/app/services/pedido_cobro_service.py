@@ -188,6 +188,10 @@ def interpretar_pedido(lineas: list[Envio]) -> InterpretacionPedido:
 
     ref = renglones[0]
     advertencias.append("Tipo de producto no clasificado; se usa línea principal.")
+    if all(r.tipo_linea == "ACCESORIO" for r in renglones):
+        advertencias.append(
+            "Paquetería/accesorios (patas/almohadas/sábanas) sin tarifa fija — revisar costo."
+        )
     tipo = "MUEBLES" if ref.tipo_linea == "DIVAN" else "COLCHON"
     return InterpretacionPedido(
         nro_pedido=nro,

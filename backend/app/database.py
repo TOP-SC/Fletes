@@ -38,6 +38,11 @@ _MIGRATIONS: dict[str, list[tuple[str, str]]] = {
         ("cedol_codigo", "VARCHAR(8)"),
         ("cedol_manual", "BOOLEAN DEFAULT 0"),
         ("cod_cliente", "VARCHAR(40)"),
+        ("nro_envio_clp", "VARCHAR(50)"),
+        ("fecha_presentacion_pf", "VARCHAR(30)"),
+    ],
+    "prefacturas_clickpac": [
+        ("nro_envio", "VARCHAR(50)"),
     ],
     "tarifas": [("cedol", "VARCHAR(40)"), ("version_id", "INTEGER")],
     "flete_distancias": [("domicilio_fp", "VARCHAR(64)")],

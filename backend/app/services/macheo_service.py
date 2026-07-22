@@ -1,6 +1,7 @@
 """Paso 3 — Macheo Clickpack ↔ planilla SommierCenter (Tango)."""
 
 from collections import defaultdict
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,14 +31,35 @@ def _envio_indexable_macheo(envio: Envio) -> bool:
     return cod in (COD_EXPRESO_CLICPAQ, COD_CROSSDOCKING, "83")
 
 
+def _claves_remito(remito: str | None, remito_norm: str | None) -> set[str]:
+    """Variantes de clave para tolerar ceros, guiones y cuerpos solo-dígitos."""
+    keys: set[str] = set()
+    if remito_norm:
+        keys.add(remito_norm)
+    norm = normalizar_remito(remito)
+    if norm:
+        keys.add(norm)
+    digits = re.sub(r"\D", "", str(remito or ""))
+    if digits:
+        stripped = digits.lstrip("0") or digits
+        keys.add(stripped)
+        keys.add(digits)
+        # Últimos 10–12 dígitos (cuerpo típico Tango R00…)
+        if len(stripped) > 12:
+            keys.add(stripped[-12:])
+        if len(stripped) > 10:
+            keys.add(stripped[-10:])
+    return {k for k in keys if k}
+
+
 def _index_envios(envios: list[Envio]) -> dict[str, list[Envio]]:
     idx: dict[str, list[Envio]] = defaultdict(list)
     for e in envios:
         if not _envio_indexable_macheo(e):
             continue
-        key = e.remito_norm or normalizar_remito(e.remito)
-        if key:
-            idx[key].append(e)
+        for key in _claves_remito(e.remito, e.remito_norm):
+            if e not in idx[key]:
+                idx[key].append(e)
     return idx
 
 
@@ -54,16 +76,23 @@ def ejecutar_macheo_clickpack(db: Session) -> dict[str, int]:
         "sin_match_envio": 0,
     }
     matched_keys: set[str] = set()
+    matched_envio_ids: set[int] = set()
 
     for pf in prefacturas:
-        key = pf.remito_norm or ""
-        grupo = idx.get(key, [])
+        claves = _claves_remito(pf.remito, pf.remito_norm)
+        grupo: list[Envio] = []
+        seen: set[int] = set()
+        for key in claves:
+            for e in idx.get(key, []):
+                if e.id not in seen:
+                    grupo.append(e)
+                    seen.add(e.id)
         if not grupo:
             pf.macheo_estado = "sin_match"
             stats["sin_match_prefactura"] += 1
             continue
 
-        matched_keys.add(key)
+        matched_keys |= claves
         estado = "matcheado" if len(grupo) == 1 else "conjunto"
         if estado == "conjunto":
             stats["conjuntos"] += 1
@@ -75,6 +104,11 @@ def ejecutar_macheo_clickpack(db: Session) -> dict[str, int]:
             e.prefactura_clickpac_id = pf.id
             e.macheo_estado = estado
             e.prefactura_proveedor = pf.importe
+            if pf.nro_envio:
+                e.nro_envio_clp = pf.nro_envio
+            if pf.fecha_reporte:
+                e.fecha_presentacion_pf = pf.fecha_reporte
+            matched_envio_ids.add(e.id)
 
         recalcular_grupo(grupo)
         for e in grupo:
@@ -83,9 +117,13 @@ def ejecutar_macheo_clickpack(db: Session) -> dict[str, int]:
     for key, grupo in idx.items():
         if key not in matched_keys:
             for e in grupo:
+                if e.id in matched_envio_ids:
+                    continue
                 if e.alerta_clickpack and e.macheo_estado not in ("matcheado", "conjunto"):
                     e.macheo_estado = "pendiente_clickpack"
-            stats["sin_match_envio"] += len(grupo)
+            stats["sin_match_envio"] += len(
+                [e for e in grupo if e.id not in matched_envio_ids]
+            )
 
     db.commit()
     return stats
@@ -97,7 +135,14 @@ def aplicar_postventa_a_envios(db: Session) -> dict[str, int]:
     idx = _index_envios(envios)
     aplicados = 0
     for reg in registros:
-        grupo = idx.get(reg.remito_norm or "", [])
+        claves = _claves_remito(reg.remito, reg.remito_norm)
+        grupo: list[Envio] = []
+        seen: set[int] = set()
+        for key in claves:
+            for e in idx.get(key, []):
+                if e.id not in seen:
+                    grupo.append(e)
+                    seen.add(e.id)
         for e in grupo:
             aplicar_regla_postventa_a_envio(e, reg)
             aplicados += 1
@@ -114,7 +159,14 @@ def ejecutar_conciliacion_liquidacion(db: Session) -> dict[str, int]:
     ok = desvio = sin_match = 0
 
     for lin in lineas:
-        grupo = idx.get(lin.remito_norm or "", [])
+        claves = _claves_remito(lin.remito, lin.remito_norm)
+        grupo: list[Envio] = []
+        seen: set[int] = set()
+        for key in claves:
+            for e in idx.get(key, []):
+                if e.id not in seen:
+                    grupo.append(e)
+                    seen.add(e.id)
         if not grupo:
             lin.macheo_estado = "sin_match"
             sin_match += 1

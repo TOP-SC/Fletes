@@ -277,6 +277,13 @@ def aplicar_reglas_envio(envio: Envio, *, preservar_postventa: bool = False) -> 
         es_retiro_sucursal(envio.transporte_nombre, envio.transporte_cod)
         or es_amba_gba(envio.provincia, envio.localidad, envio.cp)
     )
+    # Postventa valorizable (cambio/garantía/gestión retiro): entra al maestro interior.
+    if envio.regla_postventa in (
+        "gestion_retiro_25",
+        "cruce_medidas_aprobado",
+        "viaje_aprobado",
+    ) and not es_amba_gba(envio.provincia, envio.localidad, envio.cp):
+        excluir = False
     alerta = posible_clickpack(
         envio.transporte_nombre, envio.deposito, envio.transporte_cod
     )

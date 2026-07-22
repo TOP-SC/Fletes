@@ -32,6 +32,7 @@ from app.services.maestro_service import (
     _fila_maestro_desde_grupo,
     _origen_planilla,
 )
+from app.services.postventa_rules import postventa_valoriza_retiro
 from app.services.remito_maestro import clave_agrupacion_caso, estado_remito_envio
 from app.transporte_reglas import (
     COD_EXPRESO_CLICPAQ,
@@ -116,13 +117,15 @@ def es_circuito_log_wamaro_adrian(envio: Envio) -> bool:
         return False
     if estado_remito_envio(envio) != "con_remito":
         return False
-    if es_retiro_sin_flete_domicilio(envio):
+
+    valorizable = postventa_valoriza_retiro(envio.regla_postventa)
+    if es_retiro_sin_flete_domicilio(envio) and not valorizable:
         return False
-    if excluir_planilla_transporte(envio.transporte_cod, envio.transporte_nombre):
+    if excluir_planilla_transporte(envio.transporte_cod, envio.transporte_nombre) and not valorizable:
         return False
 
     cod = normalizar_transporte_cod(envio.transporte_cod, envio.transporte_nombre) or ""
-    if cod not in _COD_LOG_ADRIAN:
+    if cod not in _COD_LOG_ADRIAN and not valorizable:
         return False
 
     estado = (envio.estado_pedido or "").upper().strip()

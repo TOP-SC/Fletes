@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-activar-sin-timeout-2026-07-22"
+API_BUILD_ESPERADO = "fletes-feedback-adrian-2026-07-22"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -172,7 +172,9 @@ FLETES_VISTA_GRILLA = [
 MAESTRO_VISTA_GRILLA = [
     "FECHA PEDIDO",
     "FECHA ENTREGA",
+    "FECHA PRESENTACION",
     "ESTADO PEDIDO",
+    "ENVIO",
     "REMITOS",
     "ESTADO REMITO",
     "NRO TRANSP",
@@ -196,7 +198,9 @@ MAESTRO_COL_RATIOS: dict[str, float] = {
     "FECHA": 0.72,
     "FECHA PEDIDO": 0.68,
     "FECHA ENTREGA": 0.68,
+    "FECHA PRESENTACION": 0.72,
     "ESTADO PEDIDO": 0.82,
+    "ENVIO": 0.7,
     "ESTADO REMITO": 0.78,
     "NRO TRANSP": 0.38,
     "REMITOS": 0.95,
@@ -3712,7 +3716,8 @@ def pagina_dashboard() -> None:
     st.divider()
     st.subheader("Export contable / ARCA")
     st.caption(
-        "Costos de flete por provincia (Interior + CABA/AMBA) — base para enviar a contabilidad."
+        "Formato contable (hojas Datos de la Empresa + Listado por Imputación Contable "
+        "con columnas por provincia, más resúmenes Interior / CABA-AMBA)."
     )
     arca_key = "dashboard_export_provincias_xlsx"
     if st.button("Generar Excel costos por provincia", key="dash_arca_export_btn"):
@@ -4293,8 +4298,9 @@ def pagina_modo_adrian() -> None:
                 "y se ven en **Fletes** — no en esta planilla diaria.  \n\n"
                 "**Resumen (LOG diario):** planilla diaria **WAMARO TORTUGUITAS** (CD Tortuguitas) — "
                 "canal **51** (Expreso Clicpaq) y **83** (La Costa), remito oficial, "
-                "un Excel por **fecha de entrega**. Mismo Tango ya importado; "
-                "antes se armaba a mano, un archivo por día.",
+                "un Excel por **fecha de entrega** (día completo, no solo la página en pantalla). "
+                "Columna **ENVIO** = nº de envío CLP cuando hay prefactura cruzada. "
+                "Mismo Tango ya importado; antes se armaba a mano, un archivo por día.",
             ),
         ],
     )
@@ -4502,24 +4508,28 @@ def pagina_modo_adrian() -> None:
         ),
     )
 
-    if not ver_todo:
+    if not ver_todo and sel_dia:
         export_key = "adrian_export_xlsx"
         from datetime import date as _date
 
         d_obj = _date.fromisoformat(sel_dia)
         fname = f"WAMARO TORTUGUITAS - {d_obj.day:02d}_{d_obj.month:02d}_{d_obj.year}.xlsx"
 
+        st.caption(
+            "El Excel incluye **todos los remitos del día** (formato WAMARO / devolución a CLP), "
+            "no solo la página visible en pantalla."
+        )
         if st.button("Generar Excel del día (formato WAMARO)", key="adrian_export_btn"):
             try:
-                with st.spinner("Generando Excel…"):
-                    with httpx.Client(base_url=API_URL, timeout=120.0) as c:
+                with st.spinner("Generando Excel del día completo…"):
+                    with httpx.Client(base_url=API_URL, timeout=180.0) as c:
                         r = c.get(
                             "/modo-adrian/export-dia",
                             params={"dia": sel_dia, "planilla": planilla_api},
                         )
                         r.raise_for_status()
                     st.session_state[export_key] = r.content
-                st.success("Planilla lista — descargá abajo.")
+                st.success("Planilla del día lista — descargá abajo.")
             except Exception as exc:
                 st.error(f"No se pudo exportar: {exc}")
 
@@ -4531,6 +4541,11 @@ def pagina_modo_adrian() -> None:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="adrian_export_dl",
             )
+    elif ver_todo:
+        st.info(
+            "Para descargar el Excel WAMARO, elegí un **día concreto** en el selector "
+            "(el export es por fecha de entrega, día completo)."
+        )
 
 
 def pagina_fletes() -> None:

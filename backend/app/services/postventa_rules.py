@@ -50,6 +50,18 @@ def postventa_usa_tarifario_fletes_amba(regla: str | None) -> bool:
     )
 
 
+def postventa_valoriza_retiro(regla: str | None) -> bool:
+    """
+    Retiros/cambios postventa que SÍ deben abonarse (garantía, autorizados, gestión).
+    Entran al maestro interior / Resumen aunque el transporte diga «retiro».
+    """
+    return regla in (
+        "gestion_retiro_25",
+        "cruce_medidas_aprobado",
+        "viaje_aprobado",
+    )
+
+
 def clasificar_postventa(motivo: str | None, tipo: str | None) -> str:
     text = f"{motivo or ''} {tipo or ''}".upper()
     if any(k in text for k in ("CAMBIO", "GESTION DE RETIRO", "GESTIÓN DE RETIRO", "RETIRO")):
@@ -137,6 +149,13 @@ def _aplicar_regla_a_envio(envio: Envio, regla: str, motivo_texto: str) -> None:
     else:
         envio.regla_color = "naranja"
         envio.regla_motivo = obs
+
+    # Retiros valorizables: no dejarlos fuera del maestro interior (salvo AMBA puro).
+    if postventa_valoriza_retiro(regla):
+        from app.services.rules_service import es_amba_gba
+
+        if not es_amba_gba(envio.provincia, envio.localidad, envio.cp):
+            envio.excluir_planilla = False
 
 
 def aplicar_postventa_desde_tango(envio: Envio) -> None:
