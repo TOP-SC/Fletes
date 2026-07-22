@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-tarifario-nuevo-2026-07-22"
+API_BUILD_ESPERADO = "fletes-activar-sin-timeout-2026-07-22"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5681,10 +5681,12 @@ def pagina_configuracion() -> None:
                             )
                             if c4.button("Activar", key=f"act_{vid}", type="primary"):
                                 try:
-                                    act_params: dict[str, Any] = {"recalcular": True}
+                                    # Activar sin recalcular masivo (evita timeout).
+                                    # Después: botón «Recalcular costos con tarifario».
+                                    act_params: dict[str, Any] = {"recalcular": False}
                                     if vig:
                                         act_params["vigencia_desde"] = vig.isoformat()
-                                    with api_client() as c:
+                                    with httpx.Client(base_url=API_URL, timeout=180.0) as c:
                                         r = c.post(
                                             f"/tarifas/versiones/{vid}/activar",
                                             params=act_params,
@@ -5694,7 +5696,10 @@ def pagina_configuracion() -> None:
                                     if data.get("omitido"):
                                         st.info(data.get("message", "Sin cambios"))
                                     else:
-                                        st.success(data.get("message", "Activada"))
+                                        st.success(
+                                            (data.get("message") or "Activada")
+                                            + " — ahora usá **Recalcular costos con tarifario** abajo."
+                                        )
                                     st.rerun()
                                 except Exception as exc:
                                     st.error(str(exc))
@@ -5777,10 +5782,14 @@ def pagina_configuracion() -> None:
             st.caption(f"Tarifas en versiones activas: {len(tarifas)}")
             st.dataframe(pd.DataFrame(tarifas), width="stretch", height=220)
             if st.button("Recalcular costos con tarifario"):
-                with api_client() as c:
-                    r = c.post("/tarifas/recalcular-envios")
-                    r.raise_for_status()
-                st.success(r.json())
+                try:
+                    with st.spinner("Recalculando costos… puede tardar varios minutos."):
+                        with httpx.Client(base_url=API_URL, timeout=900.0) as c:
+                            r = c.post("/tarifas/recalcular-envios")
+                            r.raise_for_status()
+                    st.success(r.json())
+                except Exception as exc:
+                    st.error(str(exc))
         except Exception as exc:
             st.error(str(exc))
 
