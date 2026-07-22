@@ -469,6 +469,17 @@ def importar_archivo_como_borrador(
             activadas.append(act_id)
 
     db.commit()
+    if not bloques:
+        return {
+            "borradores": [],
+            "omitidos": [],
+            "activadas_auto": [],
+            "message": (
+                "No se reconocieron tarifas en el Excel. "
+                "Usá el Mantello (hojas clicpaq/fransof/…) o una matriz provincial "
+                "tipo Bedtime/Wamaro (provincia + CEDOL + precios)."
+            ),
+        }
     if omitidos and not borradores:
         msg = f"Sin cambios: {', '.join(o['proveedor'] for o in omitidos)} ya coincide con la versión activa."
     elif omitidos:

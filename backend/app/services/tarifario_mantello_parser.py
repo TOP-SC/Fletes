@@ -245,6 +245,37 @@ def _parse_fletes_sucursales(df: pd.DataFrame) -> list[dict[str, Any]]:
     return rows
 
 
+def _parece_matriz_provincia(df: pd.DataFrame) -> bool:
+    """
+    Matriz tipo CLICPAQ (provincia | zona | CEDOL | 7 precios),
+    aunque la hoja no se llame 'clicpaq' (ej. 'NUEVO' / Bedtime julio).
+    """
+    if df.shape[0] < 4 or df.shape[1] < 10:
+        return False
+    cedol_ok = 0
+    for i in range(min(len(df), 25)):
+        cedol = _cell_str(df.iloc[i, 2]) if df.shape[1] > 2 else None
+        if cedol and re.fullmatch(r"[A-Z]\d+", cedol.upper()):
+            precio = parse_money(df.iloc[i, 3]) if df.shape[1] > 3 else None
+            if precio is not None and precio > 0:
+                cedol_ok += 1
+    if cedol_ok < 3:
+        return False
+    # Evitar hojas de trabajo (Hoja1) con layout distinto / sin título de matriz.
+    blob = " ".join(
+        str(x)
+        for x in df.iloc[:4].astype(str).values.flatten().tolist()
+        if str(x).lower() != "nan"
+    ).upper()
+    return (
+        "TARIFARIO" in blob
+        or "COLCHON" in blob
+        or "COLCHÓN" in blob
+        or "CONJUNTO" in blob
+        or "PROVINCIA" in blob
+    )
+
+
 def _parse_sheet_rows(sheet: str, df: pd.DataFrame) -> tuple[str | None, list[dict[str, Any]]]:
     key = sheet.strip().lower()
     if key == "clicpaq":
@@ -262,6 +293,11 @@ def _parse_sheet_rows(sheet: str, df: pd.DataFrame) -> tuple[str | None, list[di
     if key == "fletes sucursales":
         rows = _parse_fletes_sucursales(df)
         return "FLETES_SUC", rows
+    # Excel Bedtime / Wamaro: hoja renombrada (NUEVO, JULIO, etc.) con misma matriz.
+    if _parece_matriz_provincia(df):
+        rows = _parse_clicpaq(df)
+        if rows:
+            return "CLICPAQ", rows
     return None, []
 
 
@@ -301,9 +337,16 @@ _HOJAS_MANTELLO = {"clicpaq", "fransof", "alfaro", "lbo cp", "fletes sucursales"
 
 
 def is_tarifario_mantello(content: bytes) -> bool:
+    """True si hay hojas Mantello clásicas o una matriz provincial (Bedtime/Wamaro)."""
     try:
         xl = pd.ExcelFile(BytesIO(content))
         names = {s.strip().lower() for s in xl.sheet_names}
-        return bool(names & _HOJAS_MANTELLO)
+        if names & _HOJAS_MANTELLO:
+            return True
+        for sheet in xl.sheet_names:
+            df = pd.read_excel(xl, sheet_name=sheet, header=None)
+            if _parece_matriz_provincia(df):
+                return True
+        return False
     except Exception:
         return False
