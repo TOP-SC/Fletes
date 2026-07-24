@@ -113,6 +113,60 @@ async def cross_importar(
     )
 
 
+@router.post("/import-varios")
+async def cross_import_varios(
+    files: list[UploadFile] = File(...),
+    matchear: bool = Query(True),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Subí Cross 3/4 (u otras) bajadas del navegador.
+    No requiere cambiar permisos Drive ni proyecto Google Cloud.
+    """
+    from app.config import CROSS_INBOX_DIR
+    from app.services.cross_seguimiento_service import (
+        guardar_ultimo_resultado_cross,
+        leer_ultimo_resultado_cross,
+    )
+
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    guardados: list[dict] = []
+    for up in files:
+        raw = await up.read()
+        name = (up.filename or "cross.xlsx").strip()
+        if not name.lower().endswith(".xlsx"):
+            name += ".xlsx"
+        # Nombres canónicos si el usuario bajó con el título largo de Drive
+        low = name.lower()
+        if "cordoba" in low or "córdoba" in low or "cross_4" in low or "cross 4" in low:
+            name = "cross_4.xlsx"
+        elif (
+            "salta" in low
+            and ("jujuy" in low or "tucuman" in low or "tucumán" in low or "alfaro" in low)
+        ) or "cross_3" in low or "cross 3" in low:
+            name = "cross_3.xlsx"
+        dest = CROSS_INBOX_DIR / name
+        dest.write_bytes(raw)
+        guardados.append({"nombre": name, "bytes": len(raw)})
+
+    out = importar_carpeta_cross(db, ejecutar_macheo=matchear, mover_procesados=True)
+    prev = leer_ultimo_resultado_cross() or {}
+    guardar_ultimo_resultado_cross(
+        {
+            "accion": "Upload Excel locales + machear",
+            "descargas": prev.get("descargas") or [],
+            "importacion": out,
+            "macheo": out.get("macheo"),
+            "message": (
+                f"Subidos {len(guardados)} archivo(s). " + (out.get("message") or "")
+            ),
+            "archivos_subidos": guardados,
+        }
+    )
+    out["archivos_subidos"] = guardados
+    return out
+
+
 @router.post("/matchear")
 def cross_matchear(db: Session = Depends(get_db)) -> dict:
     from app.services.cross_seguimiento_service import leer_ultimo_resultado_cross

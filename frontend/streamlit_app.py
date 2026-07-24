@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-oauth-drive-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-upload-3-4-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5330,31 +5330,16 @@ def _config_cross_seguimiento() -> None:
         drive_auth = get_json("/cross/drive-auth")
     except Exception:
         drive_auth = {}
-    st.markdown("#### Acceso Google Drive")
+    st.markdown("#### Acceso a planillas")
     if drive_auth.get("puede_leer_grupo_sommier") or drive_auth.get("oauth_token_valido"):
         st.success(drive_auth.get("mensaje") or "Google conectado")
     else:
-        st.warning(
-            drive_auth.get("mensaje")
-            or "Sin Google conectado — Cross 3/4 del grupo SommierCenter no bajan."
+        st.info(
+            "Salta / Rosario / Cross 1 se bajan solas desde Drive. "
+            "**Cross 3 y 4** están solo para el grupo SommierCenter: "
+            "el server no puede leerlas sin proyecto Google (no disponible). "
+            "Solución de la app: las bajás vos del navegador y las subís acá abajo."
         )
-        with st.expander("Cómo conectar tu mail (sin tocar permisos de las planillas)"):
-            st.markdown(
-                """
-1. En [Google Cloud Console](https://console.cloud.google.com/): proyecto → habilitar **Google Drive API**.
-2. Pantalla de consentimiento OAuth → tipo **Interna**.
-3. Credenciales → **ID de cliente OAuth** → Aplicación de **escritorio** → descargar JSON.
-4. Guardarlo como `data/google_oauth_client.json` en el repo.
-5. En tu PC:
-   ```
-   python backend/scripts/google_oauth_setup.py
-   ```
-   Entrá con **tu** mail `@sommiercenter.com` (solo lectura).
-6. Copiá `data/google_oauth_token.json` al server (`/opt/fletes/data/`) y reiniciá `fletes-api`.
-
-No hace falta que los dueños cambien el compartir de Cross 3/4.
-                """
-            )
 
     _mostrar_estado_planillas_cross()
 
@@ -5373,9 +5358,8 @@ No hace falta que los dueños cambien el compartir de Cross 3/4.
 
     st.markdown("#### Actualizar")
     st.caption(
-        "Un clic baja las **5 planillas** configuradas a la carpeta, las importa y machea. "
-        "Arriba se pintan en **verde** (OK) o **rojo** (falló). "
-        "Si alguna falla (permiso Drive 401), las demás siguen."
+        "Baja Salta / Rosario / Cross 1 (públicas), importa y machea. "
+        "Cross 3 y 4 suelen quedar en rojo → completálas con el upload de abajo."
     )
     if st.button(
         "Actualizar desde Drive → importar y machear",
@@ -5458,38 +5442,39 @@ No hace falta que los dueños cambien el compartir de Cross 3/4.
         except Exception as exc:
             st.error(str(exc))
 
-    st.markdown("#### Subir un Excel desde el navegador")
-    st.caption("Por si una planilla no bajó sola (401) o querés un archivo puntual.")
-    upl = st.file_uploader(
-        "Excel cross (Retirado por … o Cross Provincia)",
+    st.markdown("#### Completar Cross 3 y 4 (sin cambiar permisos)")
+    st.caption(
+        "En el navegador: abrí Cross 3 / Cross 4 → **Archivo → Descargar → Microsoft Excel (.xlsx)**. "
+        "Subí los dos acá. La app importa y machea con el resto (no hace falta proyecto Google ni tocar el compartir)."
+    )
+    upls = st.file_uploader(
+        "Excel Cross 3 y/o Cross 4 (podés elegir varios)",
         type=["xlsx"],
-        key="cfg_cross_import",
+        accept_multiple_files=True,
+        key="cfg_cross_import_multi",
     )
     if st.button(
-        "Importar Excel subido",
-        disabled=upl is None,
-        key="cfg_cross_btn_import",
+        "Importar Excel subidos + machear",
+        type="primary",
+        disabled=not upls,
+        key="cfg_cross_btn_import_multi",
     ):
         try:
-            if upl is None:
-                raise RuntimeError("Seleccioná un archivo.")
-            r = post_file("/cross/import", upl.name, upl.getvalue(), matchear="true")
-            _guardar_resultado_cross(
-                f"Upload {upl.name}",
-                {
-                    "message": r.get("message", "Importado"),
-                    "resultados": [
-                        {
-                            "nombre": upl.name,
-                            "ok": True,
-                            "insertados": r.get("insertados", 0),
-                            "actualizados": r.get("actualizados", 0),
-                            "hojas_procesadas": r.get("hojas_procesadas"),
-                        }
-                    ],
-                    "macheo": r.get("macheo"),
-                },
-            )
+            if not upls:
+                raise RuntimeError("Seleccioná al menos un Excel.")
+            files_payload = [("files", (u.name, u.getvalue(), 
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                for u in upls]
+            with st.spinner("Importando y macheando…"):
+                with httpx.Client(base_url=API_URL, timeout=600.0) as c:
+                    r = c.post(
+                        "/cross/import-varios",
+                        params={"matchear": "true"},
+                        files=files_payload,
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+            _guardar_resultado_cross("Upload Excel locales + machear", data)
             get_maestro_filas_cached.clear()
             st.rerun()
         except Exception as exc:
