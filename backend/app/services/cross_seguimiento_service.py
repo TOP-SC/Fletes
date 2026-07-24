@@ -253,11 +253,27 @@ def parse_google_drive_url(url: str) -> dict[str, str]:
 def export_url_google(meta: dict[str, str]) -> str:
     if meta["tipo"] == "sheet":
         sid = meta["sheet_id"]
-        gid = str(meta.get("gid") or "0")
-        if gid and gid != "0":
-            return f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx&gid={gid}"
+        # Libro completo (todas las pestañas Retirado). El gid solo identifica
+        # la hoja de interés en el link, pero el export con gid trae 1 hoja.
         return f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx"
     return f"https://drive.google.com/uc?export=download&id={meta['file_id']}"
+
+
+def _urls_export_candidatas(file_id: str, gid: str = "0") -> list[str]:
+    """Varias URLs por si Google responde distinto según formato."""
+    sid = file_id
+    urls = [
+        f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx",
+        f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx&id={sid}",
+    ]
+    g = str(gid or "0")
+    if g and g != "0":
+        # fallback: al menos la pestaña indicada
+        urls.append(
+            f"https://docs.google.com/spreadsheets/d/{sid}/export?format=xlsx&gid={g}"
+        )
+    urls.append(f"https://drive.google.com/uc?export=download&id={sid}")
+    return urls
 
 
 def _interpretar_respuesta_drive(r: httpx.Response) -> tuple[bool, str]:
@@ -329,10 +345,18 @@ def descargar_planilla_por_id(
             # Si auth falla, intentar anónimo (planillas aún públicas)
             pass
 
-    meta = {"tipo": "sheet", "sheet_id": file_id, "gid": gid}
-    export_url = export_url_google(meta)
-    content, _msg = descargar_bytes_drive(export_url, timeout=t)
-    return content, "anonimo"
+    last_err = "sin respuesta"
+    for url in _urls_export_candidatas(file_id, gid):
+        try:
+            content, _msg = descargar_bytes_drive(url, timeout=t)
+            return content, "anonimo"
+        except ValueError as exc:
+            last_err = str(exc)
+            # Si no es permiso, no tiene sentido seguir probando otras URLs
+            if "401" not in last_err and "403" not in last_err and "HTML" not in last_err:
+                raise
+            continue
+    raise ValueError(last_err)
 
 
 def probar_planilla_drive(cfg: dict[str, str | bool]) -> dict[str, Any]:
