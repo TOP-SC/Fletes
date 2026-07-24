@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-resultado-visible-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-colores-planillas-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5215,7 +5215,7 @@ def _config_fleteros_locales() -> None:
 
 
 def _guardar_resultado_cross(accion: str, data: dict) -> None:
-    """Persiste el último resultado para que no se pierda con st.rerun()."""
+    """Persiste en sesión (el server también guarda en disco)."""
     st.session_state["cross_ultimo_resultado"] = {
         "accion": accion,
         "data": data,
@@ -5223,70 +5223,87 @@ def _guardar_resultado_cross(accion: str, data: dict) -> None:
     }
 
 
-def _mostrar_resultado_cross() -> None:
-    """Panel verde/rojo por planilla + números de macheo (queda visible tras rerun)."""
-    pack = st.session_state.get("cross_ultimo_resultado")
-    if not pack:
-        return
-    data = pack.get("data") or {}
-    st.markdown("#### Último resultado")
-    st.caption(f"{pack.get('accion', '')} · {pack.get('cuando', '')}")
-    if data.get("message"):
-        st.info(data["message"])
+def _html_badge_planilla(estado: str, label: str, detalle: str) -> str:
+    if estado == "ok":
+        bg, fg, icon = "#dcfce7", "#166534", "✓"
+    elif estado == "error":
+        bg, fg, icon = "#fee2e2", "#991b1b", "✗"
+    else:
+        bg, fg, icon = "#f3f4f6", "#4b5563", "○"
+    det = (detalle or "").replace("<", "&lt;").replace(">", "&gt;")
+    lab = (label or "?").replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        f'<div style="display:flex;align-items:flex-start;gap:10px;margin:6px 0;'
+        f'padding:10px 12px;border-radius:8px;background:{bg};border:1px solid '
+        f'{fg}22;">'
+        f'<span style="font-weight:700;color:{fg};font-size:1.1rem;min-width:1.2rem">'
+        f"{icon}</span>"
+        f'<div><div style="font-weight:700;color:{fg}">{lab}</div>'
+        f'<div style="color:{fg};opacity:.9;font-size:0.9rem">{det}</div></div></div>'
+    )
 
-    descargas = data.get("descargas") or []
-    if descargas:
-        st.markdown("**Descarga Drive → carpeta**")
-        for d in descargas:
-            label = d.get("label") or d.get("archivo") or "?"
-            if d.get("ok"):
-                st.success(
-                    f"✓ {label} — {d.get('archivo', '')} "
-                    f"({d.get('bytes', 0):,} bytes"
-                    + (f" · {d.get('origen')}" if d.get("origen") else "")
-                    + ")"
-                )
-            else:
-                st.error(f"✗ {label} — {d.get('motivo', 'error')}")
 
-    imp = data.get("importacion") if "importacion" in data else data
-    resultados = (imp or {}).get("resultados") or []
-    if resultados:
-        st.markdown("**Importación a la base**")
-        for item in resultados:
-            nombre = item.get("nombre") or "?"
-            if item.get("ok"):
-                st.success(
-                    f"✓ {nombre} — "
-                    f"{item.get('insertados', 0)} nuevos · "
-                    f"{item.get('actualizados', 0)} actualizados"
-                    + (
-                        f" · hojas: {', '.join(item['hojas_procesadas'])}"
-                        if item.get("hojas_procesadas")
-                        else ""
-                    )
-                )
-            else:
-                st.error(f"✗ {nombre} — {item.get('motivo', 'error')}")
+def _mostrar_estado_planillas_cross() -> None:
+    """Siempre muestra las 5 planillas en verde / rojo / gris."""
+    try:
+        estado = get_json("/cross/estado-planillas")
+    except Exception:
+        estado = {"planillas": [], "hay_resultado": False}
 
-    macheo = None
-    if isinstance(imp, dict) and imp.get("macheo"):
-        macheo = imp["macheo"]
-    elif data.get("macheo"):
-        macheo = data["macheo"]
+    st.markdown("#### Estado de las planillas")
+    if estado.get("cuando"):
+        st.caption(
+            f"Última actualización: {estado.get('accion') or ''} · {estado.get('cuando')}"
+        )
+    else:
+        st.caption(
+            "Todavía no se corrió **Actualizar**. Aparecerán en verde o rojo al terminar."
+        )
+
+    planillas = estado.get("planillas") or []
+    if not planillas:
+        # Fallback visual si el endpoint no está (API vieja)
+        for label in ("Salta", "Rosario Fransof", "Cross 1", "Cross 3", "Cross 4"):
+            st.markdown(
+                _html_badge_planilla(
+                    "pendiente", label, "Actualizá la API o pulsá Actualizar"
+                ),
+                unsafe_allow_html=True,
+            )
+    else:
+        for p in planillas:
+            st.markdown(
+                _html_badge_planilla(
+                    str(p.get("estado") or "pendiente"),
+                    str(p.get("label") or "?"),
+                    str(p.get("detalle") or ""),
+                ),
+                unsafe_allow_html=True,
+            )
+
+    macheo = estado.get("macheo")
     if macheo:
         en_m = int(macheo.get("en_maestro") or 0)
         sin_m = int(macheo.get("sin_maestro") or 0)
         proc = int(macheo.get("procesados") or (en_m + sin_m))
-        st.markdown("**Macheo con maestro**")
-        if proc == 0:
-            st.warning("No hay registros cross para machear.")
-        else:
-            pct = round(100.0 * en_m / proc) if proc else 0
-            st.success(
-                f"✓ Macheo OK — {en_m} en maestro · {sin_m} solo en planilla "
-                f"({pct}% match · {proc} procesados)"
-            )
+        pct = round(100.0 * en_m / proc) if proc else 0
+        st.markdown(
+            _html_badge_planilla(
+                "ok" if proc else "pendiente",
+                "Macheo con maestro",
+                f"{en_m} en maestro · {sin_m} solo planilla · {pct}% match ({proc} procesados)",
+            ),
+            unsafe_allow_html=True,
+        )
+    elif estado.get("hay_resultado"):
+        st.markdown(
+            _html_badge_planilla(
+                "pendiente",
+                "Macheo con maestro",
+                "Aún no hay números de macheo en el último resultado",
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 def _config_cross_seguimiento() -> None:
@@ -5309,7 +5326,7 @@ def _config_cross_seguimiento() -> None:
     c3.metric("Entregado SI", resumen.get("entregado_si", 0))
     c4.metric("Entregado NO", resumen.get("entregado_no", 0))
 
-    _mostrar_resultado_cross()
+    _mostrar_estado_planillas_cross()
 
     try:
         inbox = get_json("/cross/inbox")
@@ -5327,8 +5344,8 @@ def _config_cross_seguimiento() -> None:
     st.markdown("#### Actualizar")
     st.caption(
         "Un clic baja las **5 planillas** configuradas a la carpeta, las importa y machea. "
-        "Si alguna falla (permiso Drive 401), las demás siguen; esa hay que copiarla a mano "
-        "o dejar el Sheet en «Cualquiera con el enlace»."
+        "Arriba se pintan en **verde** (OK) o **rojo** (falló). "
+        "Si alguna falla (permiso Drive 401), las demás siguen."
     )
     if st.button(
         "Actualizar desde Drive → importar y machear",

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import re
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
@@ -422,6 +425,97 @@ def importar_cross_desde_url(
     return out
 
 
+def _path_ultimo_resultado() -> Path:
+    from app.config import CROSS_INBOX_DIR
+
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    return CROSS_INBOX_DIR / "ultimo_resultado.json"
+
+
+def guardar_ultimo_resultado_cross(payload: dict[str, Any]) -> None:
+    """Persiste el último actualizar/import para mostrarlo en la UI (verde/rojo)."""
+    data = dict(payload)
+    data["cuando"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    path = _path_ultimo_resultado()
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def leer_ultimo_resultado_cross() -> dict[str, Any] | None:
+    path = _path_ultimo_resultado()
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def estado_planillas_cross() -> dict[str, Any]:
+    """
+    Estado visible de las 5 planillas (siempre): ok / error / pendiente.
+    Combina config + último resultado guardado.
+    """
+    ultimo = leer_ultimo_resultado_cross() or {}
+    descargas = {str(d.get("label")): d for d in (ultimo.get("descargas") or [])}
+    # Import por nombre de archivo
+    imp = ultimo.get("importacion") if "importacion" in ultimo else ultimo
+    resultados_imp = {
+        str(r.get("nombre")): r for r in ((imp or {}).get("resultados") or [])
+    }
+    macheo = None
+    if isinstance(imp, dict) and imp.get("macheo"):
+        macheo = imp["macheo"]
+    elif ultimo.get("macheo"):
+        macheo = ultimo["macheo"]
+
+    planillas: list[dict[str, Any]] = []
+    for cfg in CROSS_PLANILLAS_DRIVE:
+        label = str(cfg.get("label") or "?")
+        fname = str(cfg.get("filename") or f"cross_{label}.xlsx")
+        dl = descargas.get(label)
+        if dl is None:
+            estado = "pendiente"
+            detalle = "Todavía no se actualizó desde Drive"
+        elif dl.get("ok"):
+            estado = "ok"
+            detalle = (
+                f"Descargado ({dl.get('bytes', 0):,} bytes"
+                + (f" · {dl.get('origen')}" if dl.get("origen") else "")
+                + ")"
+            )
+            imp_item = resultados_imp.get(fname)
+            if imp_item is not None:
+                if imp_item.get("ok"):
+                    detalle += (
+                        f" · importado {imp_item.get('insertados', 0)} nuevos / "
+                        f"{imp_item.get('actualizados', 0)} actualizados"
+                    )
+                else:
+                    estado = "error"
+                    detalle = f"Descargó OK pero falló import: {imp_item.get('motivo')}"
+        else:
+            estado = "error"
+            detalle = str(dl.get("motivo") or "Error al descargar")
+        planillas.append(
+            {
+                "label": label,
+                "archivo": fname,
+                "estado": estado,
+                "detalle": detalle,
+                "activo": bool(cfg.get("activo", True)),
+            }
+        )
+
+    return {
+        "planillas": planillas,
+        "cuando": ultimo.get("cuando"),
+        "accion": ultimo.get("accion"),
+        "message": ultimo.get("message"),
+        "macheo": macheo,
+        "hay_resultado": bool(ultimo),
+    }
+
+
 def actualizar_planillas_drive_a_inbox(
     *,
     importar: bool = True,
@@ -486,7 +580,7 @@ def actualizar_planillas_drive_a_inbox(
             mover_procesados=True,
         )
 
-    return {
+    out = {
         "carpeta": str(CROSS_INBOX_DIR.resolve()),
         "descargas": descargas,
         "descargados_ok": ok_dl,
@@ -501,6 +595,15 @@ def actualizar_planillas_drive_a_inbox(
             )
         ),
     }
+    guardar_ultimo_resultado_cross(
+        {
+            "accion": "Actualizar Drive → importar y machear"
+            if importar
+            else "Solo bajar a carpeta",
+            **out,
+        }
+    )
+    return out
 
 
 def intentar_sync_drive(
@@ -596,7 +699,7 @@ def importar_carpeta_cross(
 
     macheo = ejecutar_macheo_cross(db) if ejecutar_macheo and resultados else None
     ok_n = sum(1 for x in resultados if x.get("ok"))
-    return {
+    out = {
         "carpeta": str(CROSS_INBOX_DIR.resolve()),
         "resultados": resultados,
         "insertados": total_ins,
@@ -607,6 +710,18 @@ def importar_carpeta_cross(
             f"{total_ins} nuevos · {total_upd} actualizados"
         ),
     }
+    # Conservar descargas previas si existen, para no perder verde/rojo de Drive
+    prev = leer_ultimo_resultado_cross() or {}
+    guardar_ultimo_resultado_cross(
+        {
+            "accion": "Importar carpeta + machear",
+            "descargas": prev.get("descargas") or [],
+            "importacion": out,
+            "macheo": macheo,
+            "message": out["message"],
+        }
+    )
+    return out
 
 
 def export_cross_control_xlsx(

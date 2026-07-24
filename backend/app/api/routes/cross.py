@@ -6,7 +6,9 @@ from app.database import get_db
 from app.services.cross_seguimiento_service import (
     actualizar_planillas_drive_a_inbox,
     ejecutar_macheo_cross,
+    estado_planillas_cross,
     export_cross_control_xlsx,
+    guardar_ultimo_resultado_cross,
     import_cross_workbook,
     importar_carpeta_cross,
     listar_inbox_cross,
@@ -26,6 +28,12 @@ def cross_resumen(db: Session = Depends(get_db)) -> dict:
 def cross_inbox() -> dict:
     """Lista .xlsx en data/cross_inbox del servidor."""
     return listar_inbox_cross()
+
+
+@router.get("/estado-planillas")
+def cross_estado_planillas() -> dict:
+    """Estado verde/rojo/gris de las 5 planillas + último macheo."""
+    return estado_planillas_cross()
 
 
 @router.post("/import-carpeta")
@@ -100,4 +108,20 @@ async def cross_importar(
 
 @router.post("/matchear")
 def cross_matchear(db: Session = Depends(get_db)) -> dict:
-    return ejecutar_macheo_cross(db)
+    from app.services.cross_seguimiento_service import leer_ultimo_resultado_cross
+
+    m = ejecutar_macheo_cross(db)
+    prev = leer_ultimo_resultado_cross() or {}
+    guardar_ultimo_resultado_cross(
+        {
+            "accion": "Solo machear",
+            "descargas": prev.get("descargas") or [],
+            "importacion": prev.get("importacion"),
+            "macheo": m,
+            "message": (
+                f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                f"{m.get('sin_maestro', 0)} solo planilla"
+            ),
+        }
+    )
+    return m
