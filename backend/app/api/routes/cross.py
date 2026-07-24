@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.services.cross_seguimiento_service import (
+    actualizar_planillas_drive_a_inbox,
     ejecutar_macheo_cross,
     export_cross_control_xlsx,
     import_cross_workbook,
@@ -36,6 +37,24 @@ def cross_import_carpeta(
     """Importa todos los Excel depositados en data/cross_inbox."""
     return importar_carpeta_cross(
         db, ejecutar_macheo=matchear, mover_procesados=mover
+    )
+
+
+@router.post("/actualizar-desde-drive")
+def cross_actualizar_desde_drive(
+    importar: bool = Query(
+        True,
+        description="Tras bajar a inbox, importar y machear",
+    ),
+    matchear: bool = Query(True),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Copia las planillas Cross conocidas (Drive) a data/cross_inbox.
+    Por defecto también importa y machea con el maestro.
+    """
+    return actualizar_planillas_drive_a_inbox(
+        importar=importar, matchear=matchear, db=db
     )
 
 

@@ -422,54 +422,96 @@ def importar_cross_desde_url(
     return out
 
 
+def actualizar_planillas_drive_a_inbox(
+    *,
+    importar: bool = True,
+    matchear: bool = True,
+    db: Session | None = None,
+) -> dict[str, Any]:
+    """
+    Baja las planillas configuradas (CROSS_PLANILLAS_DRIVE) a ``data/cross_inbox``.
+    Opcionalmente importa y machea (impacto en la base).
+
+    No inventa macheo «en vivo» desde Drive: primero copia a carpeta del server.
+    """
+    from app.config import CROSS_INBOX_DIR, settings
+
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    t = float(settings.google_drive_timeout)
+    descargas: list[dict[str, Any]] = []
+    ok_dl = 0
+
+    for cfg in CROSS_PLANILLAS_DRIVE:
+        label = str(cfg.get("label") or cfg.get("sheet_id") or "?")
+        if not cfg.get("activo", True):
+            descargas.append({"label": label, "ok": False, "motivo": "desactivada"})
+            continue
+        sid = cfg.get("sheet_id")
+        if not sid:
+            descargas.append({"label": label, "ok": False, "motivo": "sin sheet_id"})
+            continue
+        gid = str(cfg.get("gid") or "0")
+        fname = str(cfg.get("filename") or f"cross_{label}.xlsx")
+        if not fname.lower().endswith(".xlsx"):
+            fname += ".xlsx"
+        try:
+            content, origen = descargar_planilla_por_id(str(sid), gid=gid, timeout=t)
+            dest = CROSS_INBOX_DIR / fname
+            dest.write_bytes(content)
+            ok_dl += 1
+            descargas.append(
+                {
+                    "label": label,
+                    "ok": True,
+                    "archivo": fname,
+                    "bytes": len(content),
+                    "origen": origen,
+                }
+            )
+        except Exception as exc:
+            descargas.append(
+                {
+                    "label": label,
+                    "ok": False,
+                    "archivo": fname,
+                    "motivo": str(exc),
+                }
+            )
+
+    import_out: dict[str, Any] | None = None
+    if importar and ok_dl > 0 and db is not None:
+        import_out = importar_carpeta_cross(
+            db,
+            ejecutar_macheo=matchear,
+            mover_procesados=True,
+        )
+
+    return {
+        "carpeta": str(CROSS_INBOX_DIR.resolve()),
+        "descargas": descargas,
+        "descargados_ok": ok_dl,
+        "descargados_total": len(descargas),
+        "importacion": import_out,
+        "message": (
+            f"Actualizar Drive→inbox: {ok_dl}/{len(descargas)} OK"
+            + (
+                f" · {import_out.get('message')}"
+                if import_out and import_out.get("message")
+                else ""
+            )
+        ),
+    }
+
+
 def intentar_sync_drive(
     db: Session,
     *,
     ejecutar_macheo: bool = True,
 ) -> dict[str, Any]:
-    """Descarga planillas configuradas en CROSS_PLANILLAS_DRIVE (auth o anónimo)."""
-    from app.config import settings
-
-    resultados: list[dict[str, Any]] = []
-    total_ins = total_upd = 0
-    t = float(settings.google_drive_timeout)
-
-    for cfg in CROSS_PLANILLAS_DRIVE:
-        label = cfg.get("label") or cfg.get("sheet_id", "?")
-        if not cfg.get("activo", True):
-            resultados.append({"label": label, "ok": False, "motivo": "desactivada"})
-            continue
-        sid = cfg.get("sheet_id")
-        if not sid:
-            resultados.append({"label": label, "ok": False, "motivo": "sin sheet_id"})
-            continue
-        gid = str(cfg.get("gid") or "0")
-        try:
-            content, origen = descargar_planilla_por_id(str(sid), gid=gid, timeout=t)
-            fname = cfg.get("filename") or f"cross_{label}.xlsx"
-            out = import_cross_workbook(
-                db,
-                content,
-                fname,
-                ejecutar_macheo=False,
-            )
-            total_ins += int(out.get("insertados") or 0)
-            total_upd += int(out.get("actualizados") or 0)
-            resultados.append({"label": label, "ok": True, "origen": origen, **out})
-        except Exception as exc:
-            resultados.append({"label": label, "ok": False, "motivo": str(exc)})
-
-    macheo = ejecutar_macheo_cross(db) if ejecutar_macheo else None
-    return {
-        "resultados": resultados,
-        "insertados": total_ins,
-        "actualizados": total_upd,
-        "macheo": macheo,
-        "message": (
-            f"Drive: {sum(1 for x in resultados if x.get('ok'))}/{len(resultados)} planillas OK · "
-            f"{total_ins} nuevos · {total_upd} actualizados"
-        ),
-    }
+    """Compat: actualiza inbox + importa + machea."""
+    return actualizar_planillas_drive_a_inbox(
+        importar=True, matchear=ejecutar_macheo, db=db
+    )
 
 
 def listar_registros_cross(

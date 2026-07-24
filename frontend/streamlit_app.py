@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-inbox-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-actualizar-drive-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5215,12 +5215,12 @@ def _config_fleteros_locales() -> None:
 
 
 def _config_cross_seguimiento() -> None:
-    """Planillas cross — import desde carpeta del servidor o upload manual."""
+    """Planillas cross — actualizar desde Drive a carpeta del server, importar y machear."""
     st.subheader("Seguimiento cross (interior)")
     st.caption(
-        "Bajá el Excel de Drive a tu PC (o al server) y depositálo en "
-        "**`/opt/fletes/data/cross_inbox`**. La app importa desde esa carpeta y "
-        "machea con el maestro. No sincroniza sola desde Google Drive."
+        "Las planillas Cross (Salta, Rosario, Cross 1/3/4) se **copian** desde Drive "
+        "a la carpeta del servidor y después se importan/machean. "
+        "No es un macheo «en vivo» contra Google: el Excel queda en disco."
     )
 
     try:
@@ -5243,19 +5243,80 @@ def _config_cross_seguimiento() -> None:
     st.code(inbox.get("carpeta") or "data/cross_inbox", language=None)
     archivos = inbox.get("archivos") or []
     if archivos:
-        st.success(f"**{len(archivos)}** Excel listo(s) para importar:")
+        st.caption(f"**{len(archivos)}** Excel en inbox (pendientes de importar o recién bajados):")
         for a in archivos:
             st.caption(f"· {a.get('nombre')} ({a.get('bytes', 0):,} bytes)")
-    else:
-        st.info(
-            "No hay `.xlsx` en la carpeta. Copiá las planillas Cross ahí "
-            "(Salta, Jujuy, Tucumán, Rosario…) y volvé a refrescar."
-        )
+
+    st.markdown("#### Actualizar")
+    st.caption(
+        "Un clic baja las **5 planillas** configuradas a la carpeta, las importa y machea. "
+        "Si alguna falla (permiso Drive 401), las demás siguen; esa hay que copiarla a mano "
+        "o dejar el Sheet en «Cualquiera con el enlace»."
+    )
+    if st.button(
+        "Actualizar desde Drive → importar y machear",
+        type="primary",
+        key="cfg_cross_btn_actualizar",
+    ):
+        try:
+            with st.spinner(
+                "Descargando planillas a la carpeta del server e importando… "
+                "(puede tardar con Rosario)"
+            ):
+                with httpx.Client(base_url=API_URL, timeout=900.0) as c:
+                    r = c.post(
+                        "/cross/actualizar-desde-drive",
+                        params={"importar": "true", "matchear": "true"},
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+            st.success(data.get("message", "Listo"))
+            for d in data.get("descargas") or []:
+                if d.get("ok"):
+                    st.caption(
+                        f"✓ {d.get('label')}: {d.get('archivo')} "
+                        f"({d.get('bytes', 0):,} bytes · {d.get('origen', '')})"
+                    )
+                else:
+                    st.warning(f"✗ {d.get('label')}: {d.get('motivo', 'error')}")
+            imp = data.get("importacion") or {}
+            if imp.get("macheo"):
+                m = imp["macheo"]
+                st.info(
+                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                    f"{m.get('sin_maestro', 0)} solo planilla"
+                )
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
 
     b1, b2, b3 = st.columns(3)
     if b1.button(
-        "Importar carpeta del servidor",
-        type="primary",
+        "Solo bajar a carpeta (sin importar)",
+        key="cfg_cross_btn_solo_bajar",
+    ):
+        try:
+            with st.spinner("Descargando a cross_inbox…"):
+                with httpx.Client(base_url=API_URL, timeout=900.0) as c:
+                    r = c.post(
+                        "/cross/actualizar-desde-drive",
+                        params={"importar": "false", "matchear": "false"},
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+            st.success(data.get("message", "Descarga lista"))
+            for d in data.get("descargas") or []:
+                if d.get("ok"):
+                    st.caption(f"✓ {d.get('label')}: {d.get('archivo')}")
+                else:
+                    st.warning(f"✗ {d.get('label')}: {d.get('motivo', 'error')}")
+            st.rerun()
+        except Exception as exc:
+            st.error(str(exc))
+
+    if b2.button(
+        "Importar carpeta + machear",
         disabled=not archivos,
         key="cfg_cross_btn_inbox",
     ):
@@ -5269,19 +5330,6 @@ def _config_cross_seguimiento() -> None:
                     r.raise_for_status()
                     data = r.json()
             st.success(data.get("message", "Importado"))
-            for item in data.get("resultados") or []:
-                if item.get("ok"):
-                    st.caption(
-                        f"✓ {item.get('nombre')}: {item.get('insertados', 0)} nuevos · "
-                        f"{item.get('actualizados', 0)} act."
-                        + (
-                            f" → procesados/{item.get('movido_a')}"
-                            if item.get("movido_a")
-                            else ""
-                        )
-                    )
-                else:
-                    st.warning(f"✗ {item.get('nombre')}: {item.get('motivo', 'error')}")
             if data.get("macheo"):
                 m = data["macheo"]
                 st.info(
@@ -5293,8 +5341,8 @@ def _config_cross_seguimiento() -> None:
         except Exception as exc:
             st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
 
-    if b2.button(
-        "Machear con maestro",
+    if b3.button(
+        "Solo machear con maestro",
         disabled=not resumen.get("total"),
         key="cfg_cross_btn_match",
     ):
@@ -5312,8 +5360,88 @@ def _config_cross_seguimiento() -> None:
         except Exception as exc:
             st.error(str(exc))
 
-    if b3.button("Actualizar lista carpeta", key="cfg_cross_btn_refresh_inbox"):
-        st.rerun()
+    st.markdown("#### Subir un Excel desde el navegador")
+    st.caption("Por si una planilla no bajó sola (401) o querés un archivo puntual.")
+    upl = st.file_uploader(
+        "Excel cross (Retirado por … o Cross Provincia)",
+        type=["xlsx"],
+        key="cfg_cross_import",
+    )
+    if st.button(
+        "Importar Excel subido",
+        disabled=upl is None,
+        key="cfg_cross_btn_import",
+    ):
+        try:
+            if upl is None:
+                raise RuntimeError("Seleccioná un archivo.")
+            r = post_file("/cross/import", upl.name, upl.getvalue(), matchear="true")
+            st.success(r.get("message", "Importado"))
+            if r.get("hojas_procesadas"):
+                st.caption(f"Hojas: {', '.join(r['hojas_procesadas'])}")
+            if r.get("macheo"):
+                m = r["macheo"]
+                st.info(
+                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
+                    f"{m.get('sin_maestro', 0)} solo en planilla"
+                )
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
+
+    export_key = "cross_export_xlsx"
+    if resumen.get("total"):
+        if st.button(
+            "Generar Excel de control (facturado vs control + suc / COD CLIENTE)",
+            key="cfg_cross_export_btn",
+        ):
+            try:
+                with st.spinner("Armando planilla completa…"):
+                    with httpx.Client(base_url=API_URL, timeout=300.0) as c:
+                        r = c.get("/cross/export")
+                        r.raise_for_status()
+                    st.session_state[export_key] = r.content
+                st.success(
+                    "Planilla lista — descargá abajo (todos los registros, no solo la vista)."
+                )
+            except Exception as exc:
+                st.error(f"No se pudo exportar: {exc}")
+        if st.session_state.get(export_key):
+            st.download_button(
+                "Descargar control_cross.xlsx",
+                st.session_state[export_key],
+                file_name="control_cross.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="cfg_cross_export_dl",
+            )
+
+    if resumen.get("total"):
+        try:
+            regs = get_json("/cross/registros", limit=100, solo_maestro=True)
+        except Exception:
+            regs = []
+        if regs:
+            st.markdown(
+                "**Vista previa (últimos 100 con match)** — usá el Excel de control "
+                "para el listado completo."
+            )
+            df = pd.DataFrame(regs)
+            show = [
+                c
+                for c in (
+                    "remito",
+                    "proveedor",
+                    "entregado",
+                    "fecha_entrega_coord",
+                    "cod_cliente",
+                    "importe_facturado",
+                    "match_estado",
+                    "archivo_origen",
+                )
+                if c in df.columns
+            ]
+            st.dataframe(df[show], width="stretch", hide_index=True, height=220)
 
     st.markdown("#### Subir un Excel desde el navegador")
     st.caption("Útil si estás lejos del server y no podés copiar por SCP/carpeta compartida.")
