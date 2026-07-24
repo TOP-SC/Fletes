@@ -9,6 +9,9 @@ data/comparacion_*.xlsx
 data/google_service_account.json
 data/google_oauth_token.json
 data/google_oauth_client.json
+data/cross_inbox/*.xlsx
+data/cross_inbox/procesados/
+!data/cross_inbox/README.txt
 .streamlit/*
 !.streamlit/config.toml
 .idea/

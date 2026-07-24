@@ -484,6 +484,89 @@ def listar_registros_cross(
     return [_cross_a_dict(r) for r in db.scalars(q).all()]
 
 
+def listar_inbox_cross() -> dict[str, Any]:
+    """Archivos .xlsx depositados en ``data/cross_inbox`` del servidor."""
+    from app.config import CROSS_INBOX_DIR
+
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    archivos: list[dict[str, Any]] = []
+    for p in sorted(CROSS_INBOX_DIR.glob("*.xlsx")):
+        try:
+            st = p.stat()
+            archivos.append(
+                {
+                    "nombre": p.name,
+                    "bytes": st.st_size,
+                    "modificado": st.st_mtime,
+                }
+            )
+        except OSError:
+            continue
+    return {
+        "carpeta": str(CROSS_INBOX_DIR.resolve()),
+        "archivos": archivos,
+        "cantidad": len(archivos),
+    }
+
+
+def importar_carpeta_cross(
+    db: Session,
+    *,
+    ejecutar_macheo: bool = True,
+    mover_procesados: bool = True,
+) -> dict[str, Any]:
+    """
+    Importa todos los .xlsx de ``data/cross_inbox``.
+    Opcionalmente mueve cada archivo a ``data/cross_inbox/procesados/``.
+    """
+    from datetime import datetime
+
+    from app.config import CROSS_INBOX_DIR
+
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    dest_dir = CROSS_INBOX_DIR / "procesados"
+    if mover_procesados:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+    resultados: list[dict[str, Any]] = []
+    total_ins = total_upd = 0
+    archivos = sorted(CROSS_INBOX_DIR.glob("*.xlsx"))
+    for path in archivos:
+        try:
+            content = path.read_bytes()
+            out = import_cross_workbook(
+                db,
+                content,
+                path.name,
+                ejecutar_macheo=False,
+            )
+            total_ins += int(out.get("insertados") or 0)
+            total_upd += int(out.get("actualizados") or 0)
+            item = {"nombre": path.name, "ok": True, **out}
+            if mover_procesados:
+                stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                dest = dest_dir / f"{stamp}_{path.name}"
+                path.replace(dest)
+                item["movido_a"] = dest.name
+            resultados.append(item)
+        except Exception as exc:
+            resultados.append({"nombre": path.name, "ok": False, "motivo": str(exc)})
+
+    macheo = ejecutar_macheo_cross(db) if ejecutar_macheo and resultados else None
+    ok_n = sum(1 for x in resultados if x.get("ok"))
+    return {
+        "carpeta": str(CROSS_INBOX_DIR.resolve()),
+        "resultados": resultados,
+        "insertados": total_ins,
+        "actualizados": total_upd,
+        "macheo": macheo,
+        "message": (
+            f"Carpeta inbox: {ok_n}/{len(resultados)} archivos OK · "
+            f"{total_ins} nuevos · {total_upd} actualizados"
+        ),
+    }
+
+
 def export_cross_control_xlsx(
     db: Session,
     *,

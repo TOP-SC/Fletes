@@ -5,8 +5,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
 TARIFARIOS_DIR = DATA_DIR / "tarifarios"
+CROSS_INBOX_DIR = DATA_DIR / "cross_inbox"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 TARIFARIOS_DIR.mkdir(parents=True, exist_ok=True)
+CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
 
 # Depósito Tango → etiqueta operativa del CD de origen.
 # 12 = Hurlingham: depósito Clicpaq; Limansky también despacha desde ahí (planilla «SA» / bloque Hurlingham).

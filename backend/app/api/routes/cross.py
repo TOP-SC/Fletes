@@ -2,21 +2,16 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.config import CROSS_PLANILLAS_DRIVE
 from app.database import get_db
-from app.schemas import CrossDriveLinkIn
 from app.services.cross_seguimiento_service import (
     ejecutar_macheo_cross,
     export_cross_control_xlsx,
     import_cross_workbook,
-    importar_cross_desde_url,
-    intentar_sync_drive,
-    listar_estado_planillas_drive,
+    importar_carpeta_cross,
+    listar_inbox_cross,
     listar_registros_cross,
     resumen_cross,
 )
-from app.services.google_drive_auth import drive_auth_status
-
 
 router = APIRouter(prefix="/cross", tags=["cross"])
 
@@ -26,25 +21,22 @@ def cross_resumen(db: Session = Depends(get_db)) -> dict:
     return resumen_cross(db)
 
 
-@router.get("/drive-auth")
-def cross_drive_auth() -> dict:
-    """Estado de credenciales Google (service account / OAuth)."""
-    return drive_auth_status()
+@router.get("/inbox")
+def cross_inbox() -> dict:
+    """Lista .xlsx en data/cross_inbox del servidor."""
+    return listar_inbox_cross()
 
 
-@router.get("/planillas-drive")
-def cross_planillas_drive(probar: bool = Query(False)) -> list[dict]:
-    """Planillas configuradas. Con ?probar=true verifica acceso (auth o anónimo)."""
-    if probar:
-        return listar_estado_planillas_drive()
-    return [
-        {
-            "label": p.get("label"),
-            "sheet_id": p.get("sheet_id"),
-            "activo": p.get("activo", True),
-        }
-        for p in CROSS_PLANILLAS_DRIVE
-    ]
+@router.post("/import-carpeta")
+def cross_import_carpeta(
+    matchear: bool = Query(True),
+    mover: bool = Query(True),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Importa todos los Excel depositados en data/cross_inbox."""
+    return importar_carpeta_cross(
+        db, ejecutar_macheo=matchear, mover_procesados=mover
+    )
 
 
 @router.get("/registros")
@@ -85,32 +77,6 @@ async def cross_importar(
         file.filename or "cross.xlsx",
         ejecutar_macheo=matchear,
     )
-
-
-@router.post("/sync-drive")
-def cross_sync_drive(
-    matchear: bool = Query(True),
-    db: Session = Depends(get_db),
-) -> dict:
-    return intentar_sync_drive(db, ejecutar_macheo=matchear)
-
-
-@router.post("/import-drive-link")
-def cross_import_drive_link(
-    body: CrossDriveLinkIn,
-    matchear: bool = Query(True),
-    db: Session = Depends(get_db),
-) -> dict:
-    """Descarga planilla desde link compartido de Drive/Sheets e importa."""
-    try:
-        return importar_cross_desde_url(
-            db,
-            body.url,
-            nombre=body.nombre,
-            ejecutar_macheo=matchear,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/matchear")
