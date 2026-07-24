@@ -15,6 +15,7 @@ from app.services.cross_seguimiento_service import (
     listar_registros_cross,
     resumen_cross,
 )
+from app.services.google_drive_auth import drive_auth_status
 
 router = APIRouter(prefix="/cross", tags=["cross"])
 
@@ -34,6 +35,12 @@ def cross_inbox() -> dict:
 def cross_estado_planillas() -> dict:
     """Estado verde/rojo/gris de las 5 planillas + último macheo."""
     return estado_planillas_cross()
+
+
+@router.get("/drive-auth")
+def cross_drive_auth() -> dict:
+    """Estado OAuth / service account para bajar planillas del grupo SommierCenter."""
+    return drive_auth_status()
 
 
 @router.post("/import-carpeta")

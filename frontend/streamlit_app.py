@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-export-completo-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-oauth-drive-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5325,6 +5325,36 @@ def _config_cross_seguimiento() -> None:
     c2.metric("En maestro", resumen.get("en_maestro", 0))
     c3.metric("Entregado SI", resumen.get("entregado_si", 0))
     c4.metric("Entregado NO", resumen.get("entregado_no", 0))
+
+    try:
+        drive_auth = get_json("/cross/drive-auth")
+    except Exception:
+        drive_auth = {}
+    st.markdown("#### Acceso Google Drive")
+    if drive_auth.get("puede_leer_grupo_sommier") or drive_auth.get("oauth_token_valido"):
+        st.success(drive_auth.get("mensaje") or "Google conectado")
+    else:
+        st.warning(
+            drive_auth.get("mensaje")
+            or "Sin Google conectado — Cross 3/4 del grupo SommierCenter no bajan."
+        )
+        with st.expander("Cómo conectar tu mail (sin tocar permisos de las planillas)"):
+            st.markdown(
+                """
+1. En [Google Cloud Console](https://console.cloud.google.com/): proyecto → habilitar **Google Drive API**.
+2. Pantalla de consentimiento OAuth → tipo **Interna**.
+3. Credenciales → **ID de cliente OAuth** → Aplicación de **escritorio** → descargar JSON.
+4. Guardarlo como `data/google_oauth_client.json` en el repo.
+5. En tu PC:
+   ```
+   python backend/scripts/google_oauth_setup.py
+   ```
+   Entrá con **tu** mail `@sommiercenter.com` (solo lectura).
+6. Copiá `data/google_oauth_token.json` al server (`/opt/fletes/data/`) y reiniciá `fletes-api`.
+
+No hace falta que los dueños cambien el compartir de Cross 3/4.
+                """
+            )
 
     _mostrar_estado_planillas_cross()
 
