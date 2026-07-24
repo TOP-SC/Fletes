@@ -24,13 +24,15 @@ MENU_DISPLAY: dict[str, str] = {
     "Proveedor a elegir": "Proveedor a elegir",
 }
 
-# Columnas del maestro (clave DataFrame → encabezado)
+# Columnas del maestro (clave DataFrame → encabezado compacto en grilla)
 COLUMNA_DISPLAY: dict[str, str] = {
-    "FECHA ENTREGA": "Fecha entrega",
-    "ESTADO PEDIDO": "Estado ped.",
-    "ESTADO REMITO": "Estado remito",
+    "FECHA PEDIDO": "Fech ped",
+    "FECHA ENTREGA": "Fech ent",
+    "FECHA PRESENTACION": "Fech pres",
+    "ESTADO PEDIDO": "Estado",
+    "ESTADO REMITO": "Est. remito",
     "ENVIO": "Envío",
-    "NRO TRANSP": "Nro. transp.",
+    "NRO TRANSP": "Transp",
     "REMITOS": "Remitos",
     "DESTINATARIO": "Destinatario",
     "LOCALIDAD": "Localidad",
@@ -38,23 +40,23 @@ COLUMNA_DISPLAY: dict[str, str] = {
     "SERVICIO": "Servicio",
     "TRANSPORTE": "Transporte",
     "FLETERO": "Fletero",
-    "OBLEA TRANSPORTE": "Oblea transporte",
+    "OBLEA TRANSPORTE": "Oblea",
     "PROVEEDOR": "Proveedor",
     "BULTOS": "Bultos",
     "PESO": "Peso",
     "VOLUMEN": "Volumen",
-    "PESO FACTURADO": "Peso facturado",
+    "PESO FACTURADO": "Peso fact.",
     "LOGISTICA": "Logística",
     "SEGURO": "Seguro",
     "GESTION": "Gestión",
     "ADICIONAL": "Adicional",
-    "VALOR DECLARADO": "Valor declarado",
-    "PRECIO NETO": "Precio neto",
+    "VALOR DECLARADO": "Valor decl.",
+    "PRECIO NETO": "P. neto",
     "ARTICULOS": "Artículos",
     "ZONA ORIGEN": "Zona origen",
-    "DESCRIPCION ZONA ORIGEN": "Descripción zona origen",
+    "DESCRIPCION ZONA ORIGEN": "Desc. zona origen",
     "ZONA DESTINO": "Zona destino",
-    "DESCRIPCION ZONA DESTINO": "Descripción zona destino",
+    "DESCRIPCION ZONA DESTINO": "Desc. zona destino",
     "obs": "Obs.",
     "costo": "Costo",
     "total": "Total",
@@ -63,7 +65,7 @@ COLUMNA_DISPLAY: dict[str, str] = {
     "ZONA KM": "Zona km",
     "TARIFA REF": "Tarifa ref.",
     "dif": "Dif.",
-    "suc": "Suc.",
+    "suc": "Suc. / CC",
     "campo": "Campo",
     "valor": "Valor",
     "excluir_planilla": "Anular remito",
@@ -82,7 +84,18 @@ COLUMNA_DISPLAY: dict[str, str] = {
     "tipo_gestion": "Tipo gestión",
     "sub_tipo_gestion": "Sub tipo gestión",
     "COD CLIENTE": "Cód. cliente",
-    "suc": "Suc. / CC",
+    "CEDOL": "CEDOL",
+}
+
+_ESTADO_PEDIDO_ABREV: dict[str, str] = {
+    "APROBADO": "APR",
+    "CUMPLIDO": "CUM",
+    "PENDIENTE": "PEND",
+    "ANULADO": "ANUL",
+    "CANCELADO": "CANC",
+    "EN PREPARACION": "PREP",
+    "EN PREPARACIÓN": "PREP",
+    "FACTURADO": "FACT",
 }
 
 _PARTICULAS = frozenset({"de", "del", "la", "las", "los", "y", "e", "en", "a", "al"})
@@ -215,7 +228,7 @@ def titulo_palabras(texto: str) -> str:
 
 
 def fmt_celda_maestro(valor: object, columna: str) -> str:
-    """Texto de celda para grillas (mantiene números y fechas tal cual)."""
+    """Texto de celda para grillas (compacto: fechas dd/mm, estados cortos)."""
     if valor is None or (isinstance(valor, float) and str(valor) == "nan"):
         return ""
     if columna == "PROVEEDOR":
@@ -231,7 +244,58 @@ def fmt_celda_maestro(valor: object, columna: str) -> str:
         return titulo_palabras(str(valor))
     if columna == "ESTADO PEDIDO":
         s = str(valor or "").strip()
-        return s[:18] + "…" if len(s) > 19 else s
+        key = s.upper()
+        if key in _ESTADO_PEDIDO_ABREV:
+            return _ESTADO_PEDIDO_ABREV[key]
+        # Primeras 3–4 letras si es una sola palabra larga
+        if len(s) > 4 and " " not in s:
+            return s[:3].upper()
+        return s[:8] + "…" if len(s) > 9 else s
+    if columna in (
+        "FECHA",
+        "FECHA PEDIDO",
+        "FECHA ENTREGA",
+        "FECHA PRESENTACION",
+    ) or ("fecha" in columna.lower() and "hora" not in columna.lower()):
+        return _fecha_corta_ddmm(valor)
+    if columna == "ESTADO REMITO":
+        s = str(valor or "").strip()
+        low = s.lower()
+        if low in ("sin remito", "sin rar/r"):
+            return "Sin R"
+        return s
     if columna in _CAMPOS_TITULO:
         return titulo_palabras(str(valor))
     return str(valor).strip()
+
+
+def _fecha_corta_ddmm(valor: object) -> str:
+    """dd/mm sin año — ahorra espacio en grilla (el año suele ser el del período)."""
+    if valor is None:
+        return ""
+    s = str(valor).strip()
+    if not s or s.lower() == "nan":
+        return ""
+    if " " in s:
+        s = s.split(" ", 1)[0].strip()
+    if "T" in s and len(s) >= 10:
+        s = s.split("T", 1)[0].strip()
+    # 2026-07-09 → 09/07
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        try:
+            y, m, d = s[:10].split("-")
+            return f"{int(d):02d}/{int(m):02d}"
+        except ValueError:
+            pass
+    # 09/07/2026 → 09/07
+    parts = s.replace("-", "/").split("/")
+    if len(parts) >= 2:
+        try:
+            d, m = int(parts[0]), int(parts[1])
+            if d > 31 and len(parts) >= 3:
+                # yyyy/mm/dd
+                d, m = int(parts[2]), int(parts[1])
+            return f"{d:02d}/{m:02d}"
+        except ValueError:
+            return s
+    return s

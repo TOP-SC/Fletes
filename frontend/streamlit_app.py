@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-ui-simple-2026-07-24"
+API_BUILD_ESPERADO = "fletes-grilla-compacta-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -172,7 +172,7 @@ FLETES_VISTA_GRILLA = [
 MAESTRO_VISTA_GRILLA = [
     "FECHA PEDIDO",
     "FECHA ENTREGA",
-    "FECHA PRESENTACION",
+    # FECHA PRESENTACION: solo tras cruce prefactura — no en grilla (casi siempre vacía)
     "ESTADO PEDIDO",
     "ENVIO",
     "REMITOS",
@@ -195,33 +195,33 @@ MAESTRO_VISTA_GRILLA = [
 
 # Proporciones de columnas en grilla maestro / elegir proveedor (sin dif/obs/suc)
 MAESTRO_COL_RATIOS: dict[str, float] = {
-    "FECHA": 0.72,
-    "FECHA PEDIDO": 0.68,
-    "FECHA ENTREGA": 0.68,
-    "FECHA PRESENTACION": 0.72,
-    "ESTADO PEDIDO": 0.82,
+    "FECHA": 0.48,
+    "FECHA PEDIDO": 0.48,
+    "FECHA ENTREGA": 0.48,
+    "FECHA PRESENTACION": 0.48,
+    "ESTADO PEDIDO": 0.42,
     "ENVIO": 0.7,
-    "ESTADO REMITO": 0.78,
-    "NRO TRANSP": 0.38,
-    "REMITOS": 0.95,
-    "DESTINATARIO": 1.55,
-    "LOCALIDAD": 0.95,
-    "PROVINCIA": 0.38,
-    "TRANSPORTE": 0.62,
-    "PROVEEDOR": 1.05,
-    "CEDOL": 0.42,
-    "suc": 0.55,
-    "COD CLIENTE": 0.7,
-    "BULTOS": 0.42,
-    "LOGISTICA": 0.85,
-    "SEGURO": 0.62,
-    "PRECIO NETO": 0.85,
-    "total": 0.85,
-    "SUCURSAL": 0.5,
-    "KM": 0.55,
-    "ZONA KM": 0.8,
-    "TARIFA REF": 1.15,
-    "FLETERO": 0.65,
+    "ESTADO REMITO": 0.55,
+    "NRO TRANSP": 0.32,
+    "REMITOS": 0.85,
+    "DESTINATARIO": 1.35,
+    "LOCALIDAD": 0.85,
+    "PROVINCIA": 0.32,
+    "TRANSPORTE": 0.55,
+    "PROVEEDOR": 0.9,
+    "CEDOL": 0.38,
+    "suc": 0.48,
+    "COD CLIENTE": 0.62,
+    "BULTOS": 0.38,
+    "LOGISTICA": 0.75,
+    "SEGURO": 0.55,
+    "PRECIO NETO": 0.75,
+    "total": 0.75,
+    "SUCURSAL": 0.45,
+    "KM": 0.48,
+    "ZONA KM": 0.7,
+    "TARIFA REF": 1.0,
+    "FLETERO": 0.55,
 }
 
 
@@ -272,8 +272,8 @@ def preparar_maestro_df(df: pd.DataFrame) -> pd.DataFrame:
         if col in MAESTRO_MONEDA:
             out[col] = pd.to_numeric(out[col], errors="coerce")
         elif col == "FECHA" or "fecha" in col.lower():
-            out[col] = out[col].apply(fmt_fecha_sin_hora)
-        elif col in ("PROVEEDOR", "DESTINATARIO", "LOCALIDAD", "PROVINCIA", "TRANSPORTE", "ESTADO PEDIDO"):
+            out[col] = out[col].apply(lambda v, c=col: fmt_celda_maestro(v, c))
+        elif col in ("PROVEEDOR", "DESTINATARIO", "LOCALIDAD", "PROVINCIA", "TRANSPORTE", "ESTADO PEDIDO", "ESTADO REMITO"):
             out[col] = out[col].apply(lambda v, c=col: fmt_celda_maestro(v, c))
     return out
 
@@ -2891,6 +2891,10 @@ def _celda_html(
         full = nombre_provincia_completo(fila.get("PROVINCIA"))
         if full:
             title = f' title="{html_lib.escape(full)}"'
+    elif col_name == "ESTADO PEDIDO":
+        raw_est = str(fila.get("ESTADO PEDIDO") or "").strip()
+        if raw_est:
+            title = f' title="{html_lib.escape(raw_est)}"'
     elif len(texto) > 22:
         title = f' title="{html_lib.escape(texto)}"'
     luz_motivo = _motivo_luz_columna(fila, col_name)
@@ -3196,6 +3200,11 @@ def _texto_celda_grilla(fila: dict[str, Any], col_name: str) -> str:
         "PROVINCIA",
         "TRANSPORTE",
         "ESTADO PEDIDO",
+        "ESTADO REMITO",
+        "FECHA",
+        "FECHA PEDIDO",
+        "FECHA ENTREGA",
+        "FECHA PRESENTACION",
     ):
         return fmt_celda_maestro(raw, col_name)
     return _celda_grilla_texto(raw, col_name)
@@ -3748,8 +3757,13 @@ def _ratios_columnas(nombres: list[str]) -> list[float]:
 def _celda_grilla_texto(val: Any, col_name: str) -> str:
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return ""
-    if col_name in ("FECHA", "FECHA PEDIDO", "FECHA ENTREGA") or "fecha" in col_name.lower():
-        return fmt_fecha_sin_hora(val)
+    if col_name in (
+        "FECHA",
+        "FECHA PEDIDO",
+        "FECHA ENTREGA",
+        "FECHA PRESENTACION",
+    ) or "fecha" in col_name.lower():
+        return fmt_celda_maestro(val, col_name)
     if col_name in MAESTRO_MONEDA:
         return fmt_pesos_ar(val)
     return str(val)
