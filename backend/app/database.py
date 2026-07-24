@@ -44,6 +44,10 @@ _MIGRATIONS: dict[str, list[tuple[str, str]]] = {
     "prefacturas_clickpac": [
         ("nro_envio", "VARCHAR(50)"),
     ],
+    "cross_seguimiento": [
+        ("cod_cliente", "VARCHAR(40)"),
+        ("importe_facturado", "FLOAT"),
+    ],
     "tarifas": [("cedol", "VARCHAR(40)"), ("version_id", "INTEGER")],
     "flete_distancias": [("domicilio_fp", "VARCHAR(64)")],
 }

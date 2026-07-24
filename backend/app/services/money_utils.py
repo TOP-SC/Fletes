@@ -10,6 +10,7 @@ CAMPOS_MONEDA = frozenset({
     "LOGISTICA", "SEGURO", "GESTION", "ADICIONAL", "VALOR DECLARADO", "PRECIO NETO",
     "costo", "total", "dif", "precio", "importe", "costo_tarifario", "costo_total",
     "prefactura_proveedor", "diferencia", "PESO FACTURADO", "COBRO RED", "COBRO PROVINCIA",
+    "facturado", "control", "importe_facturado",
 })
 
 # Formato Excel (openpyxl): mantiene número editable y muestra $

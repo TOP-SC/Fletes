@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-arca-formato-adrian-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-salta-jujuy-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -3847,7 +3847,7 @@ def pagina_casos(
         if c4.button("Reaplicar reglas y proveedores", key=f"{key_prefix}_reaplicar"):
             with st.spinner("Reaplicando reglas y cobros (puede tardar 1–2 min)…"):
                 with api_client() as c:
-                    r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                    r = c.post("/envios/reaplicar-reglas", timeout=600.0)
                     r.raise_for_status()
                     data = r.json()
                 msg = f"Procesados: {data.get('procesados', 0)}"
@@ -4328,7 +4328,7 @@ def pagina_modo_adrian() -> None:
         if act2.button("Reaplicar reglas y proveedores", key="adrian_reaplicar"):
             with st.spinner("Reaplicando reglas y cobros…"):
                 with api_client() as c:
-                    r = c.post("/envios/reaplicar-reglas", timeout=300.0)
+                    r = c.post("/envios/reaplicar-reglas", timeout=600.0)
                     r.raise_for_status()
                     st.toast(f"Procesados: {r.json().get('procesados', 0)}")
             _clear_adrian_cache()
@@ -5270,9 +5270,9 @@ def _config_cross_seguimiento() -> None:
     """Planillas cross «Retirado por …» — revisión colaborativa por remito."""
     st.subheader("Seguimiento cross (interior)")
     st.caption(
-        "Importá las planillas de Drive donde cada sucursal registra retiros y entregas "
-        "(pestaña **Retirado por Logística Alfaro / Fransof / …**). "
-        "No factura: solo cruza por **remito** con el maestro para revisión."
+        "Importá las planillas de Drive (pestañas **Retirado por …** o **Cross Salta/Jujuy/Tucumán**). "
+        "En esas últimas el remito suele estar en columna B (col A = fecha de retiro). "
+        "Cruza por **remito** con el maestro para control de precios y entrega."
     )
 
     try:
@@ -5324,13 +5324,13 @@ def _config_cross_seguimiento() -> None:
             "Si solo la compartieron con tu mail @empresa, desde el servidor sigue fallando (401)."
         )
         st.caption(
-            "**En maestro = 0** es distinto: los 779 registros cross pueden estar cargados, "
+            "**En maestro = 0** es distinto: los registros cross pueden estar cargados, "
             "pero los remitos aún no coinciden con Tango — usá **Machear con maestro** "
             "después de importar envíos."
         )
 
     upl = st.file_uploader(
-        "Excel cross (pestaña Retirado por …)",
+        "Excel cross (Retirado por … o Cross Provincia)",
         type=["xlsx"],
         key="cfg_cross_import",
     )
@@ -5359,7 +5359,7 @@ def _config_cross_seguimiento() -> None:
     if b2.button("Sincronizar desde Drive", key="cfg_cross_btn_sync"):
         try:
             with st.spinner("Descargando planillas públicas…"):
-                with httpx.Client(base_url=API_URL, timeout=180.0) as c:
+                with httpx.Client(base_url=API_URL, timeout=300.0) as c:
                     r = c.post("/cross/sync-drive", params={"matchear": "true"})
                     r.raise_for_status()
                     data = r.json()
@@ -5390,10 +5390,11 @@ def _config_cross_seguimiento() -> None:
         "Machear con maestro", disabled=not resumen.get("total"), key="cfg_cross_btn_match"
     ):
         try:
-            with api_client() as c:
-                r = c.post("/cross/matchear")
-                r.raise_for_status()
-                m = r.json()
+            with st.spinner("Macheando remitos…"):
+                with httpx.Client(base_url=API_URL, timeout=300.0) as c:
+                    r = c.post("/cross/matchear")
+                    r.raise_for_status()
+                    m = r.json()
             st.success(
                 f"Macheo: {m.get('en_maestro', 0)} en maestro · "
                 f"{m.get('sin_maestro', 0)} solo en planilla"
@@ -5402,13 +5403,37 @@ def _config_cross_seguimiento() -> None:
         except Exception as exc:
             st.error(str(exc))
 
+    export_key = "cross_export_xlsx"
+    if resumen.get("total"):
+        if st.button(
+            "Generar Excel de control (facturado vs control + suc / COD CLIENTE)",
+            key="cfg_cross_export_btn",
+        ):
+            try:
+                with st.spinner("Armando planilla completa…"):
+                    with httpx.Client(base_url=API_URL, timeout=300.0) as c:
+                        r = c.get("/cross/export")
+                        r.raise_for_status()
+                    st.session_state[export_key] = r.content
+                st.success("Planilla lista — descargá abajo (todos los registros, no solo la vista).")
+            except Exception as exc:
+                st.error(f"No se pudo exportar: {exc}")
+        if st.session_state.get(export_key):
+            st.download_button(
+                "Descargar control_cross.xlsx",
+                st.session_state[export_key],
+                file_name="control_cross.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="cfg_cross_export_dl",
+            )
+
     if resumen.get("total"):
         try:
             regs = get_json("/cross/registros", limit=100, solo_maestro=True)
         except Exception:
             regs = []
         if regs:
-            st.markdown("**Últimos con match en maestro**")
+            st.markdown("**Vista previa (últimos 100 con match)** — usá el Excel de control para el listado completo.")
             df = pd.DataFrame(regs)
             show = [
                 c
@@ -5417,6 +5442,8 @@ def _config_cross_seguimiento() -> None:
                     "proveedor",
                     "entregado",
                     "fecha_entrega_coord",
+                    "cod_cliente",
+                    "importe_facturado",
                     "match_estado",
                     "archivo_origen",
                 )

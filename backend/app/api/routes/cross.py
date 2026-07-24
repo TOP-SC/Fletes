@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.config import CROSS_PLANILLAS_DRIVE
@@ -6,6 +7,7 @@ from app.database import get_db
 from app.schemas import CrossDriveLinkIn
 from app.services.cross_seguimiento_service import (
     ejecutar_macheo_cross,
+    export_cross_control_xlsx,
     import_cross_workbook,
     importar_cross_desde_url,
     intentar_sync_drive,
@@ -44,6 +46,22 @@ def cross_registros(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     return listar_registros_cross(db, limit=limit, solo_maestro=solo_maestro)
+
+
+@router.get("/export")
+def cross_export(
+    proveedor: str | None = Query(None),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Excel de control: cross + costo control / facturado / dif / suc / COD CLIENTE."""
+    data = export_cross_control_xlsx(db, proveedor=proveedor)
+    return Response(
+        content=data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": 'attachment; filename="control_cross_alfaro.xlsx"'
+        },
+    )
 
 
 @router.post("/import")

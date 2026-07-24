@@ -26,6 +26,8 @@ def _upsert_seguimiento(db: Session, row: dict[str, Any], batch_id: int) -> tupl
                 remito_norm=norm,
                 remito=row.get("remito"),
                 nro_pedido=row.get("nro_pedido"),
+                cod_cliente=row.get("cod_cliente"),
+                importe_facturado=row.get("importe_facturado"),
                 proveedor=row.get("proveedor"),
                 hoja_origen=row.get("hoja_origen"),
                 archivo_origen=row.get("archivo_origen"),
@@ -42,6 +44,10 @@ def _upsert_seguimiento(db: Session, row: dict[str, Any], batch_id: int) -> tupl
 
     existente.remito = row.get("remito") or existente.remito
     existente.nro_pedido = row.get("nro_pedido") or existente.nro_pedido
+    if row.get("cod_cliente"):
+        existente.cod_cliente = row["cod_cliente"]
+    if row.get("importe_facturado") is not None:
+        existente.importe_facturado = row["importe_facturado"]
     existente.proveedor = row.get("proveedor") or existente.proveedor
     existente.hoja_origen = row.get("hoja_origen") or existente.hoja_origen
     existente.archivo_origen = row.get("archivo_origen") or existente.archivo_origen
@@ -194,6 +200,8 @@ def _cross_a_dict(reg: CrossSeguimiento) -> dict[str, Any]:
         "remito_norm": reg.remito_norm,
         "remito": reg.remito,
         "nro_pedido": reg.nro_pedido,
+        "cod_cliente": reg.cod_cliente,
+        "importe_facturado": reg.importe_facturado,
         "proveedor": reg.proveedor,
         "hoja_origen": reg.hoja_origen,
         "archivo_origen": reg.archivo_origen,
@@ -427,3 +435,118 @@ def listar_registros_cross(
     if solo_maestro:
         q = q.where(CrossSeguimiento.match_estado == "en_maestro")
     return [_cross_a_dict(r) for r in db.scalars(q).all()]
+
+
+def export_cross_control_xlsx(
+    db: Session,
+    *,
+    proveedor: str | None = None,
+) -> bytes:
+    """
+    Planilla de control Alfaro/Fransof: cross + datos maestro
+    (costo control, facturado, dif, suc, COD CLIENTE).
+    """
+    from io import BytesIO
+
+    import pandas as pd
+    from openpyxl.styles import Font, PatternFill
+
+    from app.services.money_utils import EXCEL_NUM_FMT_PESOS, aplicar_formato_moneda_hoja
+    from app.services.rules_service import resolver_sucursal_cc
+
+    q = select(CrossSeguimiento).order_by(CrossSeguimiento.remito)
+    if proveedor:
+        q = q.where(CrossSeguimiento.proveedor == proveedor.upper())
+    regs = list(db.scalars(q).all())
+
+    # Índice maestro por remito_norm (una fila representativa)
+    envios = list(
+        db.scalars(
+            select(Envio).where(
+                Envio.remito_norm.isnot(None),
+                Envio.remito_norm != "",
+            )
+        ).all()
+    )
+    by_norm: dict[str, list[Envio]] = {}
+    for e in envios:
+        by_norm.setdefault(e.remito_norm or "", []).append(e)
+
+    filas: list[dict[str, Any]] = []
+    for reg in regs:
+        grupo = by_norm.get(reg.remito_norm or "", [])
+        base = grupo[0] if grupo else None
+        costo_control = None
+        if grupo:
+            # max por remito (mismo criterio que exports provincia)
+            costo_control = max(float(e.costo_tarifario or 0) for e in grupo)
+        prec_neto = None
+        if grupo:
+            for e in grupo:
+                if e.prefactura_proveedor is not None:
+                    prec_neto = float(e.prefactura_proveedor)
+                    break
+        facturado = reg.importe_facturado
+        if facturado is None and prec_neto is not None:
+            facturado = prec_neto
+        control = round(costo_control, 2) if costo_control else None
+        dif = None
+        if facturado is not None and control is not None:
+            dif = round(float(facturado) - float(control), 2)
+
+        suc = ""
+        cod_cli = reg.cod_cliente or ""
+        if base:
+            suc = resolver_sucursal_cc(base) or base.sucursal_cc or ""
+            if not cod_cli:
+                cod_cli = base.cod_cliente or ""
+
+        filas.append(
+            {
+                "remito": reg.remito,
+                "proveedor": reg.proveedor,
+                "entregado": reg.entregado,
+                "fecha_retiro": reg.fecha_retiro,
+                "fecha_entrega_coord": reg.fecha_entrega_coord,
+                "match_estado": reg.match_estado,
+                "nro_pedido": reg.nro_pedido or (base.nro_pedido if base else None),
+                "COD CLIENTE": cod_cli,
+                "suc": suc,
+                "destinatario": base.razon_social if base else None,
+                "localidad": base.localidad if base else None,
+                "provincia": base.provincia if base else None,
+                "facturado": facturado,
+                "control": control,
+                "dif": dif,
+                "observacion": reg.observacion,
+                "archivo_origen": reg.archivo_origen,
+                "hoja_origen": reg.hoja_origen,
+            }
+        )
+
+    buf = BytesIO()
+    df = pd.DataFrame(filas)
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Control cross")
+        ws = writer.sheets["Control cross"]
+        fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+        font = Font(bold=True, color="1F4E79")
+        for col in range(1, len(df.columns) + 1):
+            cell = ws.cell(1, col)
+            cell.fill = fill
+            cell.font = font
+        aplicar_formato_moneda_hoja(ws, list(df.columns))
+        # Colorear entregado pendiente/NO
+        for r_idx, row in enumerate(filas, start=2):
+            ent = (row.get("entregado") or "").upper()
+            cell = ws.cell(r_idx, list(df.columns).index("entregado") + 1)
+            if ent == "NO":
+                cell.fill = PatternFill(
+                    start_color="FFCDD2", end_color="FFCDD2", fill_type="solid"
+                )
+            elif ent == "PENDIENTE":
+                cell.fill = PatternFill(
+                    start_color="FFF9C4", end_color="FFF9C4", fill_type="solid"
+                )
+    buf.seek(0)
+    return buf.getvalue()

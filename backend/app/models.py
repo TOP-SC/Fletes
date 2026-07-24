@@ -305,6 +305,8 @@ class CrossSeguimiento(Base):
     remito_norm: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     remito: Mapped[str | None] = mapped_column(String(50))
     nro_pedido: Mapped[str | None] = mapped_column(String(50), index=True)
+    cod_cliente: Mapped[str | None] = mapped_column(String(40))
+    importe_facturado: Mapped[float | None] = mapped_column(Float)
     proveedor: Mapped[str | None] = mapped_column(String(40), index=True)
     hoja_origen: Mapped[str | None] = mapped_column(String(120))
     archivo_origen: Mapped[str | None] = mapped_column(String(255))
