@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-feedback-adrian-2026-07-22"
+API_BUILD_ESPERADO = "fletes-arca-formato-adrian-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -3716,8 +3716,9 @@ def pagina_dashboard() -> None:
     st.divider()
     st.subheader("Export contable / ARCA")
     st.caption(
-        "Formato contable (hojas Datos de la Empresa + Listado por Imputación Contable "
-        "con columnas por provincia, más resúmenes Interior / CABA-AMBA)."
+        "Formato Marcela/Adrián (Datos de la Empresa + Listado por Imputación Contable): "
+        "mismas columnas, provincias, colores por proveedor y columnas ocultas. "
+        "Los montos salen del maestro/app (costo tarifario), no del Excel de ejemplo."
     )
     arca_key = "dashboard_export_provincias_xlsx"
     if st.button("Generar Excel costos por provincia", key="dash_arca_export_btn"):

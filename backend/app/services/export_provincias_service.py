@@ -1,26 +1,67 @@
-"""Export ARCA / costos de flete por provincia (formato contable Marcela)."""
+"""Export ARCA / costos de flete — formato contable Marcela (Excel Adrián 2025).
+
+Replica la estructura de ``fletes año 2025.xlsx``:
+  - Hoja ``Datos de la Empresa`` (WAMARO)
+  - Hoja ``Listado por Imputación Contable`` con mismas columnas,
+    columnas ocultas, ``-`` en provincias vacías y color por proveedor.
+
+Los montos salen de la app (envíos / costo tarifario), no del Excel de ejemplo.
+"""
 
 from __future__ import annotations
 
+import unicodedata
+from collections import defaultdict
+from datetime import date, datetime
 from io import BytesIO
 from typing import Any
 
-import pandas as pd
+from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Envio
-from app.services.money_utils import EXCEL_NUM_FMT_PESOS, aplicar_formato_moneda_hoja
+from app.proveedores import normalizar_proveedor
+from app.services.money_utils import EXCEL_NUM_FMT_PESOS
 from app.services.rules_service import es_amba_gba
 
-FILL_HEADER = PatternFill(start_color="E2E9F4", end_color="E2E9F4", fill_type="solid")
-FONT_HEADER = Font(bold=True, color="2C3E50")
-FILL_EMPRESA = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-FONT_EMPRESA = Font(bold=True, color="FFFFFF", size=14)
-
-# Orden típico de columnas de provincia en listados contables TOP
-_PROVINCIAS_COLS = [
+# Columnas del listado Adrián (orden exacto)
+_HEADERS = [
+    "Cliente",  # A hidden
+    "Cuenta",
+    "Fecha",
+    "Modelo",
+    "Tipo comprobante",
+    "Descripcion",  # F hidden
+    "Numero Comprobante",
+    "Proveedor",
+    "Razón social",  # I hidden
+    "Exportado",
+    "DescAsientoModelo",
+    "Débitos",
+    "Debe",
+    "Créditos",
+    "Haber",
+    "Saldo",
+    "ImporteAlterDebe",
+    "ImporteAlterHaber",
+    "ImporteAlterTotal",
+    "codCuenta",
+    "Saldo acumulado",
+    "RunningTotalAlter",
+    "Barra",
+    "CodModelo",
+    "DescModelo",
+    "Anulación",
+    "DescripcionCuenta",
+    "CodTurno",
+    "DescTurno",
+    "Puesto",
+    "DescPuesto",
+    "TransferidoACn",
+    "Concepto",
     "CABA",
     "Buenos Aires",
     "Catamarca",
@@ -45,248 +86,343 @@ _PROVINCIAS_COLS = [
     "Santiago del Estero",
     "Tierra del Fuego",
     "Tucumán",
-    "AMBA / GBA",
 ]
 
+_HIDDEN_COLS = {
+    "A",
+    "F",
+    "I",
+    "J",
+    "K",
+    "L",
+    "N",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "AA",
+    "AB",
+    "AC",
+    "AD",
+    "AE",
+    "AF",
+    "AG",
+}
 
-def _nombre_provincia_contable(
+_PROVINCIAS = _HEADERS[33:]  # desde CABA
+
+# Código corto / razón social / color (como Excel Adrián)
+_PROVEEDOR_META: dict[str, tuple[str, str, str | None]] = {
+    "CLICPAQ": ("CLIPAQ", "Clicpaq Sa", "FFCC99FF"),
+    "FRANSOF": ("FRANSO", "FRANSOF SRL", "FFCCFF66"),
+    "ALFARO": ("AALFAR", "ALFARO CRISTIAN FRANCISCO ORLANDO", "FF6699FF"),
+    "LBO": ("BEARIN", "LOAD BEARING OPS S.R.L.", "FFFFFF99"),
+    "FLETES_SUC": ("FLETES", "Fletes sucursales AMBA/GBA", "FFFFC000"),
+    "ORO NEGRO": ("ORONEG", "Oro Negro", "FF00B050"),
+    "LA COSTA": ("COSTA", "Expreso La Costa", "FF00B0F0"),
+}
+
+_CUENTA = "520145 - Fletes sucursales"
+_COD_CUENTA = "520145"
+_MODELO = "10"
+_DESC_MODELO = "10- FLETES"
+
+_FILL_HEADER = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+_FONT_HEADER = Font(bold=True, color="1F4E79")
+
+
+def _norm_txt(value: str | None) -> str:
+    v = (value or "").strip().upper()
+    return "".join(
+        c for c in unicodedata.normalize("NFD", v) if unicodedata.category(c) != "Mn"
+    )
+
+
+def _provincia_col(
     provincia: str | None,
     localidad: str | None,
     cp: str | None,
     *,
     excluir_planilla: bool,
 ) -> str:
+    """Mapea destino app → columna del Excel Adrián (CABA / Buenos Aires / provincias)."""
     if excluir_planilla or es_amba_gba(provincia, localidad, cp):
-        prov_u = (provincia or "").upper()
-        loc_u = (localidad or "").upper()
-        if "CABA" in prov_u or "CAPITAL" in prov_u or "CABA" in loc_u:
+        prov_u = _norm_txt(provincia)
+        loc_u = _norm_txt(localidad)
+        if "CABA" in prov_u or "CAPITAL FEDERAL" in prov_u or "CABA" in loc_u:
             return "CABA"
-        return "AMBA / GBA"
-    nombre = (provincia or "Sin provincia").strip()
-    # Normalizar acentos comunes a rótulos del listado
+        return "Buenos Aires"
+
+    n = _norm_txt(provincia)
     mapa = {
+        "BUENOS AIRES": "Buenos Aires",
+        "GRAN BUENOS AIRES": "Buenos Aires",
+        "CABA": "CABA",
+        "CATAMARCA": "Catamarca",
+        "CHACO": "Chaco",
+        "CHUBUT": "Chubut",
         "CORDOBA": "Córdoba",
+        "CORRIENTES": "Corrientes",
         "ENTRE RIOS": "Entre Ríos",
+        "FORMOSA": "Formosa",
+        "JUJUY": "Jujuy",
+        "LA PAMPA": "La Pampa",
+        "LA RIOJA": "La Rioja",
+        "MENDOZA": "Mendoza",
+        "MISIONES": "Misiones",
         "NEUQUEN": "Neuquén",
         "RIO NEGRO": "Río Negro",
+        "SALTA": "Salta",
+        "SAN JUAN": "San Juan",
+        "SAN LUIS": "San Luis",
+        "SANTA CRUZ": "Santa Cruz",
+        "SANTA FE": "Santa Fe",
+        "SANTIAGO DEL ESTERO": "Santiago del Estero",
+        "TIERRA DEL FUEGO": "Tierra del Fuego",
         "TUCUMAN": "Tucumán",
-        "CIUDAD AUTONOMA DE BUENOS AIRES": "CABA",
-        "CAPITAL FEDERAL": "CABA",
     }
-    key = "".join(
-        c
-        for c in nombre.upper()
-        if c.isalnum() or c.isspace()
-    )
-    # strip accents roughly
-    import unicodedata
-
-    key_n = "".join(
-        c for c in unicodedata.normalize("NFD", key) if unicodedata.category(c) != "Mn"
-    )
-    for k, v in mapa.items():
-        if k in key_n:
-            return v
-    return nombre.title() if nombre else "Sin provincia"
+    for key, label in mapa.items():
+        if key in n:
+            return label
+    return "Buenos Aires"
 
 
-def _agregar_por_provincia(
-    db: Session,
-    *,
-    interior: bool,
-) -> list[dict[str, Any]]:
-    """Interior: excluir_planilla=False. AMBA/CABA: excluir_planilla=True (retiro/AMBA)."""
-    base = (
-        select(
-            Envio.provincia.label("provincia"),
-            Envio.localidad.label("localidad"),
-            Envio.cp.label("cp"),
-            Envio.remito_norm.label("remito_norm"),
-            func.max(func.coalesce(Envio.costo_tarifario, 0.0)).label("costo"),
-        )
-        .where(
-            Envio.excluir_planilla.is_(not interior),
-            Envio.remito_norm.isnot(None),
-            Envio.remito_norm != "",
-        )
-        .group_by(Envio.provincia, Envio.localidad, Envio.cp, Envio.remito_norm)
-    )
-    rows = db.execute(base).all()
-    acum: dict[str, dict[str, Any]] = {}
-    for prov, loc, cp, _rem, costo in rows:
-        nombre = (prov or "Sin provincia").strip()
-        if not interior:
-            if es_amba_gba(prov, loc, cp):
-                prov_u = (prov or "").upper()
-                loc_u = (loc or "").upper()
-                if "CABA" in prov_u or "CAPITAL" in prov_u or "CABA" in loc_u:
-                    nombre = "CABA"
-                else:
-                    nombre = "AMBA / GBA"
-            else:
-                continue
-        bucket = acum.setdefault(
-            nombre, {"provincia": nombre, "remitos": 0, "costo": 0.0}
-        )
-        bucket["remitos"] += 1
-        bucket["costo"] += float(costo or 0)
-    out = sorted(acum.values(), key=lambda x: x["costo"], reverse=True)
-    for row in out:
-        row["costo"] = round(float(row["costo"]), 2)
-    return out
+def _meta_proveedor(raw: str | None) -> tuple[str, str, str | None]:
+    key = normalizar_proveedor(raw) or (raw or "").strip().upper() or "SIN_ASIGNAR"
+    if key in _PROVEEDOR_META:
+        return _PROVEEDOR_META[key]
+    # Fleteros locales / otros: código acotado + sin color fijo
+    code = (key[:6] if key else "SIN").replace(" ", "")
+    return (code, raw or key or "Sin proveedor", None)
 
 
-def _detalle_imputacion(db: Session) -> list[dict[str, Any]]:
-    """Una fila por remito con monto imputado a la columna de provincia."""
+def _filas_desde_db(db: Session) -> list[dict[str, Any]]:
+    """
+    Agrega costo por proveedor + mes (análogo a facturas del listado Adrián)
+    y reparte montos en columnas de provincia.
+    """
     q = (
         select(
-            Envio.remito,
             Envio.remito_norm,
-            Envio.nro_pedido,
-            Envio.fecha_entrega,
-            Envio.razon_social,
             Envio.provincia,
             Envio.localidad,
             Envio.cp,
             Envio.excluir_planilla,
+            Envio.proveedor_tarifa,
+            Envio.fecha_entrega_d,
             func.max(func.coalesce(Envio.costo_tarifario, 0.0)).label("costo"),
         )
         .where(Envio.remito_norm.isnot(None), Envio.remito_norm != "")
         .group_by(
-            Envio.remito,
             Envio.remito_norm,
-            Envio.nro_pedido,
-            Envio.fecha_entrega,
-            Envio.razon_social,
             Envio.provincia,
             Envio.localidad,
             Envio.cp,
             Envio.excluir_planilla,
+            Envio.proveedor_tarifa,
+            Envio.fecha_entrega_d,
         )
     )
     rows = db.execute(q).all()
-    out: list[dict[str, Any]] = []
-    for rem, rem_n, pedido, fecha, cliente, prov, loc, cp, excl, costo in rows:
-        monto = round(float(costo or 0), 2)
+
+    # key = (cod_proveedor, año-mes) -> {prov: monto, fecha_max, razon, color}
+    buckets: dict[tuple[str, str], dict[str, Any]] = {}
+    for rem, prov, loc, cp, excl, prov_tarifa, f_ent, costo in rows:
+        monto = float(costo or 0)
         if monto <= 0:
             continue
-        col_prov = _nombre_provincia_contable(
-            prov, loc, cp, excluir_planilla=bool(excl)
-        )
+        code, razon, color = _meta_proveedor(prov_tarifa)
+        periodo = ""
+        fecha_ref: date | None = f_ent
+        if f_ent:
+            periodo = f"{f_ent.year:04d}{f_ent.month:02d}"
+        else:
+            periodo = "000000"
+        key = (code, periodo)
+        b = buckets.get(key)
+        if b is None:
+            b = {
+                "code": code,
+                "razon": razon,
+                "color": color,
+                "periodo": periodo,
+                "fecha": fecha_ref,
+                "por_prov": defaultdict(float),
+                "total": 0.0,
+            }
+            buckets[key] = b
+        col = _provincia_col(prov, loc, cp, excluir_planilla=bool(excl))
+        b["por_prov"][col] += monto
+        b["total"] += monto
+        if fecha_ref and (b["fecha"] is None or fecha_ref > b["fecha"]):
+            b["fecha"] = fecha_ref
+
+    out: list[dict[str, Any]] = []
+    for b in sorted(
+        buckets.values(),
+        key=lambda x: (x["fecha"] or date.min, x["code"]),
+    ):
+        fecha = b["fecha"] or date.today()
+        nro = f"CTRL-{b['code']}-{b['periodo'] or fecha.strftime('%Y%m')}"
         fila: dict[str, Any] = {
-            "Fecha": fecha or "",
-            "Remito": rem or rem_n or "",
-            "Pedido": pedido or "",
-            "Cliente": cliente or "",
-            "Provincia": col_prov,
-            "Total": monto,
+            "Cliente": None,
+            "Cuenta": _CUENTA,
+            "Fecha": datetime(fecha.year, fecha.month, fecha.day),
+            "Modelo": _MODELO,
+            "Tipo comprobante": "FAC",
+            "Descripcion": "FACTURA",
+            "Numero Comprobante": nro,
+            "Proveedor": b["code"],
+            "Razón social": b["razon"],
+            "Exportado": "Si",
+            "DescAsientoModelo": _DESC_MODELO,
+            "Débitos": round(b["total"], 2),
+            "Debe": round(b["total"], 2),
+            "Créditos": 0,
+            "Haber": 0,
+            "Saldo": round(b["total"], 2),
+            "ImporteAlterDebe": None,
+            "ImporteAlterHaber": 0,
+            "ImporteAlterTotal": None,
+            "codCuenta": _COD_CUENTA,
+            "Saldo acumulado": round(b["total"], 2),
+            "RunningTotalAlter": None,
+            "Barra": None,
+            "CodModelo": _MODELO,
+            "DescModelo": "FLETES",
+            "Anulación": None,
+            "DescripcionCuenta": "Fletes sucursales",
+            "CodTurno": None,
+            "DescTurno": None,
+            "Puesto": None,
+            "DescPuesto": None,
+            "TransferidoACn": None,
+            "Concepto": None,
+            "_color": b["color"],
         }
-        for p in _PROVINCIAS_COLS:
-            fila[p] = monto if p == col_prov else None
-        # Si la provincia no está en el catálogo fijo, sumar a Total solo
-        if col_prov not in _PROVINCIAS_COLS:
-            fila[col_prov] = monto
+        for p in _PROVINCIAS:
+            v = b["por_prov"].get(p)
+            fila[p] = round(v, 2) if v else "-"
         out.append(fila)
     return out
 
 
-def export_costos_por_provincia(db: Session) -> bytes:
-    """
-    Excel estilo presentación contable / ARCA (Marcela):
-    - Datos de la Empresa (portada)
-    - Listado por Imputación Contable (filas = remitos, columnas = provincias)
-    - Interior / CABA_AMBA (resúmenes)
-    """
-    interior = _agregar_por_provincia(db, interior=True)
-    amba = _agregar_por_provincia(db, interior=False)
-    detalle = _detalle_imputacion(db)
+def _sheet_empresa(wb: Workbook) -> None:
+    ws = wb.active
+    ws.title = "Datos de la Empresa"
+    headers = [
+        "Nombre_legal",
+        "Calle",
+        "Numero",
+        "Piso",
+        "Localidad",
+        "Codigo_postal",
+        "C__U__I__T__",
+        "Descripcion_de_actividad_D__G__I__",
+        "Logotipo_de_la_empresa",
+        "Departamento",
+        "Provincia",
+        "Id_empresa",
+        "Comuna",
+    ]
+    for i, h in enumerate(headers, start=1):
+        ws.cell(1, i, value=h)
+        ws.cell(1, i).font = _FONT_HEADER
+        ws.cell(1, i).fill = _FILL_HEADER
+    values = [
+        "WAMARO S.A.",
+        None,
+        None,
+        None,
+        None,
+        None,
+        "30-70904090-8",
+        "VENTA AL POR MENOR DE COLCHONES Y SOMIERES",
+        None,
+        None,
+        None,
+        1,
+        None,
+    ]
+    for i, v in enumerate(values, start=1):
+        ws.cell(2, i, value=v)
+    ws.column_dimensions["A"].width = 18
+    ws.column_dimensions["G"].width = 16
+    ws.column_dimensions["H"].width = 48
 
-    buf = BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        # Portada
-        ws0 = writer.book.create_sheet("Datos de la Empresa", 0)
-        ws0["A1"] = "SOMMIER CENTER / TOP — Control de Fletes"
-        ws0["A1"].font = FONT_EMPRESA
-        ws0["A1"].fill = FILL_EMPRESA
-        ws0.merge_cells("A1:F1")
-        ws0["A3"] = "Listado de costos de flete por provincia"
-        ws0["A4"] = "Uso: imputación contable / ARCA"
-        ws0["A6"] = "Hojas:"
-        ws0["A7"] = "1) Listado por Imputación Contable — detalle remito × provincia"
-        ws0["A8"] = "2) Interior — resumen provincias interior"
-        ws0["A9"] = "3) CABA_AMBA — resumen CABA / AMBA-GBA"
-        ws0.column_dimensions["A"].width = 70
 
-        # Listado estilo Marcela
-        extra_prov = sorted(
-            {
-                k
-                for row in detalle
-                for k in row
-                if k
-                not in (
-                    "Fecha",
-                    "Remito",
-                    "Pedido",
-                    "Cliente",
-                    "Provincia",
-                    "Total",
-                    *_PROVINCIAS_COLS,
-                )
-            }
+def _sheet_listado(wb: Workbook, filas: list[dict[str, Any]]) -> None:
+    ws = wb.create_sheet("Listado por Imputación Contable")
+    for i, h in enumerate(_HEADERS, start=1):
+        cell = ws.cell(1, i, value=h)
+        cell.font = _FONT_HEADER
+        cell.fill = _FILL_HEADER
+        cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
+
+    money_headers = {
+        "Débitos",
+        "Debe",
+        "Créditos",
+        "Haber",
+        "Saldo",
+        "Saldo acumulado",
+        *_PROVINCIAS,
+    }
+
+    for r_idx, fila in enumerate(filas, start=2):
+        color = fila.get("_color")
+        fill_prov = (
+            PatternFill(start_color=color, end_color=color, fill_type="solid")
+            if color
+            else None
         )
-        cols_detalle = [
-            "Fecha",
-            "Remito",
-            "Pedido",
-            "Cliente",
-            "Provincia",
-            "Total",
-            *_PROVINCIAS_COLS,
-            *extra_prov,
-        ]
-        df_det = pd.DataFrame(detalle, columns=cols_detalle)
-        if df_det.empty:
-            df_det = pd.DataFrame(columns=cols_detalle)
-        df_det.to_excel(writer, index=False, sheet_name="Listado por Imputación Contable")
-        ws_det = writer.sheets["Listado por Imputación Contable"]
-        for col in range(1, len(cols_detalle) + 1):
-            cell = ws_det.cell(row=1, column=col)
-            cell.font = FONT_HEADER
-            cell.fill = FILL_HEADER
-            cell.alignment = Alignment(wrap_text=True, horizontal="center")
-        aplicar_formato_moneda_hoja(ws_det, cols_detalle)
-        if not df_det.empty:
-            total_row = len(df_det) + 2
-            ws_det.cell(row=total_row, column=1, value="TOTAL")
-            total_cell = ws_det.cell(
-                row=total_row,
-                column=6,
-                value=round(float(df_det["Total"].sum()), 2),
-            )
-            total_cell.number_format = EXCEL_NUM_FMT_PESOS
-            total_cell.font = Font(bold=True)
+        for c_idx, h in enumerate(_HEADERS, start=1):
+            val = fila.get(h)
+            cell = ws.cell(r_idx, c_idx, value=val)
+            if h == "Proveedor" and fill_prov is not None:
+                cell.fill = fill_prov
+            if h in money_headers and isinstance(val, (int, float)):
+                cell.number_format = EXCEL_NUM_FMT_PESOS
+            if h == "Fecha" and isinstance(val, datetime):
+                cell.number_format = "DD/MM/YYYY"
 
-        for nombre, filas in (("Interior", interior), ("CABA_AMBA", amba)):
-            df = pd.DataFrame(filas, columns=["provincia", "remitos", "costo"])
-            if df.empty:
-                df = pd.DataFrame(columns=["provincia", "remitos", "costo"])
-            df.to_excel(writer, index=False, sheet_name=nombre)
-            ws = writer.sheets[nombre]
-            for col in range(1, 4):
-                cell = ws.cell(row=1, column=col)
-                cell.font = FONT_HEADER
-                cell.fill = FILL_HEADER
-            if not df.empty:
-                total_row = len(df) + 2
-                ws.cell(row=total_row, column=1, value="TOTAL")
-                ws.cell(row=total_row, column=2, value=int(df["remitos"].sum()))
-                total_cell = ws.cell(
-                    row=total_row, column=3, value=round(float(df["costo"].sum()), 2)
-                )
-                total_cell.number_format = EXCEL_NUM_FMT_PESOS
-                for col in range(1, 4):
-                    ws.cell(row=total_row, column=col).font = Font(bold=True)
-            aplicar_formato_moneda_hoja(ws, list(df.columns))
+    # Ocultar columnas como en el Excel Adrián
+    for letter in _HIDDEN_COLS:
+        ws.column_dimensions[letter].hidden = True
+
+    # Anchos útiles de columnas visibles
+    widths = {
+        "B": 28,
+        "C": 12,
+        "D": 8,
+        "E": 14,
+        "G": 22,
+        "H": 12,
+        "M": 14,
+        "O": 10,
+        "P": 14,
+    }
+    for letter, w in widths.items():
+        ws.column_dimensions[letter].width = w
+    for i in range(34, 58):
+        ws.column_dimensions[get_column_letter(i)].width = 12
+
+    ws.auto_filter.ref = f"A1:{get_column_letter(len(_HEADERS))}{max(1, len(filas) + 1)}"
+    ws.freeze_panes = "A2"
+
+
+def export_costos_por_provincia(db: Session) -> bytes:
+    filas = _filas_desde_db(db)
+    wb = Workbook()
+    _sheet_empresa(wb)
+    _sheet_listado(wb, filas)
+    buf = BytesIO()
+    wb.save(buf)
     buf.seek(0)
     return buf.getvalue()
