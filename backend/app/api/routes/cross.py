@@ -136,14 +136,15 @@ async def cross_import_varios(
         name = (up.filename or "cross.xlsx").strip()
         if not name.lower().endswith(".xlsx"):
             name += ".xlsx"
-        # Nombres canónicos si el usuario bajó con el título largo de Drive
         low = name.lower()
         if "cordoba" in low or "córdoba" in low or "cross_4" in low or "cross 4" in low:
             name = "cross_4.xlsx"
         elif (
-            "salta" in low
-            and ("jujuy" in low or "tucuman" in low or "tucumán" in low or "alfaro" in low)
-        ) or "cross_3" in low or "cross 3" in low:
+            ("jujuy" in low or "tucuman" in low or "tucumán" in low)
+            or "cross_3" in low
+            or "cross 3" in low
+            or ("salta" in low and "alfaro" in low)
+        ):
             name = "cross_3.xlsx"
         dest = CROSS_INBOX_DIR / name
         dest.write_bytes(raw)
@@ -164,6 +165,77 @@ async def cross_import_varios(
         }
     )
     out["archivos_subidos"] = guardados
+    return out
+
+
+@router.post("/depositar")
+async def cross_depositar(
+    archivo: str = Query(..., description="Nombre canónico ej. cross_3.xlsx"),
+    file: UploadFile = File(...),
+    matchear: bool = Query(True),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Deposita un Excel para una planilla concreta (la que está en rojo) e importa."""
+    from app.config import CROSS_INBOX_DIR, CROSS_PLANILLAS_DRIVE
+    from app.services.cross_seguimiento_service import (
+        guardar_ultimo_resultado_cross,
+        leer_ultimo_resultado_cross,
+    )
+
+    allowed = {str(c.get("filename")) for c in CROSS_PLANILLAS_DRIVE}
+    name = (archivo or "").strip()
+    if name not in allowed:
+        raise HTTPException(400, f"Archivo no reconocido: {name}")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Archivo vacío")
+    CROSS_INBOX_DIR.mkdir(parents=True, exist_ok=True)
+    (CROSS_INBOX_DIR / name).write_bytes(raw)
+
+    # Marcar esa planilla como OK en el último resultado (depositado a mano)
+    prev = leer_ultimo_resultado_cross() or {}
+    descargas = list(prev.get("descargas") or [])
+    label = next(
+        (
+            str(c.get("label"))
+            for c in CROSS_PLANILLAS_DRIVE
+            if str(c.get("filename")) == name
+        ),
+        name,
+    )
+    found = False
+    for d in descargas:
+        if d.get("archivo") == name or d.get("label") == label:
+            d["ok"] = True
+            d["archivo"] = name
+            d["label"] = label
+            d["bytes"] = len(raw)
+            d["origen"] = "depositado_manual"
+            d.pop("motivo", None)
+            found = True
+            break
+    if not found:
+        descargas.append(
+            {
+                "label": label,
+                "ok": True,
+                "archivo": name,
+                "bytes": len(raw),
+                "origen": "depositado_manual",
+            }
+        )
+
+    out = importar_carpeta_cross(db, ejecutar_macheo=matchear, mover_procesados=True)
+    guardar_ultimo_resultado_cross(
+        {
+            "accion": f"Depositar {label}",
+            "descargas": descargas,
+            "importacion": out,
+            "macheo": out.get("macheo"),
+            "message": f"Depositado {name}. " + (out.get("message") or ""),
+        }
+    )
+    out["depositado"] = {"label": label, "archivo": name, "bytes": len(raw)}
     return out
 
 

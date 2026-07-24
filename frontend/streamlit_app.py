@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-upload-3-4-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-ui-simple-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5243,43 +5243,131 @@ def _html_badge_planilla(estado: str, label: str, detalle: str) -> str:
     )
 
 
-def _mostrar_estado_planillas_cross() -> None:
-    """Siempre muestra las 5 planillas en verde / rojo / gris."""
+def _config_cross_seguimiento() -> None:
+    """UI simple: estado por planilla + una acción principal + depositar solo las rojas."""
+    st.subheader("Seguimiento cross (interior)")
+    st.caption(
+        "Un solo lugar: el servidor guarda los Excel en su carpeta, "
+        "los importa y los cruza con el maestro."
+    )
+
+    try:
+        resumen = get_json("/cross/resumen")
+    except Exception:
+        resumen = {}
     try:
         estado = get_json("/cross/estado-planillas")
     except Exception:
-        estado = {"planillas": [], "hay_resultado": False}
+        estado = {"planillas": [], "carpeta_server": "data/cross_inbox"}
 
-    st.markdown("#### Estado de las planillas")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Registros cross", resumen.get("total", 0))
+    c2.metric("En maestro", resumen.get("en_maestro", 0))
+    c3.metric("Entregado SI", resumen.get("entregado_si", 0))
+
     if estado.get("cuando"):
-        st.caption(
-            f"Última actualización: {estado.get('accion') or ''} · {estado.get('cuando')}"
-        )
-    else:
-        st.caption(
-            "Todavía no se corrió **Actualizar**. Aparecerán en verde o rojo al terminar."
-        )
+        st.caption(f"Última actualización: {estado.get('accion') or ''} · {estado.get('cuando')}")
+
+    st.markdown("#### 1. Actualizar")
+    st.caption(
+        "Baja lo que se pueda al servidor e impacta. "
+        f"Carpeta del server: `{estado.get('carpeta_server') or 'data/cross_inbox'}`"
+    )
+    if st.button(
+        "Actualizar desde Drive",
+        type="primary",
+        key="cfg_cross_btn_actualizar",
+    ):
+        try:
+            with st.spinner("Actualizando… (puede tardar con Rosario)"):
+                with httpx.Client(base_url=API_URL, timeout=900.0) as c:
+                    r = c.post(
+                        "/cross/actualizar-desde-drive",
+                        params={"importar": "true", "matchear": "true"},
+                    )
+                    r.raise_for_status()
+                    data = r.json()
+            _guardar_resultado_cross("Actualizar Drive", data)
+            get_maestro_filas_cached.clear()
+            st.rerun()
+        except Exception as exc:
+            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
+
+    st.markdown("#### 2. Estado de cada planilla")
+    st.caption(
+        "Verde = listo. Rojo = abrí la planilla, descargá Excel (.xlsx) y depositá acá "
+        "(queda en el servidor de la app e impacta al instante)."
+    )
 
     planillas = estado.get("planillas") or []
     if not planillas:
-        # Fallback visual si el endpoint no está (API vieja)
-        for label in ("Salta", "Rosario Fransof", "Cross 1", "Cross 3", "Cross 4"):
+        st.warning("No hay planillas configuradas o la API está desactualizada.")
+
+    for p in planillas:
+        est = str(p.get("estado") or "pendiente")
+        label = str(p.get("label") or "?")
+        detalle = str(p.get("detalle") or "")
+        fname = str(p.get("archivo") or "")
+        sheet_url = str(p.get("sheet_url") or "")
+
+        if est == "ok":
             st.markdown(
-                _html_badge_planilla(
-                    "pendiente", label, "Actualizá la API o pulsá Actualizar"
-                ),
+                _html_badge_planilla("ok", label, detalle),
                 unsafe_allow_html=True,
             )
-    else:
-        for p in planillas:
-            st.markdown(
-                _html_badge_planilla(
-                    str(p.get("estado") or "pendiente"),
-                    str(p.get("label") or "?"),
-                    str(p.get("detalle") or ""),
-                ),
-                unsafe_allow_html=True,
+            continue
+
+        st.markdown(
+            _html_badge_planilla(est if est == "error" else "pendiente", label, detalle),
+            unsafe_allow_html=True,
+        )
+        a1, a2 = st.columns([1, 2])
+        with a1:
+            if sheet_url:
+                st.link_button(
+                    "Abrir planilla",
+                    sheet_url,
+                    help="Google Sheets → Archivo → Descargar → Microsoft Excel (.xlsx)",
+                )
+            else:
+                st.caption("Sin link")
+        with a2:
+            up = st.file_uploader(
+                f"Depositar Excel → {fname}",
+                type=["xlsx"],
+                key=f"cfg_cross_dep_{fname}",
+                help="Se guarda en el servidor e impacta (importa + cruza con maestro).",
             )
+            if up is not None and st.button(
+                f"Depositar e impactar · {label}",
+                key=f"cfg_cross_dep_btn_{fname}",
+                type="primary",
+            ):
+                try:
+                    with st.spinner(f"Depositando {fname} e impactando…"):
+                        with httpx.Client(base_url=API_URL, timeout=600.0) as c:
+                            r = c.post(
+                                "/cross/depositar",
+                                params={"archivo": fname, "matchear": "true"},
+                                files={
+                                    "file": (
+                                        fname,
+                                        up.getvalue(),
+                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    )
+                                },
+                            )
+                            r.raise_for_status()
+                            data = r.json()
+                    _guardar_resultado_cross(f"Depositar {label}", data)
+                    get_maestro_filas_cached.clear()
+                    st.rerun()
+                except Exception as exc:
+                    st.error(
+                        _detalle_error_api(exc)
+                        if hasattr(exc, "response")
+                        else str(exc)
+                    )
 
     macheo = estado.get("macheo")
     if macheo:
@@ -5290,211 +5378,42 @@ def _mostrar_estado_planillas_cross() -> None:
         st.markdown(
             _html_badge_planilla(
                 "ok" if proc else "pendiente",
-                "Macheo con maestro",
-                f"{en_m} en maestro · {sin_m} solo planilla · {pct}% match ({proc} procesados)",
-            ),
-            unsafe_allow_html=True,
-        )
-    elif estado.get("hay_resultado"):
-        st.markdown(
-            _html_badge_planilla(
-                "pendiente",
-                "Macheo con maestro",
-                "Aún no hay números de macheo en el último resultado",
+                "Cruce con maestro",
+                f"{en_m} en maestro · {sin_m} solo planilla · {pct}% ({proc} procesados)",
             ),
             unsafe_allow_html=True,
         )
 
-
-def _config_cross_seguimiento() -> None:
-    """Planillas cross — actualizar desde Drive a carpeta del server, importar y machear."""
-    st.subheader("Seguimiento cross (interior)")
-    st.caption(
-        "Las planillas Cross (Salta, Rosario, Cross 1/3/4) se **copian** desde Drive "
-        "a la carpeta del servidor y después se importan/machean. "
-        "No es un macheo «en vivo» contra Google: el Excel queda en disco."
-    )
-
-    try:
-        resumen = get_json("/cross/resumen")
-    except Exception:
-        resumen = {}
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Registros cross", resumen.get("total", 0))
-    c2.metric("En maestro", resumen.get("en_maestro", 0))
-    c3.metric("Entregado SI", resumen.get("entregado_si", 0))
-    c4.metric("Entregado NO", resumen.get("entregado_no", 0))
-
-    try:
-        drive_auth = get_json("/cross/drive-auth")
-    except Exception:
-        drive_auth = {}
-    st.markdown("#### Acceso a planillas")
-    if drive_auth.get("puede_leer_grupo_sommier") or drive_auth.get("oauth_token_valido"):
-        st.success(drive_auth.get("mensaje") or "Google conectado")
-    else:
-        st.info(
-            "Salta / Rosario / Cross 1 se bajan solas desde Drive. "
-            "**Cross 3 y 4** están solo para el grupo SommierCenter: "
-            "el server no puede leerlas sin proyecto Google (no disponible). "
-            "Solución de la app: las bajás vos del navegador y las subís acá abajo."
-        )
-
-    _mostrar_estado_planillas_cross()
-
-    try:
-        inbox = get_json("/cross/inbox")
-    except Exception:
-        inbox = {"carpeta": "data/cross_inbox", "archivos": [], "cantidad": 0}
-
-    st.markdown("#### Carpeta del servidor")
-    st.code(inbox.get("carpeta") or "data/cross_inbox", language=None)
-    archivos = inbox.get("archivos") or []
-    if archivos:
-        st.caption(f"**{len(archivos)}** Excel en inbox (pendientes de importar o recién bajados):")
-        for a in archivos:
-            st.caption(f"· {a.get('nombre')} ({a.get('bytes', 0):,} bytes)")
-
-    st.markdown("#### Actualizar")
-    st.caption(
-        "Baja Salta / Rosario / Cross 1 (públicas), importa y machea. "
-        "Cross 3 y 4 suelen quedar en rojo → completálas con el upload de abajo."
-    )
-    if st.button(
-        "Actualizar desde Drive → importar y machear",
-        type="primary",
-        key="cfg_cross_btn_actualizar",
-    ):
-        try:
-            with st.spinner(
-                "Descargando planillas a la carpeta del server e importando… "
-                "(puede tardar con Rosario)"
-            ):
-                with httpx.Client(base_url=API_URL, timeout=900.0) as c:
-                    r = c.post(
-                        "/cross/actualizar-desde-drive",
-                        params={"importar": "true", "matchear": "true"},
-                    )
-                    r.raise_for_status()
-                    data = r.json()
-            _guardar_resultado_cross("Actualizar Drive → importar y machear", data)
-            get_maestro_filas_cached.clear()
-            st.rerun()
-        except Exception as exc:
-            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
-
-    b1, b2, b3 = st.columns(3)
-    if b1.button(
-        "Solo bajar a carpeta (sin importar)",
-        key="cfg_cross_btn_solo_bajar",
-    ):
-        try:
-            with st.spinner("Descargando a cross_inbox…"):
-                with httpx.Client(base_url=API_URL, timeout=900.0) as c:
-                    r = c.post(
-                        "/cross/actualizar-desde-drive",
-                        params={"importar": "false", "matchear": "false"},
-                    )
-                    r.raise_for_status()
-                    data = r.json()
-            _guardar_resultado_cross("Solo bajar a carpeta", data)
-            st.rerun()
-        except Exception as exc:
-            st.error(str(exc))
-
-    if b2.button(
-        "Importar carpeta + machear",
-        disabled=not archivos,
-        key="cfg_cross_btn_inbox",
-    ):
-        try:
-            with st.spinner("Importando Excel de la carpeta…"):
-                with httpx.Client(base_url=API_URL, timeout=600.0) as c:
-                    r = c.post(
-                        "/cross/import-carpeta",
-                        params={"matchear": "true", "mover": "true"},
-                    )
-                    r.raise_for_status()
-                    data = r.json()
-            _guardar_resultado_cross("Importar carpeta + machear", data)
-            get_maestro_filas_cached.clear()
-            st.rerun()
-        except Exception as exc:
-            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
-
-    if b3.button(
-        "Solo machear con maestro",
-        disabled=not resumen.get("total"),
-        key="cfg_cross_btn_match",
-    ):
-        try:
-            with st.spinner("Macheando remitos…"):
-                with httpx.Client(base_url=API_URL, timeout=300.0) as c:
-                    r = c.post("/cross/matchear")
-                    r.raise_for_status()
-                    m = r.json()
-            _guardar_resultado_cross(
-                "Solo machear",
-                {"message": "Macheo ejecutado", "macheo": m},
-            )
-            st.rerun()
-        except Exception as exc:
-            st.error(str(exc))
-
-    st.markdown("#### Completar Cross 3 y 4 (sin cambiar permisos)")
-    st.caption(
-        "En el navegador: abrí Cross 3 / Cross 4 → **Archivo → Descargar → Microsoft Excel (.xlsx)**. "
-        "Subí los dos acá. La app importa y machea con el resto (no hace falta proyecto Google ni tocar el compartir)."
-    )
-    upls = st.file_uploader(
-        "Excel Cross 3 y/o Cross 4 (podés elegir varios)",
-        type=["xlsx"],
-        accept_multiple_files=True,
-        key="cfg_cross_import_multi",
-    )
-    if st.button(
-        "Importar Excel subidos + machear",
-        type="primary",
-        disabled=not upls,
-        key="cfg_cross_btn_import_multi",
-    ):
-        try:
-            if not upls:
-                raise RuntimeError("Seleccioná al menos un Excel.")
-            files_payload = [("files", (u.name, u.getvalue(), 
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                for u in upls]
-            with st.spinner("Importando y macheando…"):
-                with httpx.Client(base_url=API_URL, timeout=600.0) as c:
-                    r = c.post(
-                        "/cross/import-varios",
-                        params={"matchear": "true"},
-                        files=files_payload,
-                    )
-                    r.raise_for_status()
-                    data = r.json()
-            _guardar_resultado_cross("Upload Excel locales + machear", data)
-            get_maestro_filas_cached.clear()
-            st.rerun()
-        except Exception as exc:
-            st.error(_detalle_error_api(exc) if hasattr(exc, "response") else str(exc))
+    with st.expander("Más opciones"):
+        if st.button("Solo re-cruzar con maestro", key="cfg_cross_btn_match"):
+            try:
+                with st.spinner("Cruzando remitos…"):
+                    with httpx.Client(base_url=API_URL, timeout=300.0) as c:
+                        r = c.post("/cross/matchear")
+                        r.raise_for_status()
+                        m = r.json()
+                _guardar_resultado_cross(
+                    "Solo machear",
+                    {"message": "Cruce ejecutado", "macheo": m},
+                )
+                st.rerun()
+            except Exception as exc:
+                st.error(str(exc))
 
     export_key = "cross_export_xlsx"
     if resumen.get("total"):
+        st.markdown("#### Excel de control")
         if st.button(
-            "Generar Excel de control (facturado vs control + suc / COD CLIENTE)",
+            "Generar Excel de control",
             key="cfg_cross_export_btn",
         ):
             try:
-                with st.spinner("Armando planilla completa…"):
+                with st.spinner("Armando planilla…"):
                     with httpx.Client(base_url=API_URL, timeout=300.0) as c:
                         r = c.get("/cross/export")
                         r.raise_for_status()
                     st.session_state[export_key] = r.content
-                st.success(
-                    "Planilla lista — descargá abajo (todos los registros, no solo la vista)."
-                )
+                st.success("Listo — descargá abajo.")
             except Exception as exc:
                 st.error(f"No se pudo exportar: {exc}")
         if st.session_state.get(export_key):
@@ -5512,26 +5431,23 @@ def _config_cross_seguimiento() -> None:
         except Exception:
             regs = []
         if regs:
-            st.markdown(
-                "**Vista previa (últimos 100 con match)** — usá el Excel de control "
-                "para el listado completo."
-            )
-            df = pd.DataFrame(regs)
-            show = [
-                c
-                for c in (
-                    "remito",
-                    "proveedor",
-                    "entregado",
-                    "fecha_entrega_coord",
-                    "cod_cliente",
-                    "importe_facturado",
-                    "match_estado",
-                    "archivo_origen",
-                )
-                if c in df.columns
-            ]
-            st.dataframe(df[show], width="stretch", hide_index=True, height=220)
+            with st.expander("Vista previa (últimos 100 con match)"):
+                df = pd.DataFrame(regs)
+                show = [
+                    c
+                    for c in (
+                        "remito",
+                        "proveedor",
+                        "entregado",
+                        "fecha_entrega_coord",
+                        "cod_cliente",
+                        "importe_facturado",
+                        "match_estado",
+                        "archivo_origen",
+                    )
+                    if c in df.columns
+                ]
+                st.dataframe(df[show], width="stretch", hide_index=True, height=220)
 
 
 def pagina_configuracion() -> None:

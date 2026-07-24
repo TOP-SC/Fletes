@@ -476,12 +476,25 @@ def leer_ultimo_resultado_cross() -> dict[str, Any] | None:
 
 def estado_planillas_cross() -> dict[str, Any]:
     """
-    Estado visible de las 5 planillas (siempre): ok / error / pendiente.
-    Combina config + último resultado guardado.
+    Estado visible de las planillas (siempre): ok / error / pendiente.
+    Incluye URL de Drive para abrir desde la UI cuando está en rojo.
     """
+    from app.config import CROSS_INBOX_DIR
+
     ultimo = leer_ultimo_resultado_cross() or {}
-    descargas = {str(d.get("label")): d for d in (ultimo.get("descargas") or [])}
-    # Import por nombre de archivo
+    descargas = list(ultimo.get("descargas") or [])
+    by_label = {str(d.get("label")): d for d in descargas}
+    by_file = {str(d.get("archivo")): d for d in descargas if d.get("archivo")}
+    # Labels viejos (Cross 3 / Cross 4) → archivo canónico
+    legacy = {
+        "Cross 1": "cross_1.xlsx",
+        "Cross 3": "cross_3.xlsx",
+        "Cross 4": "cross_4.xlsx",
+    }
+    for old, fname in legacy.items():
+        if old in by_label and fname not in by_file:
+            by_file[fname] = by_label[old]
+
     imp = ultimo.get("importacion") if "importacion" in ultimo else ultimo
     resultados_imp = {
         str(r.get("nombre")): r for r in ((imp or {}).get("resultados") or [])
@@ -496,14 +509,22 @@ def estado_planillas_cross() -> dict[str, Any]:
     for cfg in CROSS_PLANILLAS_DRIVE:
         label = str(cfg.get("label") or "?")
         fname = str(cfg.get("filename") or f"cross_{label}.xlsx")
-        dl = descargas.get(label)
+        sid = str(cfg.get("sheet_id") or "")
+        gid = str(cfg.get("gid") or "0")
+        sheet_url = ""
+        if sid:
+            sheet_url = f"https://docs.google.com/spreadsheets/d/{sid}/edit"
+            if gid and gid != "0":
+                sheet_url += f"?gid={gid}#gid={gid}"
+
+        dl = by_label.get(label) or by_file.get(fname)
         if dl is None:
             estado = "pendiente"
-            detalle = "Todavía no se actualizó desde Drive"
+            detalle = "Todavía no se actualizó"
         elif dl.get("ok"):
             estado = "ok"
             detalle = (
-                f"Descargado ({dl.get('bytes', 0):,} bytes"
+                f"OK en el servidor ({dl.get('bytes', 0):,} bytes"
                 + (f" · {dl.get('origen')}" if dl.get("origen") else "")
                 + ")"
             )
@@ -511,15 +532,20 @@ def estado_planillas_cross() -> dict[str, Any]:
             if imp_item is not None:
                 if imp_item.get("ok"):
                     detalle += (
-                        f" · importado {imp_item.get('insertados', 0)} nuevos / "
+                        f" · {imp_item.get('insertados', 0)} nuevos / "
                         f"{imp_item.get('actualizados', 0)} actualizados"
                     )
                 else:
                     estado = "error"
-                    detalle = f"Descargó OK pero falló import: {imp_item.get('motivo')}"
+                    detalle = f"Falló al importar: {imp_item.get('motivo')}"
         else:
             estado = "error"
-            detalle = str(dl.get("motivo") or "Error al descargar")
+            detalle = "No se pudo bajar sola — abrí la planilla, descargá Excel y depositá acá"
+
+        en_inbox = (CROSS_INBOX_DIR / fname).is_file()
+        if estado == "error" and en_inbox:
+            detalle = f"Excel ya depositado en el server ({fname}) — falta aplicar"
+
         planillas.append(
             {
                 "label": label,
@@ -527,11 +553,14 @@ def estado_planillas_cross() -> dict[str, Any]:
                 "estado": estado,
                 "detalle": detalle,
                 "activo": bool(cfg.get("activo", True)),
+                "sheet_url": sheet_url,
+                "en_inbox": en_inbox,
             }
         )
 
     return {
         "planillas": planillas,
+        "carpeta_server": str(CROSS_INBOX_DIR.resolve()),
         "cuando": ultimo.get("cuando"),
         "accion": ultimo.get("accion"),
         "message": ultimo.get("message"),

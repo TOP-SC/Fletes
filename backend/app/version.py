@@ -1,3 +1,3 @@
 """Identificador de build — cambiar al desplegar lógica nueva."""
-API_BUILD = "fletes-cross-upload-3-4-2026-07-24"
+API_BUILD = "fletes-cross-ui-simple-2026-07-24"
 
