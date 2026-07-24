@@ -302,8 +302,40 @@ def descargar_bytes_drive(export_url: str, *, timeout: float = 180.0) -> tuple[b
     return r.content, msg
 
 
+def descargar_planilla_por_id(
+    file_id: str,
+    *,
+    gid: str = "0",
+    timeout: float | None = None,
+) -> tuple[bytes, str]:
+    """
+    Descarga .xlsx: primero con credenciales Google (OAuth / service account),
+    si no hay o falla → export anónimo (requiere «Cualquiera con el enlace»).
+    Devuelve (bytes, origen) origen = oauth_usuario|service_account|anonimo.
+    """
+    from app.config import settings
+    from app.services.google_drive_auth import descargar_xlsx_autenticado, get_drive_credentials
+
+    t = float(timeout if timeout is not None else settings.google_drive_timeout)
+    creds, modo = get_drive_credentials()
+    if creds is not None:
+        try:
+            content, modo_ok = descargar_xlsx_autenticado(file_id, timeout=t)
+            return content, modo_ok
+        except Exception:
+            # Si auth falla, intentar anónimo (planillas aún públicas)
+            pass
+
+    meta = {"tipo": "sheet", "sheet_id": file_id, "gid": gid}
+    export_url = export_url_google(meta)
+    content, _msg = descargar_bytes_drive(export_url, timeout=t)
+    return content, "anonimo"
+
+
 def probar_planilla_drive(cfg: dict[str, str | bool]) -> dict[str, Any]:
-    """Solo verifica si el export anónimo funciona (sin importar)."""
+    """Solo verifica si el export funciona (auth o anónimo), sin importar."""
+    from app.config import settings
+
     label = str(cfg.get("label") or cfg.get("sheet_id") or "?")
     if not cfg.get("activo", True):
         return {"label": label, "ok": False, "motivo": "desactivada en config"}
@@ -311,29 +343,33 @@ def probar_planilla_drive(cfg: dict[str, str | bool]) -> dict[str, Any]:
     if not sid:
         return {"label": label, "ok": False, "motivo": "sin sheet_id"}
     gid = str(cfg.get("gid") or "0")
-    meta = {"tipo": "sheet", "sheet_id": str(sid), "gid": gid}
-    export_url = export_url_google(meta)
+    t = float(settings.google_drive_timeout)
     try:
-        r = httpx.get(
-            export_url,
-            follow_redirects=True,
-            timeout=90.0,
-            headers={"User-Agent": _DRIVE_UA},
-        )
-        ok, msg = _interpretar_respuesta_drive(r)
+        content, origen = descargar_planilla_por_id(str(sid), gid=gid, timeout=t)
         return {
             "label": label,
-            "ok": ok,
-            "motivo": msg,
+            "ok": True,
+            "motivo": f"OK ({origen})",
             "sheet_id": str(sid),
             "gid": gid,
-            "bytes": len(r.content) if ok else 0,
-            "http_status": r.status_code,
+            "bytes": len(content),
+            "http_status": 200,
+            "origen": origen,
         }
     except httpx.TimeoutException:
-        return {"label": label, "ok": False, "motivo": "Timeout — archivo grande o red lenta", "sheet_id": str(sid)}
+        return {
+            "label": label,
+            "ok": False,
+            "motivo": "Timeout — archivo grande o red lenta",
+            "sheet_id": str(sid),
+        }
     except Exception as exc:
-        return {"label": label, "ok": False, "motivo": str(exc), "sheet_id": str(sid)}
+        return {
+            "label": label,
+            "ok": False,
+            "motivo": str(exc),
+            "sheet_id": str(sid),
+        }
 
 
 def listar_estado_planillas_drive() -> list[dict[str, Any]]:
@@ -341,10 +377,19 @@ def listar_estado_planillas_drive() -> list[dict[str, Any]]:
 
 
 def descargar_planilla_drive(url: str) -> tuple[bytes, dict[str, str]]:
-    """Descarga bytes de una planilla compartida (Sheets o archivo Drive)."""
+    """Descarga bytes de una planilla (auth Google si hay credenciales, si no anónimo)."""
+    from app.config import settings
+
     meta = parse_google_drive_url(url)
-    export_url = export_url_google(meta)
-    content, _msg = descargar_bytes_drive(export_url)
+    file_id = meta.get("sheet_id") or meta.get("file_id")
+    if not file_id:
+        raise ValueError("URL sin ID de archivo")
+    content, origen = descargar_planilla_por_id(
+        file_id,
+        gid=str(meta.get("gid") or "0"),
+        timeout=float(settings.google_drive_timeout),
+    )
+    meta["origen_descarga"] = origen
     return content, meta
 
 
@@ -373,6 +418,7 @@ def importar_cross_desde_url(
     )
     out["url_origen"] = url.strip()
     out["tipo_drive"] = meta["tipo"]
+    out["origen_descarga"] = meta.get("origen_descarga")
     return out
 
 
@@ -381,9 +427,12 @@ def intentar_sync_drive(
     *,
     ejecutar_macheo: bool = True,
 ) -> dict[str, Any]:
-    """Descarga planillas públicas configuradas en CROSS_PLANILLAS_DRIVE."""
+    """Descarga planillas configuradas en CROSS_PLANILLAS_DRIVE (auth o anónimo)."""
+    from app.config import settings
+
     resultados: list[dict[str, Any]] = []
     total_ins = total_upd = 0
+    t = float(settings.google_drive_timeout)
 
     for cfg in CROSS_PLANILLAS_DRIVE:
         label = cfg.get("label") or cfg.get("sheet_id", "?")
@@ -395,10 +444,8 @@ def intentar_sync_drive(
             resultados.append({"label": label, "ok": False, "motivo": "sin sheet_id"})
             continue
         gid = str(cfg.get("gid") or "0")
-        meta = {"tipo": "sheet", "sheet_id": str(sid), "gid": gid}
-        export_url = export_url_google(meta)
         try:
-            content, _msg = descargar_bytes_drive(export_url, timeout=180.0)
+            content, origen = descargar_planilla_por_id(str(sid), gid=gid, timeout=t)
             fname = cfg.get("filename") or f"cross_{label}.xlsx"
             out = import_cross_workbook(
                 db,
@@ -408,7 +455,7 @@ def intentar_sync_drive(
             )
             total_ins += int(out.get("insertados") or 0)
             total_upd += int(out.get("actualizados") or 0)
-            resultados.append({"label": label, "ok": True, **out})
+            resultados.append({"label": label, "ok": True, "origen": origen, **out})
         except Exception as exc:
             resultados.append({"label": label, "ok": False, "motivo": str(exc)})
 

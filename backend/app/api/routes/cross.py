@@ -15,6 +15,8 @@ from app.services.cross_seguimiento_service import (
     listar_registros_cross,
     resumen_cross,
 )
+from app.services.google_drive_auth import drive_auth_status
+
 
 router = APIRouter(prefix="/cross", tags=["cross"])
 
@@ -24,9 +26,15 @@ def cross_resumen(db: Session = Depends(get_db)) -> dict:
     return resumen_cross(db)
 
 
+@router.get("/drive-auth")
+def cross_drive_auth() -> dict:
+    """Estado de credenciales Google (service account / OAuth)."""
+    return drive_auth_status()
+
+
 @router.get("/planillas-drive")
 def cross_planillas_drive(probar: bool = Query(False)) -> list[dict]:
-    """Planillas configuradas. Con ?probar=true verifica acceso anónimo (export sin login)."""
+    """Planillas configuradas. Con ?probar=true verifica acceso (auth o anónimo)."""
     if probar:
         return listar_estado_planillas_drive()
     return [

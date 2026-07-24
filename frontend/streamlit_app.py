@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-salta-jujuy-2026-07-24"
+API_BUILD_ESPERADO = "fletes-drive-auth-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5309,8 +5309,10 @@ def _config_cross_seguimiento() -> None:
                 pr = probe_by_label.get(label)
                 if pr:
                     if pr.get("ok"):
+                        origen = pr.get("origen") or ""
+                        extra = f" · vía {origen}" if origen else ""
                         st.success(
-                            f"**{label}** — acceso OK · {pr.get('bytes', 0):,} bytes · "
+                            f"**{label}** — acceso OK · {pr.get('bytes', 0):,} bytes{extra} · "
                             f"`{p.get('sheet_id')}`"
                         )
                     else:
@@ -5319,10 +5321,28 @@ def _config_cross_seguimiento() -> None:
                 else:
                     st.caption(f"**{label}** — `{p.get('sheet_id')}` ({estado_cfg})")
         st.info(
-            "La app descarga **sin login de Google**. Cada planilla debe estar en "
-            "**Compartir → Cualquiera con el enlace → Lector**. "
-            "Si solo la compartieron con tu mail @empresa, desde el servidor sigue fallando (401)."
+            "La app puede bajar con **cuenta Google autenticada** (recomendado) o en modo anónimo. "
+            "Con auth: compartí cada planilla con el mail de la service account **o** usá OAuth de un usuario "
+            "del grupo SommierCenter (script `scripts/google_oauth_setup.py`). "
+            "Sin auth: hace falta **Cualquiera con el enlace → Lector**."
         )
+        try:
+            auth = get_json("/cross/drive-auth")
+        except Exception:
+            auth = {}
+        if auth.get("oauth_token_present"):
+            st.success("Drive auth: **OAuth usuario** configurado (ve permisos del usuario).")
+        elif auth.get("service_account_present"):
+            mail = auth.get("service_account_email") or "(sin email en JSON)"
+            st.success(
+                f"Drive auth: **Service Account** · compartí las planillas con: `{mail}` (Lector)."
+            )
+        else:
+            st.warning(
+                "Sin credenciales Google en el server. "
+                "Poné `data/google_service_account.json` o `data/google_oauth_token.json` "
+                "y reiniciá la API. Mientras tanto solo funcionan planillas públicas."
+            )
         st.caption(
             "**En maestro = 0** es distinto: los registros cross pueden estar cargados, "
             "pero los remitos aún no coinciden con Tango — usá **Machear con maestro** "

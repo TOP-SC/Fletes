@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     seguro_fijo: float = 30.0
     gestion_retiro_pct: float = 0.25
     proveedor_interior_default: str = "CLICPAQ"
+    # Google Drive autenticado (Cross). Ver data/google_service_account.json
+    google_service_account_file: str = ""
+    google_oauth_token_file: str = ""
+    google_drive_timeout: float = 300.0
 
 
 settings = Settings()
