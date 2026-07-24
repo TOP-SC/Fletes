@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-cross-actualizar-drive-2026-07-24"
+API_BUILD_ESPERADO = "fletes-cross-resultado-visible-2026-07-24"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -5214,6 +5214,81 @@ def _config_fleteros_locales() -> None:
         )
 
 
+def _guardar_resultado_cross(accion: str, data: dict) -> None:
+    """Persiste el último resultado para que no se pierda con st.rerun()."""
+    st.session_state["cross_ultimo_resultado"] = {
+        "accion": accion,
+        "data": data,
+        "cuando": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    }
+
+
+def _mostrar_resultado_cross() -> None:
+    """Panel verde/rojo por planilla + números de macheo (queda visible tras rerun)."""
+    pack = st.session_state.get("cross_ultimo_resultado")
+    if not pack:
+        return
+    data = pack.get("data") or {}
+    st.markdown("#### Último resultado")
+    st.caption(f"{pack.get('accion', '')} · {pack.get('cuando', '')}")
+    if data.get("message"):
+        st.info(data["message"])
+
+    descargas = data.get("descargas") or []
+    if descargas:
+        st.markdown("**Descarga Drive → carpeta**")
+        for d in descargas:
+            label = d.get("label") or d.get("archivo") or "?"
+            if d.get("ok"):
+                st.success(
+                    f"✓ {label} — {d.get('archivo', '')} "
+                    f"({d.get('bytes', 0):,} bytes"
+                    + (f" · {d.get('origen')}" if d.get("origen") else "")
+                    + ")"
+                )
+            else:
+                st.error(f"✗ {label} — {d.get('motivo', 'error')}")
+
+    imp = data.get("importacion") if "importacion" in data else data
+    resultados = (imp or {}).get("resultados") or []
+    if resultados:
+        st.markdown("**Importación a la base**")
+        for item in resultados:
+            nombre = item.get("nombre") or "?"
+            if item.get("ok"):
+                st.success(
+                    f"✓ {nombre} — "
+                    f"{item.get('insertados', 0)} nuevos · "
+                    f"{item.get('actualizados', 0)} actualizados"
+                    + (
+                        f" · hojas: {', '.join(item['hojas_procesadas'])}"
+                        if item.get("hojas_procesadas")
+                        else ""
+                    )
+                )
+            else:
+                st.error(f"✗ {nombre} — {item.get('motivo', 'error')}")
+
+    macheo = None
+    if isinstance(imp, dict) and imp.get("macheo"):
+        macheo = imp["macheo"]
+    elif data.get("macheo"):
+        macheo = data["macheo"]
+    if macheo:
+        en_m = int(macheo.get("en_maestro") or 0)
+        sin_m = int(macheo.get("sin_maestro") or 0)
+        proc = int(macheo.get("procesados") or (en_m + sin_m))
+        st.markdown("**Macheo con maestro**")
+        if proc == 0:
+            st.warning("No hay registros cross para machear.")
+        else:
+            pct = round(100.0 * en_m / proc) if proc else 0
+            st.success(
+                f"✓ Macheo OK — {en_m} en maestro · {sin_m} solo en planilla "
+                f"({pct}% match · {proc} procesados)"
+            )
+
+
 def _config_cross_seguimiento() -> None:
     """Planillas cross — actualizar desde Drive a carpeta del server, importar y machear."""
     st.subheader("Seguimiento cross (interior)")
@@ -5233,6 +5308,8 @@ def _config_cross_seguimiento() -> None:
     c2.metric("En maestro", resumen.get("en_maestro", 0))
     c3.metric("Entregado SI", resumen.get("entregado_si", 0))
     c4.metric("Entregado NO", resumen.get("entregado_no", 0))
+
+    _mostrar_resultado_cross()
 
     try:
         inbox = get_json("/cross/inbox")
@@ -5270,22 +5347,7 @@ def _config_cross_seguimiento() -> None:
                     )
                     r.raise_for_status()
                     data = r.json()
-            st.success(data.get("message", "Listo"))
-            for d in data.get("descargas") or []:
-                if d.get("ok"):
-                    st.caption(
-                        f"✓ {d.get('label')}: {d.get('archivo')} "
-                        f"({d.get('bytes', 0):,} bytes · {d.get('origen', '')})"
-                    )
-                else:
-                    st.warning(f"✗ {d.get('label')}: {d.get('motivo', 'error')}")
-            imp = data.get("importacion") or {}
-            if imp.get("macheo"):
-                m = imp["macheo"]
-                st.info(
-                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
-                    f"{m.get('sin_maestro', 0)} solo planilla"
-                )
+            _guardar_resultado_cross("Actualizar Drive → importar y machear", data)
             get_maestro_filas_cached.clear()
             st.rerun()
         except Exception as exc:
@@ -5305,12 +5367,7 @@ def _config_cross_seguimiento() -> None:
                     )
                     r.raise_for_status()
                     data = r.json()
-            st.success(data.get("message", "Descarga lista"))
-            for d in data.get("descargas") or []:
-                if d.get("ok"):
-                    st.caption(f"✓ {d.get('label')}: {d.get('archivo')}")
-                else:
-                    st.warning(f"✗ {d.get('label')}: {d.get('motivo', 'error')}")
+            _guardar_resultado_cross("Solo bajar a carpeta", data)
             st.rerun()
         except Exception as exc:
             st.error(str(exc))
@@ -5329,13 +5386,7 @@ def _config_cross_seguimiento() -> None:
                     )
                     r.raise_for_status()
                     data = r.json()
-            st.success(data.get("message", "Importado"))
-            if data.get("macheo"):
-                m = data["macheo"]
-                st.info(
-                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
-                    f"{m.get('sin_maestro', 0)} solo planilla"
-                )
+            _guardar_resultado_cross("Importar carpeta + machear", data)
             get_maestro_filas_cached.clear()
             st.rerun()
         except Exception as exc:
@@ -5352,9 +5403,9 @@ def _config_cross_seguimiento() -> None:
                     r = c.post("/cross/matchear")
                     r.raise_for_status()
                     m = r.json()
-            st.success(
-                f"Macheo: {m.get('en_maestro', 0)} en maestro · "
-                f"{m.get('sin_maestro', 0)} solo en planilla"
+            _guardar_resultado_cross(
+                "Solo machear",
+                {"message": "Macheo ejecutado", "macheo": m},
             )
             st.rerun()
         except Exception as exc:
@@ -5376,15 +5427,22 @@ def _config_cross_seguimiento() -> None:
             if upl is None:
                 raise RuntimeError("Seleccioná un archivo.")
             r = post_file("/cross/import", upl.name, upl.getvalue(), matchear="true")
-            st.success(r.get("message", "Importado"))
-            if r.get("hojas_procesadas"):
-                st.caption(f"Hojas: {', '.join(r['hojas_procesadas'])}")
-            if r.get("macheo"):
-                m = r["macheo"]
-                st.info(
-                    f"Macheo: {m.get('en_maestro', 0)} en maestro · "
-                    f"{m.get('sin_maestro', 0)} solo en planilla"
-                )
+            _guardar_resultado_cross(
+                f"Upload {upl.name}",
+                {
+                    "message": r.get("message", "Importado"),
+                    "resultados": [
+                        {
+                            "nombre": upl.name,
+                            "ok": True,
+                            "insertados": r.get("insertados", 0),
+                            "actualizados": r.get("actualizados", 0),
+                            "hojas_procesadas": r.get("hojas_procesadas"),
+                        }
+                    ],
+                    "macheo": r.get("macheo"),
+                },
+            )
             get_maestro_filas_cached.clear()
             st.rerun()
         except Exception as exc:
