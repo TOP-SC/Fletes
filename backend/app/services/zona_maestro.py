@@ -18,7 +18,11 @@ _CABA_PROVINCIAS = frozenset(
 # Capitales provinciales → código CEDOL / legacy CLP (resto de la provincia = interior).
 # Valor: (código, etiqueta, aliases de localidad capital)
 _CAPITALES: dict[str, tuple[str, str, tuple[str, ...]]] = {
-    "SANTA FE": ("S0", "SANTA FE CAPITAL", ("SANTA FE",)),
+    "SANTA FE": (
+        "S0",
+        "SANTA FE CAPITAL",
+        ("SANTA FE", "SANTA FE CAPITAL", "SANTA FE DE LA VERA CRUZ"),
+    ),
     "CHACO": ("H0", "CHACO CAPITAL", ("RESISTENCIA",)),
     "MISIONES": ("N0", "MISIONES CAPITAL", ("POSADAS",)),
     "SAN LUIS": ("D0", "SAN LUIS CAPITAL", ("SAN LUIS",)),
@@ -75,6 +79,8 @@ _INTERIORES: dict[str, tuple[str, str]] = {
 _LOCALIDADES_ESPECIALES: dict[str, tuple[str, str]] = {
     "MAR DEL PLATA": ("B1", "COSTA ATLANTICA 1 (MDQ)"),
     "BARRIO RAWSON": ("J1", "SAN JUAN INTERIOR"),
+    # Tarifario Mantello: S0 = Rosario / Sta Fe capital (no interior).
+    "ROSARIO": ("S0", "ROSARIO / STA FE"),
 }
 
 
@@ -119,10 +125,12 @@ def zona_destino_maestro(
 
     if prov in _CAPITALES:
         cap_code, cap_label, aliases = _CAPITALES[prov]
+        # Solo capital explícita: igualdad o "CAPITAL" en localidad.
+        # Evita substrings (ej. alias "SANTA FE" pegando localidades raras).
         if loc and (
             "CAPITAL" in loc
             or loc == prov
-            or any(a == loc or a in loc or loc in a for a in aliases)
+            or any(a == loc for a in aliases)
         ):
             return (cap_code, cap_label)
 

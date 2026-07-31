@@ -56,22 +56,61 @@ def _tokens_localidad(text: str) -> list[str]:
     return parts
 
 
+def _expandir_alias_localidad(text: str) -> list[str]:
+    """
+    Alternativas de una localidad de matriz (ej. «ROSARIO / STA FE»).
+    STA FE → SANTA FE para matchear Tango («Santa Fe», «Santa Fe Capital»).
+    """
+    raw = _norm_geo(text)
+    if not raw or raw == "GENERAL":
+        return []
+    partes = [p.strip() for p in re.split(r"[,/|]+", raw) if p.strip()]
+    out: list[str] = []
+    for p in partes or [raw]:
+        if p not in out:
+            out.append(p)
+        if p in ("STA FE", "STA. FE", "STAFE") or p.startswith("STA FE"):
+            if "SANTA FE" not in out:
+                out.append("SANTA FE")
+        if p == "SANTA FE":
+            for extra in ("SANTA FE CAPITAL", "SANTA FE DE LA VERA CRUZ"):
+                if extra not in out:
+                    out.append(extra)
+    return out
+
+
 def _localidad_coincide(destino: str, fila: FilaCedol) -> bool:
     loc = _norm_geo(destino)
     if not loc:
         return False
     fl = fila.localidad_norm
-    if loc == fl:
-        return True
-    if fl in loc or loc in fl:
-        return True
     if fl == "GENERAL":
         return False
+    if loc == fl:
+        return True
+    # Filas compuestas («ROSARIO / STA FE»): cada tramo es una alternativa exacta.
+    alts = _expandir_alias_localidad(fl)
+    if len(alts) > 1 or ("/" in fl or "," in fl):
+        for alt in alts:
+            if loc == alt:
+                return True
+            if alt == "SANTA FE" and (
+                loc == "SANTA FE CAPITAL"
+                or loc.startswith("SANTA FE DE LA VERA")
+                or loc.endswith(" CAPITAL")
+                and "SANTA FE" in loc
+            ):
+                return True
+        # No usar substring sobre el string compuesto completo (evita falsos S0).
+        return False
+    # Substring solo si el token/localidad es suficientemente específico (>= 5).
+    if len(fl) >= 5 and (fl in loc or loc in fl):
+        return True
     for tok in _tokens_localidad(fl):
-        if tok in loc:
+        if len(tok) >= 5 and tok in loc:
             return True
     for tok in _tokens_localidad(loc):
-        if tok in fl:
+        if len(tok) >= 5 and tok in fl:
             return True
     return False
 
@@ -96,11 +135,12 @@ def _destino_es_capital(provincia_norm: str, localidad: str, fila_capital: FilaC
     if _localidad_coincide(loc, fila_capital):
         return True
     fl = fila_capital.localidad_norm
-    if "CAPITAL" in fl:
-        prov_tokens = _tokens_localidad(provincia_norm)
-        if any(t in loc for t in prov_tokens if len(t) >= 4):
+    # Solo marcar capital si la localidad lo dice explícitamente (no usar tokens
+    # de provincia tipo "SANTA" que matchean cualquier "Santa …").
+    if "CAPITAL" in fl or "CAPITAL" in loc:
+        if loc.endswith(" CAPITAL") or loc.startswith("CAPITAL ") or " CAPITAL" in loc:
             return True
-        if loc.endswith(" CAPITAL") or loc.startswith("CAPITAL "):
+        if loc == provincia_norm:
             return True
     return False
 

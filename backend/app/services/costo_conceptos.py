@@ -38,9 +38,12 @@ def es_amba_gba_envio(envio: Envio) -> bool:
 
 def debe_calcular_costo_proveedor(envio: Envio) -> bool:
     """Hay tarifario aplicable salvo retiro en sucursal o reglas postventa especiales."""
-    if es_retiro_sin_flete_domicilio(envio):
-        return False
+    from app.services.postventa_rules import envio_postventa_valorizable
+
     if envio.regla_postventa in ("no_pagar_transporte", "costo_cero_pendiente"):
+        return False
+    # Retiro/cambio valorizable (garantía, etc.): sí se abona aunque el transporte diga retiro.
+    if es_retiro_sin_flete_domicilio(envio) and not envio_postventa_valorizable(envio):
         return False
     return True
 

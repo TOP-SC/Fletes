@@ -56,6 +56,8 @@ class InterpretacionPedido:
         conj = "conjunto" if self.es_conjunto else "colchón solo"
         if self.tipo_cobro == "MUEBLES":
             conj = "diván/muebles"
+        if self.tipo_cobro == "SOMIER_CAMBIO":
+            conj = "cambio sommier (conj − colchón)"
         return f"{self.tipo_cobro} {self.medida_banda} ({conj})"
 
 
@@ -175,10 +177,13 @@ def interpretar_pedido(lineas: list[Envio]) -> InterpretacionPedido:
 
     if somiers:
         ref = somiers[0]
-        advertencias.append("Pedido sin colchón explícito; tarifa por somier/base.")
+        # Cambio/garantía solo sommier: se cobra CONJUNTO − COLCHÓN (misma zona/medida).
+        advertencias.append(
+            "Pedido solo sommier (cambio/gtía): costo = tarifa conjunto − tarifa colchón."
+        )
         return InterpretacionPedido(
             nro_pedido=nro,
-            tipo_cobro="CONJUNTO",
+            tipo_cobro="SOMIER_CAMBIO",
             medida_banda=ref.banda or "130-150",
             es_conjunto=True,
             linea_cobro=ref.envio,
@@ -211,7 +216,7 @@ def tipo_flete_caba_gba(interp: InterpretacionPedido) -> tuple[str, str]:
     """
     if interp.tipo_cobro == "MUEBLES":
         return "FLETE_EXPRESS", "GENERICO"
-    if interp.tipo_cobro == "CONJUNTO":
+    if interp.tipo_cobro in ("CONJUNTO", "SOMIER_CAMBIO"):
         return "CONJUNTO_FLETE", interp.medida_banda
     return "FLETE_EXPRESS", interp.medida_banda
 

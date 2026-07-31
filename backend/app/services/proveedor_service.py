@@ -401,12 +401,13 @@ def precio_tarifa_linea(
     tipo_producto: str | None = None,
     medida_banda: str | None = None,
 ) -> float | None:
-    from app.services.postventa_rules import postventa_bloquea_cobro
+    from app.services.postventa_rules import envio_postventa_valorizable, postventa_bloquea_cobro
 
     canon = normalizar_proveedor(proveedor)
     if not canon or postventa_bloquea_cobro(envio.regla_postventa):
         return None
-    if es_retiro_sin_flete_domicilio(envio):
+
+    if es_retiro_sin_flete_domicilio(envio) and not envio_postventa_valorizable(envio):
         return None
     if es_amba_gba_envio(envio) and canon != PROVEEDOR_FLETE_LOCAL:
         return None

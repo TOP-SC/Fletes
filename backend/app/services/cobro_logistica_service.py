@@ -512,55 +512,105 @@ def calcular_cobro_pedido(
 
     prov = envio.proveedor_tarifa
 
-    if prov:
+    if not prov:
+        return CobroPedidoResult(
+            "sin_tarifa",
+            0.0,
+            interpretacion=interp,
+            cobro_cliente_cero=False,
+        )
 
-        p = _lookup_precio(envio, tarifas, prov, interp)
+    from app.services.proveedor_service import precio_tarifa_linea
 
-        if p is not None and p > 0:
-            # N colchones / N conjuntos en el mismo pedido → 1 tarifa × unidades
-            if interp:
-                unidades = sum(
-                    float(r.cantidad or 0)
-                    for r in (interp.renglones or [])
-                    if r.tipo_linea == "COLCHON"
-                )
-                if unidades <= 0 and interp.linea_cobro is not None:
-                    unidades = float(interp.linea_cobro.cantidad or 1)
-                if unidades > 1.01:
-                    p = round(p * unidades, 2)
+    tramos: list[TramoCobro] = []
+    total = 0.0
+    modo = "simple"
 
+    # Cambio/gtía solo sommier: CONJUNTO − COLCHÓN (misma zona/medida).
+    # Ej. Adrián rto 329577: conj 188651 − col 104806 = 83845.
+    if interp and interp.tipo_cobro == "SOMIER_CAMBIO":
+        p_conj = precio_tarifa_linea(
+            envio,
+            tarifas,
+            prov,
+            tipo_producto="CONJUNTO",
+            medida_banda=interp.medida_banda,
+        )
+        p_col = precio_tarifa_linea(
+            envio,
+            tarifas,
+            prov,
+            tipo_producto="COLCHON",
+            medida_banda=interp.medida_banda,
+        )
+        if p_conj is not None and p_col is not None and p_conj > p_col:
+            p = round(p_conj - p_col, 2)
+            tramos.append(TramoCobro(prov, p, "Cambio sommier: conjunto - colchon"))
             return CobroPedidoResult(
-
-                "simple",
-
-                round(p, 2),
-
-                tramos=[TramoCobro(prov, round(p, 2))],
-
+                "somier_cambio",
+                p,
+                tramos=tramos,
                 tiene_tarifa=True,
-
                 interpretacion=interp,
-
                 cobro_cliente_cero=False,
-
             )
 
+    p = _lookup_precio(envio, tarifas, prov, interp)
+    if p is not None and p > 0:
+        if interp:
+            unidades = sum(
+                float(r.cantidad or 0)
+                for r in (interp.renglones or [])
+                if r.tipo_linea == "COLCHON"
+            )
+            if unidades <= 0 and interp.linea_cobro is not None:
+                unidades = float(interp.linea_cobro.cantidad or 1)
+            if unidades > 1.01:
+                p = round(p * unidades, 2)
+        tramos.append(TramoCobro(prov, round(p, 2)))
+        total += p
 
+    # Colchon + divan mismo pedido: sumar tarifa MUEBLES del divan.
+    if interp and any(r.tipo_linea == "DIVAN" for r in (interp.renglones or [])):
+        tiene_col = any(r.tipo_linea == "COLCHON" for r in (interp.renglones or []))
+        if tiene_col:
+            p_mueble = precio_tarifa_linea(
+                envio,
+                tarifas,
+                prov,
+                tipo_producto="MUEBLES",
+                medida_banda="GENERICO",
+            )
+            if p_mueble is not None and p_mueble > 0:
+                cant_div = sum(
+                    float(r.cantidad or 0)
+                    for r in (interp.renglones or [])
+                    if r.tipo_linea == "DIVAN"
+                )
+                if cant_div > 1.01:
+                    p_mueble = round(p_mueble * cant_div, 2)
+                else:
+                    p_mueble = round(p_mueble, 2)
+                tramos.append(TramoCobro(prov, p_mueble, "Divan / mueble"))
+                total += p_mueble
+                modo = "colchon_divan"
+
+    if total > 0:
+        return CobroPedidoResult(
+            modo,
+            round(total, 2),
+            tramos=tramos,
+            tiene_tarifa=True,
+            interpretacion=interp,
+            cobro_cliente_cero=False,
+        )
 
     return CobroPedidoResult(
-
         "sin_tarifa",
-
         0.0,
-
         interpretacion=interp,
-
         cobro_cliente_cero=False,
-
     )
-
-
-
 
 
 def aplicar_cobro_pedido(

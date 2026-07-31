@@ -32,7 +32,7 @@ from app.services.maestro_service import (
     _fila_maestro_desde_grupo,
     _origen_planilla,
 )
-from app.services.postventa_rules import postventa_valoriza_retiro
+from app.services.postventa_rules import envio_postventa_valorizable
 from app.services.remito_maestro import clave_agrupacion_caso, estado_remito_envio
 from app.transporte_reglas import (
     COD_EXPRESO_CLICPAQ,
@@ -118,7 +118,8 @@ def es_circuito_log_wamaro_adrian(envio: Envio) -> bool:
     if estado_remito_envio(envio) != "con_remito":
         return False
 
-    valorizable = postventa_valoriza_retiro(envio.regla_postventa)
+    # OR / cambio x gtía: valorizable aunque el transporte diga retiro o no sea 51/83.
+    valorizable = envio_postventa_valorizable(envio)
     if es_retiro_sin_flete_domicilio(envio) and not valorizable:
         return False
     if excluir_planilla_transporte(envio.transporte_cod, envio.transporte_nombre) and not valorizable:
@@ -138,7 +139,15 @@ def es_circuito_log_wamaro_adrian(envio: Envio) -> bool:
 def _fecha_entrega_envio(envio: Envio) -> date | None:
     if envio.fecha_entrega_d:
         return envio.fecha_entrega_d
-    return parse_fecha_tango(envio.fecha_entrega)
+    fe = parse_fecha_tango(envio.fecha_entrega)
+    if fe:
+        return fe
+    # OR / retiros valorizables a menudo sin FECHA ENTREGA DI: usar fecha pedido.
+    if envio_postventa_valorizable(envio):
+        if envio.fecha_pedido_d:
+            return envio.fecha_pedido_d
+        return parse_fecha_tango(envio.fecha_pedido)
+    return None
 
 
 def _fecha_columna_adrian(lineas: list[Envio]) -> datetime | date | None:

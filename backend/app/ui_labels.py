@@ -262,7 +262,9 @@ def fmt_celda_maestro(valor: object, columna: str) -> str:
         s = str(valor or "").strip()
         low = s.lower()
         if low in ("sin remito", "sin rar/r"):
-            return "Sin R"
+            return "Sin Rto"
+        if low == "con remito":
+            return "Con Rto"
         return s
     if columna in _CAMPOS_TITULO:
         return titulo_palabras(str(valor))

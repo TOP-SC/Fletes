@@ -62,6 +62,21 @@ def postventa_valoriza_retiro(regla: str | None) -> bool:
     )
 
 
+def envio_postventa_valorizable(envio: Envio) -> bool:
+    """
+    ¿Se abona aunque el transporte diga retiro / no sea canal 51?
+    Usa regla ya persistida o clasifica en vivo TipoGestion / obs (OR x gtía).
+    """
+    if postventa_valoriza_retiro(envio.regla_postventa):
+        return True
+    if envio.tipo_gestion or envio.sub_tipo_gestion:
+        regla = clasificar_postventa(envio.tipo_gestion, envio.sub_tipo_gestion)
+        if postventa_valoriza_retiro(regla):
+            return True
+    desde_obs = clasificar_obs_adrian(envio.observaciones)
+    return postventa_valoriza_retiro(desde_obs)
+
+
 def clasificar_postventa(motivo: str | None, tipo: str | None) -> str:
     text = f"{motivo or ''} {tipo or ''}".upper()
     if any(k in text for k in ("CAMBIO", "GESTION DE RETIRO", "GESTIÓN DE RETIRO", "RETIRO")):

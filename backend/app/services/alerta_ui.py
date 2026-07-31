@@ -223,6 +223,36 @@ def alertas_maestro_grilla(
             }
         )
 
+    from app.services.costo_conceptos import es_retiro_sin_flete_domicilio
+    from app.services.postventa_rules import envio_postventa_valorizable
+    from app.transporte_reglas import excluir_planilla_transporte
+
+    _COD_LOG = frozenset({COD_EXPRESO_CLICPAQ, "83"})
+    es_or = False
+    for l in lineas:
+        if not envio_postventa_valorizable(l):
+            continue
+        cod = normalizar_transporte_cod(l.transporte_cod, l.transporte_nombre) or ""
+        if (
+            es_retiro_sin_flete_domicilio(l)
+            or excluir_planilla_transporte(l.transporte_cod, l.transporte_nombre)
+            or "RETIR" in (l.transporte_nombre or "").upper()
+            or cod not in _COD_LOG
+        ):
+            es_or = True
+            break
+    if es_or:
+        out.append(
+            {
+                "codigo": "orden_retiro",
+                "columnas": ["REMITOS", "LOGISTICA", "obs"],
+                "motivo": (
+                    "Orden de retiro / cambio postventa valorizable — "
+                    "revisar si corresponde abonar (puede faltar en seguimiento)"
+                ),
+            }
+        )
+
     inc = _inconsistencia_transporte_proveedor(base)
     if inc:
         out.append(

@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-grilla-compacta-2026-07-24"
+API_BUILD_ESPERADO = "fletes-adrian-or-costo-2026-07-31"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -2060,6 +2060,97 @@ def _render_cedol_caso(caso_id: str, det: dict[str, Any]) -> None:
                 st.error(f"No se pudo restaurar: {_detalle_error_api(exc)}")
 
 
+def _render_costo_editable_caso(
+    caso_id: str,
+    det: dict[str, Any],
+    renglones: list[dict[str, Any]],
+) -> None:
+    """
+    Costo tarifario siempre visible (no enterrado en expanders de renglón).
+    Adrián: corregir mueble mal tarifado como colchón, etc.
+    """
+    st.markdown("#### Costo logístico (editable)")
+    m = det.get("maestro") or {}
+    logistica = float(m.get("LOGISTICA") or m.get("COBRO RED") or 0)
+    seguro = float(m.get("SEGURO") or 0)
+    total_caso = float(m.get("total") or 0) or (logistica + seguro)
+
+    # Línea que concentra el costo (preferir la que ya tiene monto).
+    ren_costo = None
+    for ren in renglones:
+        if ren.get("id") is None:
+            continue
+        if float(ren.get("costo_tarifario") or 0) > 0:
+            ren_costo = ren
+            break
+    if ren_costo is None:
+        for ren in renglones:
+            if ren.get("id") is not None:
+                ren_costo = ren
+                break
+
+    actual = float((ren_costo or {}).get("costo_tarifario") or logistica or 0)
+    st.write(
+        f"**Actual:** logística {fmt_pesos_ar(actual)} · "
+        f"seguro {fmt_pesos_ar(seguro)} · total ref. {fmt_pesos_ar(total_caso)}"
+    )
+    st.caption(
+        "Si el tarifario erró el tipo (ej. cama/mueble cobrada como colchón 1 pl), "
+        "corregí el monto acá. Se guarda como costo manual y no se pisa al recalcular."
+    )
+    if ren_costo is None:
+        st.warning("Sin renglón para editar el costo.")
+        return
+
+    col_in, col_btn = st.columns([2, 1])
+    with col_in:
+        nuevo = st.number_input(
+            "Costo tarifario (logística)",
+            min_value=0.0,
+            value=float(actual),
+            step=100.0,
+            format="%.2f",
+            key=f"costo_edit_{caso_id}",
+        )
+    with col_btn:
+        st.write("")
+        st.write("")
+        aplicar = st.button(
+            "Guardar costo",
+            key=f"costo_apply_{caso_id}",
+            type="primary",
+        )
+    if not aplicar:
+        return
+    if abs(float(nuevo) - float(actual)) < 0.009:
+        st.info("El costo no cambió.")
+        return
+    body = {
+        "recalcular": True,
+        "renglones": [
+            {
+                "id": int(ren_costo["id"]),
+                "costo_tarifario": float(nuevo),
+                "costo_total": float(nuevo) + seguro if seguro else float(nuevo),
+            }
+        ],
+    }
+    try:
+        with api_client() as c:
+            r = c.patch(f"/maestro/caso/{caso_id}", json=body)
+            r.raise_for_status()
+        get_maestro_filas_cached.clear()
+        get_fletes_pagina_cached.clear()
+        get_adrian_resumen_cached.clear()
+        get_adrian_dias_cached.clear()
+        get_adrian_dia_cached.clear()
+        get_adrian_mes_cached.clear()
+        st.success("Costo actualizado.")
+        st.rerun()
+    except Exception as exc:
+        st.error(f"No se pudo guardar el costo: {_detalle_error_api(exc)}")
+
+
 DETALLE_POPUP = "_detalle_popup"
 
 
@@ -2295,7 +2386,7 @@ def _render_renglones_tango_editables(caso_id: str, renglones: list[dict[str, An
         titulo_ren = ren.get("descripcion") or ren.get("cod_articulo") or f"Renglón {i}"
         planos = _campos_planos_renglon(ren)
         bultos = ren.get("bultos")
-        with st.expander(f"{i}. {titulo_ren}", expanded=(len(renglones) == 1)):
+        with st.expander(f"{i}. {titulo_ren}", expanded=True):
             if bultos is not None:
                 try:
                     from app.services.bultos_service import etiqueta_bultos_detalle
@@ -2548,6 +2639,7 @@ def _render_contenido_detalle_caso(caso_id: str, titulo: str) -> None:
     dist_info = det.get("distancia_sucursal") or {}
     _render_distancia_sucursal(dist_info)
     _render_cedol_caso(caso_id, det)
+    _render_costo_editable_caso(caso_id, det, renglones)
     _render_cross_seguimiento_caso(det)
     if dist_info.get("aplica") and (dist_info.get("pendiente_calculo") or dist_info.get("es_estimado")):
         col_km, _ = st.columns([1, 3])
