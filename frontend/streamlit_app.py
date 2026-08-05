@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-adrian-or-costo-2026-07-31"
+API_BUILD_ESPERADO = "fletes-kpi-iso-2026-08-04"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -1163,13 +1163,14 @@ def _config_seguridad() -> None:
             """
             | Rol | Permisos |
             |-----|----------|
-            | **Operador** | Toda la app salvo gestión de usuarios y cierre mensual destructivo. |
-            | **Super administrador** | Todo + usuarios + cierre mensual. |
+            | **Operador** | Toda la app salvo gestión de usuarios, cierre mensual destructivo e informe KPI ISO. |
+            | **Super administrador** | Todo + usuarios + cierre mensual + pestaña **KPI** (informe ISO HTML). |
 
             - Sin usuario activo en esta lista **no hay acceso** a la app (pantalla de login).
             - Las contraseñas **nunca** se muestran (almacenamiento cifrado).
             - Al cambiar contraseña o desactivar, se cierran las sesiones abiertas.
             - Debe quedar **al menos un** super administrador activo.
+            - Permiso lógico `settings.kpi`: solo super admin (usuario **top** y otros super).
             """
         )
 
@@ -1177,6 +1178,103 @@ def _config_seguridad() -> None:
 def _config_usuarios() -> None:
     """Compatibilidad — usar _config_seguridad."""
     _config_seguridad()
+
+
+def _config_kpi_iso() -> None:
+    """
+    Pestaña KPI (solo super admin / permiso settings.kpi).
+    Genera HTML ISO imprimible con 7 KPIs + tortas SVG.
+    """
+    st.subheader("Informe KPI ISO 9001")
+    if not _is_super_admin():
+        st.warning(
+            "Esta pestaña requiere **super administrador** (permiso `settings.kpi`). "
+            "Pedile acceso al usuario **top** si necesitás el informe."
+        )
+        return
+
+    st.markdown(
+        """
+        Generá un **HTML autocontenido** (tabla de control + gráficos de torta) para
+        archivo / impresión / auditoría ISO. Los indicadores se adaptan al dominio
+        **Control de Fletes** (casos / remitos Tango).
+
+        - **KPI 1–5:** ciclo pedido→entrega, MTTR con remito, backlog de control,
+          % remito (proxy SLA), % retrabajo/postventa.
+        - **KPI 6–7 (CSAT / encuesta):** quedan en «sin dato» hasta que exista captura
+          de satisfacción en la app.
+        """
+    )
+
+    col_btn, col_json = st.columns([2, 1])
+    with col_btn:
+        generar = st.button(
+            "Generar y guardar HTML KPI",
+            type="primary",
+            key="cfg_kpi_iso_gen",
+        )
+    with col_json:
+        ver_json = st.button("Vista JSON (debug)", key="cfg_kpi_iso_json")
+
+    if ver_json:
+        try:
+            with st.spinner("Calculando KPIs…"):
+                with httpx.Client(base_url=API_URL, timeout=180.0) as client:
+                    r = client.get(
+                        "/settings/kpi-iso-report",
+                        params={"format": "json"},
+                        headers=_auth_headers(),
+                    )
+                    r.raise_for_status()
+                    payload = r.json()
+            st.success("Payload OK")
+            st.json(payload)
+        except Exception as exc:
+            st.error(f"No se pudo obtener el JSON: {_detalle_error_api(exc)}")
+
+    if generar:
+        try:
+            with st.spinner("Generando informe HTML KPI…"):
+                with httpx.Client(base_url=API_URL, timeout=180.0) as client:
+                    r = client.get(
+                        "/settings/kpi-iso-report",
+                        headers=_auth_headers(),
+                    )
+                    r.raise_for_status()
+                    data = r.content
+                    cd = r.headers.get("Content-Disposition") or ""
+            import re as _re
+
+            m = _re.search(r'filename="?([^";]+)"?', cd, _re.I)
+            fname = m.group(1) if m else f"KPI_ISO9001_Fletes_{datetime.now():%Y%m%d_%H%M}.html"
+            st.session_state["kpi_iso_html_bytes"] = data
+            st.session_state["kpi_iso_html_name"] = fname
+            st.success("Informe listo — usá el botón de descarga.")
+        except Exception as exc:
+            st.error(f"No se pudo generar el informe: {_detalle_error_api(exc)}")
+
+    html_bytes = st.session_state.get("kpi_iso_html_bytes")
+    html_name = st.session_state.get("kpi_iso_html_name") or "KPI_ISO9001_Fletes.html"
+    if html_bytes:
+        st.download_button(
+            "Descargar HTML KPI",
+            data=html_bytes,
+            file_name=html_name,
+            mime="text/html; charset=utf-8",
+            type="primary",
+            key="cfg_kpi_iso_dl",
+        )
+        with st.expander("Vista previa"):
+            try:
+                import streamlit.components.v1 as components
+
+                components.html(
+                    html_bytes.decode("utf-8", errors="replace"),
+                    height=720,
+                    scrolling=True,
+                )
+            except Exception:
+                st.code(html_bytes.decode("utf-8", errors="replace")[:4000], language="html")
 
 
 def _detalle_error_api(exc: Exception) -> str:
@@ -5567,19 +5665,36 @@ def pagina_configuracion() -> None:
         st.warning("Conectá el servidor con **Iniciar_Fletes.bat** antes de importar.")
         st.stop()
 
-    tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_seg = st.tabs(
-        [
-            "Tango (principal)",
-            "Prefactura Clicpaq",
-            "Postventa",
-            "Liquidación",
-            "Tarifarios",
-            "Fleteros locales",
-            "Cross seguimiento",
-            "Sistema",
-            "Seguridad y acceso",
-        ]
-    )
+    if _is_super_admin():
+        tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_seg, tab_kpi = st.tabs(
+            [
+                "Tango (principal)",
+                "Prefactura Clicpaq",
+                "Postventa",
+                "Liquidación",
+                "Tarifarios",
+                "Fleteros locales",
+                "Cross seguimiento",
+                "Sistema",
+                "Seguridad y acceso",
+                "KPI",
+            ]
+        )
+    else:
+        tab_tango, tab_cp, tab_pv, tab_liq, tab_tar, tab_flet, tab_cross, tab_sys, tab_seg = st.tabs(
+            [
+                "Tango (principal)",
+                "Prefactura Clicpaq",
+                "Postventa",
+                "Liquidación",
+                "Tarifarios",
+                "Fleteros locales",
+                "Cross seguimiento",
+                "Sistema",
+                "Seguridad y acceso",
+            ]
+        )
+        tab_kpi = None
 
     with tab_tango:
         st.subheader("Exportacion.xlsx — SommierCenter")
@@ -6057,6 +6172,10 @@ def pagina_configuracion() -> None:
 
     with tab_seg:
         _config_seguridad()
+
+    if tab_kpi is not None:
+        with tab_kpi:
+            _config_kpi_iso()
 
 
 # --- Main ---

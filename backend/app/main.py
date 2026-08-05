@@ -12,6 +12,7 @@ from app.api.routes import (
     mundo1,
     fletes,
     proveedores,
+    settings as settings_routes,
     sucursales,
     sistema,
     tarifas,
@@ -47,6 +48,7 @@ app.include_router(fletes.router, prefix=prefix)
 app.include_router(maestro.router, prefix=prefix)
 app.include_router(modo_adrian.router, prefix=prefix)
 app.include_router(proveedores.router, prefix=prefix)
+app.include_router(settings_routes.router, prefix=prefix)
 app.include_router(sistema.router, prefix=prefix)
 app.include_router(sucursales.router, prefix=prefix)
 app.include_router(transportes.router, prefix=prefix)
