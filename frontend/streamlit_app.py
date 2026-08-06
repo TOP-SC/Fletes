@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-kpi-iso-2026-08-04"
+API_BUILD_ESPERADO = "fletes-login-top-2026-08-06"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,45 +424,187 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
+SPLASH_HOLD_SEC = 4.2
+AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
+
+
+def _top_watermark_html(*, extra_class: str = "") -> str:
+    cls = f"top-watermark {extra_class}".strip()
+    return (
+        f'<div class="{cls}" aria-hidden="true">'
+        "<span>Creado por Proyecto y Transformación</span>"
+        "<span>Operativa (TOP)</span>"
+        "</div>"
+    )
+
+
+def inject_splash_welcome() -> None:
+    """Bienvenida full-screen (mismo patrón PIC / apps TOP), colores Fletes."""
+    st.markdown(
+        f"""
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <style>
+        [data-testid="stSidebar"], [data-testid="stToolbar"],
+        [data-testid="stHeader"] {{ display: none !important; }}
+        .stApp {{
+            background: #071525 !important;
+            font-family: "DM Sans", "Segoe UI", sans-serif !important;
+        }}
+        .main .block-container {{
+            max-width: 100% !important;
+            padding: 0 !important;
+        }}
+        .splash {{
+            position: fixed; inset: 0; z-index: 100;
+            display: grid; place-items: center; overflow: hidden;
+            background: #071525;
+        }}
+        .splash-glow {{
+            position: absolute; width: 55vw; height: 55vw; border-radius: 50%;
+            background: radial-gradient(circle, rgba(49,130,206,.22), rgba(26,54,93,.08) 45%, transparent 70%);
+            animation: splashBreathe 2.3s ease-in-out infinite;
+        }}
+        .splash-content {{ position: relative; text-align: center; }}
+        .splash-kicker {{
+            color: #63b3ed; font-size: .75rem; font-weight: 700;
+            letter-spacing: .34em; text-transform: uppercase;
+            opacity: 0; animation: splashRise .7s .15s forwards;
+        }}
+        .splash-logo {{
+            margin-top: 8px; font-size: clamp(4.2rem, 11vw, 8rem); font-weight: 700;
+            letter-spacing: -.06em; line-height: .95;
+            background: linear-gradient(110deg, #eef6ff 12%, #63b3ed 55%, #2b6cb0);
+            background-clip: text; -webkit-background-clip: text; color: transparent;
+            opacity: 0; filter: blur(12px); transform: scale(.92);
+            animation: splashReveal 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards;
+        }}
+        .splash-name {{
+            margin-top: 16px; color: #a8bdd4; font-size: clamp(1rem, 2vw, 1.35rem);
+            letter-spacing: .08em; opacity: 0; animation: splashRise .8s .9s forwards;
+        }}
+        .splash-line {{
+            width: 0; height: 2px; margin: 24px auto 0;
+            background: linear-gradient(90deg, transparent, #4299e1, transparent);
+            animation: splashDraw 1s 1.1s forwards;
+        }}
+        .splash-wm {{
+            margin-top: 28px; opacity: 0; animation: splashRise .8s 1.6s forwards;
+            color: #7a8898; font-size: .7rem;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            letter-spacing: .01em; line-height: 1.35; user-select: none;
+        }}
+        .splash-wm span {{ display: block; }}
+        @keyframes splashReveal {{ to {{ opacity: 1; filter: blur(0); transform: scale(1); }} }}
+        @keyframes splashRise {{
+            from {{ opacity: 0; transform: translateY(12px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        @keyframes splashDraw {{ to {{ width: 230px; }} }}
+        @keyframes splashBreathe {{ 50% {{ transform: scale(1.08); opacity: .75; }} }}
+        .top-watermark {{ display: none !important; }}
+        </style>
+        <div class="splash" id="splash" aria-hidden="true">
+            <div class="splash-glow"></div>
+            <div class="splash-content">
+                <div class="splash-kicker">Bienvenido a</div>
+                <div class="splash-logo">CF</div>
+                <div class="splash-name">Control de Fletes</div>
+                <div class="splash-line"></div>
+                <div class="splash-wm" aria-hidden="true">
+                    <span>Creado por Proyecto y Transformación</span>
+                    <span>Operativa (TOP)</span>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def inject_login_shell() -> None:
-    """Pantalla de login a full viewport — fondo logístico / mapa."""
+    """Login full-screen estilo apps TOP (PIC), paleta navy Fletes."""
     st.markdown(
         """
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style>
-        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="stSidebar"], [data-testid="stToolbar"] { display: none !important; }
         [data-testid="stHeader"] { background: transparent !important; }
-        [data-testid="stToolbar"] { display: none !important; }
         .stApp {
-            background: linear-gradient(145deg, #071525 0%, #0d4f8b 38%, #0f766e 72%, #134e4a 100%) !important;
+            background:
+                radial-gradient(900px 600px at 88% -12%, rgba(49,130,206,.18), transparent 65%),
+                linear-gradient(145deg, #071525, #0c1e33 55%, #0a1828) !important;
+            font-family: "DM Sans", "Segoe UI", sans-serif !important;
         }
         .main .block-container {
             max-width: 100% !important;
-            padding-top: 3vh !important;
-            padding-bottom: 3rem !important;
+            padding-top: 8vh !important;
+            padding-bottom: 2rem !important;
             z-index: 2;
             position: relative;
         }
-        /* Tarjeta login — ancho fijo centrado vía columnas Streamlit */
-        form[data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.94);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            border-radius: 18px;
-            padding: 1.35rem 1.5rem 1.15rem;
-            box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
-            margin: 0;
+        .login-glow {
+            position: fixed;
+            left: 50%; top: 42%;
+            transform: translate(-50%, -50%);
+            width: min(800px, 85vw);
+            height: min(800px, 85vw);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(66,153,225,.16), rgba(26,54,93,.05) 48%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: loginGlowIn 1.6s ease both;
         }
-        form[data-testid="stForm"] .login-form-title {
-            font-weight: 700;
-            color: #1a365d;
-            font-size: 1.08rem;
-            margin: 0 0 0.85rem 0;
-            padding: 0;
+        @keyframes loginGlowIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes loginRise {
+            from { opacity: 0; transform: translateY(26px) scale(.97); }
+            to { opacity: 1; transform: none; }
+        }
+        form[data-testid="stForm"] {
+            position: relative; z-index: 2;
+            background: rgba(13, 32, 55, .92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(74, 120, 170, .42);
+            border-radius: 22px;
+            padding: 2rem 1.9rem 1.55rem;
+            box-shadow: 0 35px 90px rgba(0,0,0,.5);
+            margin: 0;
+            animation: loginRise 1.1s cubic-bezier(.2,.8,.2,1) both;
+        }
+        .login-card-head {
+            position: relative; z-index: 2;
+            margin-bottom: 0.35rem;
+        }
+        .login-brand-mark {
+            display: grid; place-items: center;
+            width: 58px; height: 58px; margin-bottom: 22px;
+            border-radius: 16px; color: #0b1f3a;
+            background: linear-gradient(135deg, #63b3ed, #2b6cb0);
+            font-size: 1.2rem; font-weight: 800;
+            box-shadow: 0 12px 28px rgba(49,130,206,.28);
+        }
+        .login-eyebrow {
+            color: #63b3ed; font-size: .72rem; font-weight: 700;
+            letter-spacing: .22em; text-transform: uppercase; margin: 0 0 6px 0;
+        }
+        .login-card-head h1 {
+            margin: 4px 0 8px !important; font-size: 1.85rem !important;
+            color: #edf2f7 !important; font-weight: 700 !important;
+        }
+        .login-card-head > p.login-lead {
+            margin: 0 0 8px 0 !important; color: #8fa3b8 !important;
+            font-size: .95rem !important; line-height: 1.45 !important;
         }
         form[data-testid="stForm"] label[data-testid="stWidgetLabel"] p {
             font-weight: 600 !important;
-            color: #475569 !important;
+            color: #a8bdd4 !important;
             font-size: 0.82rem !important;
         }
         form[data-testid="stForm"] input {
@@ -470,216 +612,62 @@ def inject_login_shell() -> None:
             height: 2.85rem !important;
             padding: 0.55rem 0.85rem !important;
             border-radius: 10px !important;
-            border: 1px solid #cbd5e1 !important;
-            background: #ffffff !important;
+            border: 1px solid #2a4a6a !important;
+            background: #0c2035 !important;
             font-size: 0.95rem !important;
-            color: #1e293b !important;
+            color: #edf2f7 !important;
         }
-        form[data-testid="stForm"] input::placeholder {
-            color: #94a3b8 !important;
+        form[data-testid="stForm"] input:focus {
+            border-color: #4299e1 !important;
+            box-shadow: 0 0 0 3px rgba(66,153,225,.15) !important;
         }
-        form[data-testid="stForm"] [data-testid="stTextInput"] {
-            margin-bottom: 0.35rem;
-        }
+        form[data-testid="stForm"] input::placeholder { color: #6b8299 !important; }
+        form[data-testid="stForm"] [data-testid="stTextInput"] { margin-bottom: 0.45rem; }
         form[data-testid="stForm"] button[kind="primaryFormSubmit"],
         form[data-testid="stForm"] button[data-testid="stFormSubmitButton"] {
             min-height: 2.85rem !important;
             border-radius: 10px !important;
-            font-weight: 600 !important;
-            margin-top: 0.5rem !important;
+            font-weight: 800 !important;
+            margin-top: 0.85rem !important;
+            background: #4299e1 !important;
+            color: #0b1f3a !important;
+            border: 0 !important;
         }
-        .login-hero {
-            text-align: center;
-            margin-bottom: 1.1rem;
-            color: #fff;
+        form[data-testid="stForm"] button[kind="primaryFormSubmit"]:hover,
+        form[data-testid="stForm"] button[data-testid="stFormSubmitButton"]:hover {
+            background: #63b3ed !important;
         }
-        .login-scene {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            overflow: hidden;
+        .login-wm {
+            margin-top: 1.35rem; font-size: .66rem; color: #7a8898;
+            display: flex !important; flex-direction: column; align-items: center; gap: 2px;
+            text-align: center; line-height: 1.35; user-select: none;
         }
-        .login-scene-grid {
-            position: absolute;
-            inset: -20%;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 48px 48px;
-            transform: perspective(600px) rotateX(58deg) scale(1.4);
-            transform-origin: center 80%;
-            opacity: 0.55;
-            animation: loginGridDrift 28s linear infinite;
+        .login-wm span { display: block; }
+        .login-foot {
+            margin-top: 0.85rem; text-align: center;
+            font-size: 0.78rem; color: #7a8898;
         }
-        @keyframes loginGridDrift {
-            0% { background-position: 0 0, 0 0; }
-            100% { background-position: 48px 48px, 48px 48px; }
-        }
-        .login-scene-glow {
-            position: absolute;
-            width: 70vmax;
-            height: 70vmax;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.35;
-        }
-        .login-scene-glow.a {
-            top: -15%;
-            left: -10%;
-            background: #3182ce;
-        }
-        .login-scene-glow.b {
-            bottom: -20%;
-            right: -15%;
-            background: #14b8a6;
-        }
-        .login-scene-map {
-            position: absolute;
-            inset: 0;
-            opacity: 0.22;
-        }
-        .login-scene-map svg {
-            width: 100%;
-            height: 100%;
-        }
-        .login-route {
-            fill: none;
-            stroke: rgba(255,255,255,0.45);
-            stroke-width: 1.2;
-            stroke-dasharray: 6 8;
-            animation: loginRouteFlow 18s linear infinite;
-        }
-        .login-route.delay { animation-delay: -6s; opacity: 0.7; }
-        @keyframes loginRouteFlow {
-            to { stroke-dashoffset: -120; }
-        }
-        .login-pin {
-            fill: #fbbf24;
-            filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
-            animation: loginPinPulse 2.8s ease-in-out infinite;
-        }
-        .login-pin.b { fill: #38bdf8; animation-delay: -1.2s; }
-        .login-pin.c { fill: #34d399; animation-delay: -2s; }
-        @keyframes loginPinPulse {
-            0%, 100% { opacity: 0.75; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.15); }
-        }
-        .login-scene-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(
-                180deg,
-                rgba(7, 21, 37, 0.15) 0%,
-                rgba(7, 21, 37, 0.45) 55%,
-                rgba(7, 21, 37, 0.72) 100%
-            );
-        }
-        .login-hero-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 3.25rem;
-            height: 3.25rem;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(49, 130, 206, 0.35), rgba(20, 184, 166, 0.35));
-            border: 1px solid rgba(255,255,255,0.25);
-            backdrop-filter: blur(8px);
-            font-size: 1.55rem;
-            margin-bottom: 0.65rem;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        }
-        .login-hero h1 {
-            font-size: 1.65rem !important;
-            font-weight: 700 !important;
-            color: #ffffff !important;
-            margin: 0 0 0.35rem 0 !important;
-            letter-spacing: -0.02em;
-        }
-        .login-hero .login-tagline {
-            font-size: 0.92rem;
-            color: rgba(255,255,255,0.82);
-            margin: 0;
-            line-height: 1.45;
-        }
-        .login-hero .login-brand {
-            font-size: 0.76rem;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.55);
-            margin-top: 0.5rem;
-        }
-        .login-foot-wrap {
-            text-align: center;
-            margin-top: 0.85rem;
-        }
-        .login-foot-wrap .login-foot {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.62);
-            text-align: center;
-            margin: 0;
-        }
-        .login-kpis {
-            display: flex;
-            justify-content: center;
-            gap: 1.25rem;
-            margin-top: 1.25rem;
-            flex-wrap: wrap;
-        }
-        .login-kpi {
-            font-size: 0.72rem;
-            color: rgba(255,255,255,0.65);
-            text-align: center;
-        }
-        .login-kpi strong {
-            display: block;
-            color: rgba(255,255,255,0.92);
-            font-size: 0.82rem;
-            margin-bottom: 0.1rem;
-        }
-        .top-watermark { display: none !important; }
+        .top-watermark:not(.login-wm) { display: none !important; }
         </style>
-        <div class="login-scene" aria-hidden="true">
-            <div class="login-scene-glow a"></div>
-            <div class="login-scene-glow b"></div>
-            <div class="login-scene-grid"></div>
-            <div class="login-scene-map">
-                <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-                    <path class="login-route" d="M120,520 C280,420 360,380 520,340 S780,280 920,220 S1080,180 1140,140"/>
-                    <path class="login-route delay" d="M80,620 C240,560 400,500 560,460 S820,400 980,360 S1100,320 1160,280"/>
-                    <path class="login-route" d="M200,680 C340,620 480,580 640,520 S880,440 1020,400"/>
-                    <circle class="login-pin" cx="520" cy="340" r="7"/>
-                    <circle class="login-pin b" cx="920" cy="220" r="6"/>
-                    <circle class="login-pin c" cx="640" cy="520" r="6"/>
-                    <circle class="login-pin" cx="280" cy="480" r="5" opacity="0.8"/>
-                    <circle class="login-pin b" cx="980" cy="360" r="5" opacity="0.8"/>
-                </svg>
-            </div>
-            <div class="login-scene-overlay"></div>
-        </div>
+        <div class="login-glow" aria-hidden="true"></div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def _login_hero_html() -> str:
+def _login_card_head_html() -> str:
     return """
-        <div class="login-hero">
-            <div class="login-hero-icon">🚚</div>
-            <h1>Control de Fletes</h1>
-            <p class="login-tagline">Control logístico · geolocalización · tarifarios y rutas</p>
-            <p class="login-brand">SommierCenter · Wamaro · TOP</p>
+        <div class="login-card-head">
+            <div class="login-brand-mark">CF</div>
+            <p class="login-eyebrow">CONTROL DE FLETES</p>
+            <h1>Iniciar sesión</h1>
+            <p class="login-lead">Ingresá con tu usuario para acceder a la plataforma.</p>
         </div>
     """
 
 
 def inject_top_watermark() -> None:
-    st.markdown(
-        '<div class="top-watermark" aria-hidden="true">'
-        "Creado por Proyecto y Transformación Operativa (TOP)"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(_top_watermark_html(extra_class="app-wm"), unsafe_allow_html=True)
 
 
 MODULE_DARK_BG: dict[str, str] = {
@@ -876,20 +864,39 @@ def _auth_logout() -> None:
     except Exception:
         pass
     _clear_auth_session()
-    for key in ("login_user_input", "login_pass_input", "login_form_submitted"):
+    for key in (
+        "login_user_input",
+        "login_pass_input",
+        "login_form_submitted",
+        AUTH_SPLASH_DONE_KEY,
+    ):
         st.session_state.pop(key, None)
 
 
-def _pagina_login() -> None:
-    inject_login_shell()
+def _saludo_bienvenida(username: str) -> str:
+    nombre = (username or "").strip() or "usuario"
+    primero = nombre.split()[0]
+    return f"Buen día, {primero}"
 
+
+def _pagina_login() -> None:
+    """Splash TOP + login card (patrón PIC), colores Control de Fletes."""
+    import time as _time
+
+    if not st.session_state.get(AUTH_SPLASH_DONE_KEY):
+        inject_splash_welcome()
+        _time.sleep(SPLASH_HOLD_SEC)
+        st.session_state[AUTH_SPLASH_DONE_KEY] = True
+        st.rerun()
+
+    inject_login_shell()
     _sp1, col, _sp2 = st.columns([1, 1.05, 1])
 
     with col:
-        st.markdown(_login_hero_html(), unsafe_allow_html=True)
-
         if not check_health_cached():
-            st.error("El servidor no está disponible. Ejecutá **Iniciar_Fletes.bat** e intentá de nuevo.")
+            st.error(
+                "El servidor no está disponible. Ejecutá **Iniciar_Fletes.bat** e intentá de nuevo."
+            )
             return
 
         for _lk in ("login_user_input", "login_pass_input"):
@@ -897,38 +904,28 @@ def _pagina_login() -> None:
                 st.session_state[_lk] = ""
 
         with st.form("login_form", clear_on_submit=False):
-            st.markdown('<p class="login-form-title">Iniciar sesión</p>', unsafe_allow_html=True)
+            st.markdown(_login_card_head_html(), unsafe_allow_html=True)
             usuario = st.text_input(
                 "Usuario",
                 placeholder="Ingresá tu usuario",
                 key="login_user_input",
-                autocomplete="off",
+                autocomplete="username",
             )
             clave = st.text_input(
                 "Contraseña",
                 type="password",
                 placeholder="Ingresá tu contraseña",
                 key="login_pass_input",
-                autocomplete="new-password",
+                autocomplete="current-password",
             )
-            submit = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+            submit = st.form_submit_button(
+                "Ingresar", type="primary", use_container_width=True
+            )
 
+        st.markdown(_top_watermark_html(extra_class="login-wm"), unsafe_allow_html=True)
         st.markdown(
-            """
-            <div class="login-foot-wrap">
-              <p class="login-foot">Acceso restringido — contactá al administrador TOP si no tenés usuario.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            """
-            <div class="login-kpis">
-                <div class="login-kpi"><strong>29</strong> sucursales</div>
-                <div class="login-kpi"><strong>3</strong> mundos logísticos</div>
-                <div class="login-kpi"><strong>Km</strong> tarifario AMBA</div>
-            </div>
-            """,
+            '<p class="login-foot">Acceso restringido — contactá al administrador TOP '
+            "si no tenés usuario.</p>",
             unsafe_allow_html=True,
         )
 
@@ -947,7 +944,9 @@ def _pagina_login() -> None:
                     )
                     r.raise_for_status()
                     data = r.json()
-                _set_auth_session(data["token"], data["username"], bool(data.get("is_super_admin")))
+                _set_auth_session(
+                    data["token"], data["username"], bool(data.get("is_super_admin"))
+                )
                 st.session_state.pop("login_user_input", None)
                 st.session_state.pop("login_pass_input", None)
                 st.rerun()
@@ -3756,6 +3755,20 @@ def plantilla_download(nombre: str, etiqueta: str) -> None:
 
 def pagina_dashboard() -> None:
     _css_dashboard_embed()
+
+    user = st.session_state.get(AUTH_USER_KEY) or ""
+    st.markdown(
+        f"""
+        <div class="page-header welcome-header">
+            <p class="welcome-eyebrow">CONTROL DE FLETES</p>
+            <h1>{html_lib.escape(_saludo_bienvenida(user))}</h1>
+            <p class="page-header-caption">
+                Control logístico · tarifarios · remitos · SommierCenter / Wamaro
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if not check_health_cached():
         st.warning("El servidor no está activo. Ejecutá **Iniciar_Fletes.bat** en la carpeta del proyecto.")

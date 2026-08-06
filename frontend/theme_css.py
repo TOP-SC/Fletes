@@ -74,6 +74,39 @@ textarea, input {
     border-color: var(--border) !important;
 }
 .top-watermark { color: var(--watermark); }
+.top-watermark.app-wm,
+.top-watermark.login-wm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    user-select: none;
+    pointer-events: none;
+}
+.top-watermark span { display: block; }
+.top-watermark.app-wm {
+    max-width: 1450px;
+    margin: 2rem auto 0.5rem;
+    padding: 1rem 0.75rem 0.25rem;
+    border-top: 1px solid rgba(110, 123, 139, 0.18);
+}
+.welcome-eyebrow {
+    margin: 0 0 0.25rem 0 !important;
+    color: var(--mod-accent) !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.18em !important;
+    text-transform: uppercase !important;
+}
+.welcome-header h1 {
+    margin: 0 0 0.35rem 0 !important;
+}
 """
 
 DARK_CSS = """
