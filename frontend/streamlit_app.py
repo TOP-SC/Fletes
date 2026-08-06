@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-login-top-2026-08-06"
+API_BUILD_ESPERADO = "fletes-splash-truck-2026-08-06"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -466,19 +466,63 @@ def inject_splash_welcome() -> None:
             background: radial-gradient(circle, rgba(49,130,206,.22), rgba(26,54,93,.08) 45%, transparent 70%);
             animation: splashBreathe 2.3s ease-in-out infinite;
         }}
-        .splash-content {{ position: relative; text-align: center; }}
+        .splash-content {{ position: relative; text-align: center; z-index: 2; }}
         .splash-kicker {{
             color: #63b3ed; font-size: .75rem; font-weight: 700;
             letter-spacing: .34em; text-transform: uppercase;
             opacity: 0; animation: splashRise .7s .15s forwards;
         }}
+        .splash-stage {{
+            position: relative;
+            display: grid;
+            place-items: center;
+            margin: 4px auto 0;
+            width: min(92vw, 720px);
+            height: clamp(7.5rem, 18vw, 11rem);
+            overflow: hidden;
+        }}
+        .splash-truck-lane {{
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }}
+        .splash-truck {{
+            position: absolute;
+            top: 52%;
+            left: 0;
+            width: clamp(110px, 18vw, 168px);
+            height: auto;
+            transform: translate(62vw, -50%);
+            opacity: 0;
+            filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+            animation: splashTruckPass 3.1s .85s cubic-bezier(.45,.05,.35,1) both;
+        }}
+        .splash-truck .wheel {{
+            transform-origin: center;
+            animation: splashWheelSpin 3.1s .85s linear both;
+        }}
+        .splash-road {{
+            position: absolute;
+            left: 8%; right: 8%;
+            bottom: 18%;
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, transparent, rgba(99,179,237,.28), transparent);
+            opacity: 0;
+            animation: splashRise .6s .7s forwards;
+        }}
         .splash-logo {{
-            margin-top: 8px; font-size: clamp(4.2rem, 11vw, 8rem); font-weight: 700;
+            position: relative;
+            z-index: 2;
+            margin: 0;
+            font-size: clamp(4.2rem, 11vw, 8rem); font-weight: 700;
             letter-spacing: -.06em; line-height: .95;
             background: linear-gradient(110deg, #eef6ff 12%, #63b3ed 55%, #2b6cb0);
             background-clip: text; -webkit-background-clip: text; color: transparent;
             opacity: 0; filter: blur(12px); transform: scale(.92);
             animation: splashReveal 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards;
+            text-shadow: none;
         }}
         .splash-name {{
             margin-top: 16px; color: #a8bdd4; font-size: clamp(1rem, 2vw, 1.35rem);
@@ -503,13 +547,53 @@ def inject_splash_welcome() -> None:
         }}
         @keyframes splashDraw {{ to {{ width: 230px; }} }}
         @keyframes splashBreathe {{ 50% {{ transform: scale(1.08); opacity: .75; }} }}
+        @keyframes splashTruckPass {{
+            0%   {{ opacity: 0; transform: translate(62vw, -50%); }}
+            12%  {{ opacity: .95; }}
+            88%  {{ opacity: .95; }}
+            100% {{ opacity: 0; transform: translate(-62vw, -50%); }}
+        }}
+        @keyframes splashWheelSpin {{
+            from {{ transform: rotate(0deg); }}
+            to {{ transform: rotate(-720deg); }}
+        }}
         .top-watermark {{ display: none !important; }}
         </style>
         <div class="splash" id="splash" aria-hidden="true">
             <div class="splash-glow"></div>
             <div class="splash-content">
                 <div class="splash-kicker">Bienvenido a</div>
-                <div class="splash-logo">CF</div>
+                <div class="splash-stage">
+                    <div class="splash-truck-lane">
+                        <div class="splash-road"></div>
+                        <svg class="splash-truck" viewBox="0 0 160 78" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Camión">
+                            <!-- caja / furgón -->
+                            <rect x="8" y="14" width="88" height="42" rx="8" fill="#2b6cb0"/>
+                            <rect x="14" y="20" width="76" height="22" rx="5" fill="#63b3ed" opacity=".35"/>
+                            <text x="52" y="40" text-anchor="middle" fill="#eef6ff" font-family="DM Sans, Segoe UI, sans-serif"
+                                  font-size="18" font-weight="800" letter-spacing="1">CF</text>
+                            <!-- cabina -->
+                            <path d="M96 28 h28 a8 8 0 0 1 8 8 v20 h-36 z" fill="#3182ce"/>
+                            <rect x="104" y="34" width="22" height="14" rx="3" fill="#b8d9f5" opacity=".9"/>
+                            <rect x="106" y="36" width="8" height="10" rx="1.5" fill="#1a365d" opacity=".25"/>
+                            <!-- parachoques / luces -->
+                            <rect x="130" y="52" width="10" height="5" rx="2" fill="#f6ad55"/>
+                            <circle cx="22" cy="30" r="3" fill="#f6e05e"/>
+                            <!-- chasis -->
+                            <rect x="12" y="54" width="120" height="6" rx="2" fill="#1a365d"/>
+                            <!-- ruedas -->
+                            <g class="wheel">
+                                <circle cx="36" cy="62" r="10" fill="#0b1f3a"/>
+                                <circle cx="36" cy="62" r="4.5" fill="#a0aec0"/>
+                            </g>
+                            <g class="wheel">
+                                <circle cx="118" cy="62" r="10" fill="#0b1f3a"/>
+                                <circle cx="118" cy="62" r="4.5" fill="#a0aec0"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="splash-logo">CF</div>
+                </div>
                 <div class="splash-name">Control de Fletes</div>
                 <div class="splash-line"></div>
                 <div class="splash-wm" aria-hidden="true">
