@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-2026-08-06"
+API_BUILD_ESPERADO = "fletes-splash-truck-v2-2026-08-06"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,7 +424,7 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-SPLASH_HOLD_SEC = 4.2
+SPLASH_HOLD_SEC = 5.6
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
 
 
@@ -493,14 +493,15 @@ def inject_splash_welcome() -> None:
             left: 0;
             width: clamp(110px, 18vw, 168px);
             height: auto;
-            transform: translate(62vw, -50%);
+            /* scaleX(-1): cabina mira a la izquierda = sentido de marcha */
+            transform: translate(62vw, -50%) scaleX(-1);
             opacity: 0;
             filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-            animation: splashTruckPass 3.1s .85s cubic-bezier(.45,.05,.35,1) both;
+            animation: splashTruckPass 4.6s .7s cubic-bezier(.4,.05,.3,1) both;
         }}
         .splash-truck .wheel {{
             transform-origin: center;
-            animation: splashWheelSpin 3.1s .85s linear both;
+            animation: splashWheelSpin 4.6s .7s linear both;
         }}
         .splash-road {{
             position: absolute;
@@ -548,14 +549,14 @@ def inject_splash_welcome() -> None:
         @keyframes splashDraw {{ to {{ width: 230px; }} }}
         @keyframes splashBreathe {{ 50% {{ transform: scale(1.08); opacity: .75; }} }}
         @keyframes splashTruckPass {{
-            0%   {{ opacity: 0; transform: translate(62vw, -50%); }}
-            12%  {{ opacity: .95; }}
-            88%  {{ opacity: .95; }}
-            100% {{ opacity: 0; transform: translate(-62vw, -50%); }}
+            0%   {{ opacity: 0; transform: translate(62vw, -50%) scaleX(-1); }}
+            10%  {{ opacity: .95; }}
+            90%  {{ opacity: .95; }}
+            100% {{ opacity: 0; transform: translate(-62vw, -50%) scaleX(-1); }}
         }}
         @keyframes splashWheelSpin {{
             from {{ transform: rotate(0deg); }}
-            to {{ transform: rotate(-720deg); }}
+            to {{ transform: rotate(720deg); }}
         }}
         .top-watermark {{ display: none !important; }}
         </style>
