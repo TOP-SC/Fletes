@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v10-2026-08-07"
+API_BUILD_ESPERADO = "fletes-login-contrast-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -686,21 +686,37 @@ def inject_login_shell() -> None:
             font-size: 1.2rem; font-weight: 800;
             box-shadow: 0 12px 28px rgba(49,130,206,.28);
         }
-        .login-eyebrow {
-            color: #63b3ed; font-size: .72rem; font-weight: 700;
-            letter-spacing: .22em; text-transform: uppercase; margin: 0 0 6px 0;
+        /* El tema claro pinta p/h1/label en tinta oscura — forzar contraste en login */
+        [data-testid="stAppViewContainer"] .login-eyebrow,
+        [data-testid="stAppViewContainer"] .login-card-head .login-eyebrow,
+        [data-testid="stAppViewContainer"] .login-card-head p.login-eyebrow {
+            color: #7ec8f5 !important;
+            -webkit-text-fill-color: #7ec8f5 !important;
+            font-size: .72rem !important; font-weight: 700 !important;
+            letter-spacing: .22em !important; text-transform: uppercase !important;
+            margin: 0 0 6px 0 !important;
         }
-        .login-card-head h1 {
+        [data-testid="stAppViewContainer"] .login-card-head h1,
+        [data-testid="stAppViewContainer"] .login-card-head h1 * {
             margin: 4px 0 8px !important; font-size: 1.85rem !important;
-            color: #edf2f7 !important; font-weight: 700 !important;
+            color: #f7fafc !important;
+            -webkit-text-fill-color: #f7fafc !important;
+            font-weight: 700 !important;
         }
-        .login-card-head > p.login-lead {
-            margin: 0 0 8px 0 !important; color: #8fa3b8 !important;
+        [data-testid="stAppViewContainer"] .login-card-head > p.login-lead,
+        [data-testid="stAppViewContainer"] .login-card-head p.login-lead {
+            margin: 0 0 8px 0 !important;
+            color: #b8c9db !important;
+            -webkit-text-fill-color: #b8c9db !important;
             font-size: .95rem !important; line-height: 1.45 !important;
         }
-        form[data-testid="stForm"] label[data-testid="stWidgetLabel"] p {
+        [data-testid="stAppViewContainer"] form[data-testid="stForm"] label,
+        [data-testid="stAppViewContainer"] form[data-testid="stForm"] label p,
+        [data-testid="stAppViewContainer"] form[data-testid="stForm"] label span,
+        [data-testid="stAppViewContainer"] form[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
             font-weight: 600 !important;
-            color: #a8bdd4 !important;
+            color: #d0dde9 !important;
+            -webkit-text-fill-color: #d0dde9 !important;
             font-size: 0.82rem !important;
         }
         form[data-testid="stForm"] input {
@@ -712,6 +728,7 @@ def inject_login_shell() -> None:
             background: #0c2035 !important;
             font-size: 0.95rem !important;
             color: #edf2f7 !important;
+            -webkit-text-fill-color: #edf2f7 !important;
         }
         form[data-testid="stForm"] input:focus {
             border-color: #4299e1 !important;
@@ -733,15 +750,22 @@ def inject_login_shell() -> None:
         form[data-testid="stForm"] button[data-testid="stFormSubmitButton"]:hover {
             background: #63b3ed !important;
         }
-        .login-wm {
-            margin-top: 1.35rem; font-size: .66rem; color: #7a8898;
+        [data-testid="stAppViewContainer"] .login-wm,
+        [data-testid="stAppViewContainer"] .login-wm span,
+        [data-testid="stAppViewContainer"] .top-watermark.login-wm,
+        [data-testid="stAppViewContainer"] .top-watermark.login-wm span {
+            margin-top: 1.35rem; font-size: .66rem;
+            color: #9aabbc !important;
+            -webkit-text-fill-color: #9aabbc !important;
             display: flex !important; flex-direction: column; align-items: center; gap: 2px;
             text-align: center; line-height: 1.35; user-select: none;
         }
-        .login-wm span { display: block; }
-        .login-foot {
+        [data-testid="stAppViewContainer"] .login-foot,
+        [data-testid="stAppViewContainer"] p.login-foot {
             margin-top: 0.85rem; text-align: center;
-            font-size: 0.78rem; color: #7a8898;
+            font-size: 0.78rem;
+            color: #9aabbc !important;
+            -webkit-text-fill-color: #9aabbc !important;
         }
         .top-watermark:not(.login-wm) { display: none !important; }
         </style>
