@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v7-2026-08-07"
+API_BUILD_ESPERADO = "fletes-splash-truck-v8-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,10 +424,13 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-# Splash: [aire] → camión → [mismo aire]. La pasada del camión se mantiene.
-SPLASH_TRUCK_DURATION_SEC = 8.8  # más lento; el delay de arranque no cambia
-SPLASH_PAD_SEC = 0.30  # mismo aire antes y después
-SPLASH_HOLD_SEC = round(SPLASH_PAD_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_SEC, 2)
+# Splash: [aire corto] → camión → [3s] → login
+SPLASH_TRUCK_DURATION_SEC = 8.8
+SPLASH_PAD_BEFORE_SEC = 0.30
+SPLASH_PAD_AFTER_SEC = 3.0  # tras terminar la pasada, recién aparece el login
+SPLASH_HOLD_SEC = round(
+    SPLASH_PAD_BEFORE_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_AFTER_SEC, 2
+)
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
 
 
@@ -444,7 +447,7 @@ def _top_watermark_html(*, extra_class: str = "") -> str:
 def inject_splash_welcome() -> None:
     """Bienvenida full-screen (mismo patrón PIC / apps TOP), colores Fletes."""
     truck_dur = f"{SPLASH_TRUCK_DURATION_SEC:g}"
-    truck_delay = f"{SPLASH_PAD_SEC:g}"
+    truck_delay = f"{SPLASH_PAD_BEFORE_SEC:g}"
     st.markdown(
         f"""
         <link rel="preconnect" href="https://fonts.googleapis.com" />
