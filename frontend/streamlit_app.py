@@ -424,7 +424,7 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-SPLASH_HOLD_SEC = 5.6
+SPLASH_HOLD_SEC = 8.8
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
 
 
@@ -497,11 +497,11 @@ def inject_splash_welcome() -> None:
             transform: translate(62vw, -50%) scaleX(-1);
             opacity: 0;
             filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-            animation: splashTruckPass 4.6s .7s cubic-bezier(.4,.05,.3,1) both;
+            animation: splashTruckPass 6.8s 1.5s cubic-bezier(.35,.05,.25,1) both;
         }}
         .splash-truck .wheel {{
             transform-origin: center;
-            animation: splashWheelSpin 4.6s .7s linear both;
+            animation: splashWheelSpin 6.8s 1.5s linear both;
         }}
         .splash-road {{
             position: absolute;
