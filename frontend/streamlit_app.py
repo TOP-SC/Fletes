@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v2-2026-08-06"
+API_BUILD_ESPERADO = "fletes-splash-truck-v4-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,7 +424,10 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-SPLASH_HOLD_SEC = 8.8
+# Splash: [aire] → camión → [mismo aire]. La pasada del camión se mantiene.
+SPLASH_TRUCK_DURATION_SEC = 6.8
+SPLASH_PAD_SEC = 1.15  # mismo tiempo antes de que arranque y después de que termine
+SPLASH_HOLD_SEC = round(SPLASH_PAD_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_SEC, 2)
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
 
 
@@ -440,6 +443,8 @@ def _top_watermark_html(*, extra_class: str = "") -> str:
 
 def inject_splash_welcome() -> None:
     """Bienvenida full-screen (mismo patrón PIC / apps TOP), colores Fletes."""
+    truck_dur = f"{SPLASH_TRUCK_DURATION_SEC:g}"
+    truck_delay = f"{SPLASH_PAD_SEC:g}"
     st.markdown(
         f"""
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -497,11 +502,11 @@ def inject_splash_welcome() -> None:
             transform: translate(62vw, -50%) scaleX(-1);
             opacity: 0;
             filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
-            animation: splashTruckPass 6.8s 1.5s cubic-bezier(.35,.05,.25,1) both;
+            animation: splashTruckPass {truck_dur}s {truck_delay}s cubic-bezier(.35,.05,.25,1) both;
         }}
         .splash-truck .wheel {{
             transform-origin: center;
-            animation: splashWheelSpin 6.8s 1.5s linear both;
+            animation: splashWheelSpin {truck_dur}s {truck_delay}s linear both;
         }}
         .splash-road {{
             position: absolute;
@@ -511,7 +516,7 @@ def inject_splash_welcome() -> None:
             border-radius: 2px;
             background: linear-gradient(90deg, transparent, rgba(99,179,237,.28), transparent);
             opacity: 0;
-            animation: splashRise .6s .7s forwards;
+            animation: splashRise .6s .55s forwards;
         }}
         .splash-logo {{
             position: relative;
@@ -522,20 +527,20 @@ def inject_splash_welcome() -> None:
             background: linear-gradient(110deg, #eef6ff 12%, #63b3ed 55%, #2b6cb0);
             background-clip: text; -webkit-background-clip: text; color: transparent;
             opacity: 0; filter: blur(12px); transform: scale(.92);
-            animation: splashReveal 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards;
+            animation: splashReveal 1.0s .2s cubic-bezier(.2,.8,.2,1) forwards;
             text-shadow: none;
         }}
         .splash-name {{
             margin-top: 16px; color: #a8bdd4; font-size: clamp(1rem, 2vw, 1.35rem);
-            letter-spacing: .08em; opacity: 0; animation: splashRise .8s .9s forwards;
+            letter-spacing: .08em; opacity: 0; animation: splashRise .7s .55s forwards;
         }}
         .splash-line {{
             width: 0; height: 2px; margin: 24px auto 0;
             background: linear-gradient(90deg, transparent, #4299e1, transparent);
-            animation: splashDraw 1s 1.1s forwards;
+            animation: splashDraw .9s .7s forwards;
         }}
         .splash-wm {{
-            margin-top: 28px; opacity: 0; animation: splashRise .8s 1.6s forwards;
+            margin-top: 28px; opacity: 0; animation: splashRise .7s 1.0s forwards;
             color: #7a8898; font-size: .7rem;
             display: flex; flex-direction: column; align-items: center; gap: 2px;
             letter-spacing: .01em; line-height: 1.35; user-select: none;
@@ -550,8 +555,8 @@ def inject_splash_welcome() -> None:
         @keyframes splashBreathe {{ 50% {{ transform: scale(1.08); opacity: .75; }} }}
         @keyframes splashTruckPass {{
             0%   {{ opacity: 0; transform: translate(62vw, -50%) scaleX(-1); }}
-            10%  {{ opacity: .95; }}
-            90%  {{ opacity: .95; }}
+            8%   {{ opacity: .95; }}
+            92%  {{ opacity: .95; }}
             100% {{ opacity: 0; transform: translate(-62vw, -50%) scaleX(-1); }}
         }}
         @keyframes splashWheelSpin {{
