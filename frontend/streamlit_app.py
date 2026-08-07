@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v8-2026-08-07"
+API_BUILD_ESPERADO = "fletes-splash-truck-v8b-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -432,6 +432,7 @@ SPLASH_HOLD_SEC = round(
     SPLASH_PAD_BEFORE_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_AFTER_SEC, 2
 )
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
+AUTH_SPLASH_BUILD_KEY = "_auth_splash_build"
 
 
 def _top_watermark_html(*, extra_class: str = "") -> str:
@@ -962,6 +963,7 @@ def _auth_logout() -> None:
         "login_pass_input",
         "login_form_submitted",
         AUTH_SPLASH_DONE_KEY,
+        AUTH_SPLASH_BUILD_KEY,
     ):
         st.session_state.pop(key, None)
 
@@ -975,6 +977,11 @@ def _saludo_bienvenida(username: str) -> str:
 def _pagina_login() -> None:
     """Splash TOP + login card (patrón PIC), colores Control de Fletes."""
     import time as _time
+
+    # Tras un deploy, la sesión vieja salta el splash: forzar replay si cambió el build.
+    if st.session_state.get(AUTH_SPLASH_BUILD_KEY) != API_BUILD_ESPERADO:
+        st.session_state.pop(AUTH_SPLASH_DONE_KEY, None)
+        st.session_state[AUTH_SPLASH_BUILD_KEY] = API_BUILD_ESPERADO
 
     if not st.session_state.get(AUTH_SPLASH_DONE_KEY):
         inject_splash_welcome()
