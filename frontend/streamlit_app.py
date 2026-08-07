@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v8b-2026-08-07"
+API_BUILD_ESPERADO = "fletes-splash-truck-v9-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,10 +424,10 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-# Splash: [aire corto] → camión → [3s] → login
+# Splash: [aire corto] → camión (recorrido = ancho del stage) → [3s] → login
 SPLASH_TRUCK_DURATION_SEC = 8.8
 SPLASH_PAD_BEFORE_SEC = 0.30
-SPLASH_PAD_AFTER_SEC = 3.0  # tras terminar la pasada, recién aparece el login
+SPLASH_PAD_AFTER_SEC = 3.0  # desde que el camión sale de vista
 SPLASH_HOLD_SEC = round(
     SPLASH_PAD_BEFORE_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_AFTER_SEC, 2
 )
@@ -499,11 +499,12 @@ def inject_splash_welcome() -> None:
         .splash-truck {{
             position: absolute;
             top: 52%;
-            left: 0;
+            /* left anima respecto al stage (overflow hidden): el fin = sale de vista */
+            left: 112%;
             width: clamp(110px, 18vw, 168px);
             height: auto;
             /* scaleX(-1): cabina mira a la izquierda = sentido de marcha */
-            transform: translate(62vw, -50%) scaleX(-1);
+            transform: translateY(-50%) scaleX(-1);
             opacity: 0;
             filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
             animation: splashTruckPass {truck_dur}s {truck_delay}s cubic-bezier(.35,.05,.25,1) both;
@@ -558,10 +559,10 @@ def inject_splash_welcome() -> None:
         @keyframes splashDraw {{ to {{ width: 230px; }} }}
         @keyframes splashBreathe {{ 50% {{ transform: scale(1.08); opacity: .75; }} }}
         @keyframes splashTruckPass {{
-            0%   {{ opacity: 0; transform: translate(62vw, -50%) scaleX(-1); }}
-            8%   {{ opacity: .95; }}
-            92%  {{ opacity: .95; }}
-            100% {{ opacity: 0; transform: translate(-62vw, -50%) scaleX(-1); }}
+            0%   {{ left: 112%; opacity: 0; }}
+            6%   {{ opacity: .95; }}
+            94%  {{ opacity: .95; }}
+            100% {{ left: -38%; opacity: 0; }}
         }}
         @keyframes splashWheelSpin {{
             from {{ transform: rotate(0deg); }}
