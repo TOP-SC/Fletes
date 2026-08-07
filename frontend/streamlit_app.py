@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v6-2026-08-07"
+API_BUILD_ESPERADO = "fletes-splash-truck-v7-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -425,7 +425,7 @@ def inject_theme(*, dark: bool = False) -> None:
 
 
 # Splash: [aire] → camión → [mismo aire]. La pasada del camión se mantiene.
-SPLASH_TRUCK_DURATION_SEC = 6.8
+SPLASH_TRUCK_DURATION_SEC = 8.8  # más lento; el delay de arranque no cambia
 SPLASH_PAD_SEC = 0.30  # mismo aire antes y después
 SPLASH_HOLD_SEC = round(SPLASH_PAD_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_SEC, 2)
 AUTH_SPLASH_DONE_KEY = "_auth_splash_done"
