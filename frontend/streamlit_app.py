@@ -72,7 +72,7 @@ except ImportError:
 
     def nombre_provincia_completo(provincia: str | None) -> str:
         return str(provincia or "").strip()
-API_BUILD_ESPERADO = "fletes-splash-truck-v9-2026-08-07"
+API_BUILD_ESPERADO = "fletes-splash-truck-v10-2026-08-07"
 
 AUTH_TOKEN_KEY = "auth_token"
 AUTH_USER_KEY = "auth_username"
@@ -424,10 +424,11 @@ def inject_theme(*, dark: bool = False) -> None:
     )
 
 
-# Splash: [aire corto] → camión (recorrido = ancho del stage) → [3s] → login
-SPLASH_TRUCK_DURATION_SEC = 8.8
-SPLASH_PAD_BEFORE_SEC = 0.30
-SPLASH_PAD_AFTER_SEC = 3.0  # desde que el camión sale de vista
+# Splash al ritmo PIC: limpio → efecto → limpio → login
+# (en PIC la "lluvia" dura ~2.2s; acá el camión va a 4s para que se lea bien)
+SPLASH_PAD_BEFORE_SEC = 1.4
+SPLASH_TRUCK_DURATION_SEC = 4.0
+SPLASH_PAD_AFTER_SEC = 1.4
 SPLASH_HOLD_SEC = round(
     SPLASH_PAD_BEFORE_SEC + SPLASH_TRUCK_DURATION_SEC + SPLASH_PAD_AFTER_SEC, 2
 )
